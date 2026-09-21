@@ -31,7 +31,7 @@ export const THEME_LABELS: Record<Theme, string> = {
 export const THEME_ID_PREFIX = 'theme-'
 
 const OFFICES = ['NWS', 'NOS', 'NESDIS', 'OAR', 'NMFS', 'OMAO', 'other'] as const
-const FORMATS = ['json', 'geojson', 'csv', 'xml', 'netcdf', 'grib2', 'tiles', 'text', 'other'] as const
+const FORMATS = ['json', 'geojson', 'csv', 'xml', 'netcdf', 'grib2', 'geotiff', 'kml', 'shapefile', 'arcgis-rest', 'tiles', 'text', 'other'] as const
 const CADENCES = ['realtime', 'minutes', 'hourly', 'daily', 'periodic', 'static'] as const
 
 // Coordinates are limited to 3 decimal places (~100 m) to keep graph.json small.

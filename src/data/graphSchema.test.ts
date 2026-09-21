@@ -40,6 +40,11 @@ describe('parseGraphFile', () => {
     expect(() => parseGraphFile(makeFile([makeNode(overrides)]))).toThrow(/Invalid graph data/)
   })
 
+  it('accepts GIS file and service formats', () => {
+    const formats = ['kml', 'shapefile', 'geotiff', 'arcgis-rest']
+    expect(() => parseGraphFile(makeFile([makeNode({ formats })]))).not.toThrow()
+  })
+
   it('requires notLiveReason when liveLayer is false', () => {
     const bad = makeNode({ liveLayer: false })
     expect(() => parseGraphFile(makeFile([bad]))).toThrow(/notLiveReason/)
