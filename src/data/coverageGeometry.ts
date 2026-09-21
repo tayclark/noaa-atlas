@@ -206,13 +206,15 @@ export const PRESETS: Record<string, Preset> = {
   alaska: { description: 'Alaska including the Aleutians, from Natural Earth', country: 'USA', select: [[-170, 50, -129, 72], [170, 50, 180, 56]] },
   hawaii: { description: 'Hawaiian islands from Natural Earth', country: 'USA', select: [[-161, 18, -154, 23]] },
   'us-coastal-waters': {
-    description: 'Approximate 200 nmi boxes around US coasts (hand-defined, not an official boundary)',
+    description: 'Approximate 200 nmi boxes around US coasts and territories (hand-defined, not an official boundary)',
     boxes: [
       [-133, 22, -63, 50],
       [-180, 48, -125, 74],
       [170, 48, 180, 58],
       [-165, 15, -150, 25],
       [-69, 16, -63, 20],
+      [144, 12, 147, 21],
+      [-171.5, -15, -168, -13],
     ],
   },
   worldwide: { description: 'Full-world polygon', boxes: [[-180, -90, 180, 90]] },
