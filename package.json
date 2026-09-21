@@ -19,7 +19,8 @@
     "d3-zoom": "^3.0.0",
     "maplibre-gl": "^6.10.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
