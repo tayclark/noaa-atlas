@@ -19,7 +19,7 @@
       ],
       "auth": {
         "type": "none",
-        "note": "A descriptive User-Agent header is required; the docs say an API key will replace it in the future."
+        "note": "A descriptive User-Agent header is required; the docs say an API key will replace it in the future. Responses send access-control-allow-origin: *."
       },
       "rateLimits": {
         "text": "Not published numerically; a generous amount for typical use. Exceeding it returns an error and can be retried after the limit clears (typically within 5 seconds).",
@@ -72,6 +72,24 @@
               [-69, 20],
               [-69, 16]
             ]
+          ],
+          [
+            [
+              [144, 12],
+              [147, 12],
+              [147, 21],
+              [144, 21],
+              [144, 12]
+            ]
+          ],
+          [
+            [
+              [-171.5, -15],
+              [-168, -15],
+              [-168, -13],
+              [-171.5, -13],
+              [-171.5, -15]
+            ]
           ]
         ]
       },
@@ -90,6 +108,110 @@
       ]
     },
     {
+      "id": "nws-gis-portal",
+      "kind": "service",
+      "name": "NWS GIS Portal (ArcGIS REST)",
+      "summary": "ArcGIS REST MapServer and FeatureServer layers for SPC, WPC and CPC outlooks, precipitation and hazards, storm reports and surface observations.",
+      "owner": {
+        "office": "NWS",
+        "program": "NWS GIS Portal"
+      },
+      "theme": "weather",
+      "baseUrl": "https://mapservices.weather.noaa.gov/vector/rest/services",
+      "formats": [
+        "arcgis-rest",
+        "json"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Responses echo the request Origin in access-control-allow-origin (checked 2026-09-21)."
+      },
+      "coverage": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-133, 22],
+              [-63, 22],
+              [-63, 50],
+              [-133, 50],
+              [-133, 22]
+            ]
+          ],
+          [
+            [
+              [-180, 48],
+              [-125, 48],
+              [-125, 74],
+              [-180, 74],
+              [-180, 48]
+            ]
+          ],
+          [
+            [
+              [170, 48],
+              [180, 48],
+              [180, 58],
+              [170, 58],
+              [170, 48]
+            ]
+          ],
+          [
+            [
+              [-165, 15],
+              [-150, 15],
+              [-150, 25],
+              [-165, 25],
+              [-165, 15]
+            ]
+          ],
+          [
+            [
+              [-69, 16],
+              [-63, 16],
+              [-63, 20],
+              [-69, 20],
+              [-69, 16]
+            ]
+          ],
+          [
+            [
+              [144, 12],
+              [147, 12],
+              [147, 21],
+              [144, 21],
+              [144, 12]
+            ]
+          ],
+          [
+            [
+              [-171.5, -15],
+              [-168, -15],
+              [-168, -13],
+              [-171.5, -13],
+              [-171.5, -15]
+            ]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "periodic",
+        "note": "Varies by layer; each layer follows its source product's issuance."
+      },
+      "docUrl": "https://www.weather.gov/gis/cloudgiswebservices",
+      "lastVerified": "2026-09-21",
+      "liveLayer": false,
+      "notLiveReason": "Deferred: outside the v1 live layers (NWS alerts and point forecast/observations). CORS works, so SPC, WPC and CPC layers here are the likeliest candidates for later map layers.",
+      "tags": [
+        "arcgis",
+        "outlooks",
+        "QPF",
+        "storm reports",
+        "hazards",
+        "fire weather"
+      ]
+    },
+    {
       "id": "spc-gis-data",
       "kind": "service",
       "name": "SPC GIS Data Feeds",
@@ -102,7 +224,8 @@
       "baseUrl": "https://www.spc.noaa.gov/products/",
       "formats": [
         "geojson",
-        "other"
+        "kml",
+        "shapefile"
       ],
       "auth": {
         "type": "none"
@@ -237,12 +360,12 @@
       },
       "freshness": {
         "cadence": "periodic",
-        "note": "Updated with each outlook issuance; days 4-8 outlooks are experimental."
+        "note": "Update schedule is not documented on the data page; files follow each outlook issuance. Days 4-8 outlooks are experimental."
       },
       "docUrl": "https://www.spc.noaa.gov/gis/",
       "lastVerified": "2026-09-21",
       "liveLayer": false,
-      "notLiveReason": "Deferred: v1 live layers are limited to NWS alerts and NWS point forecast/observations. The GeoJSON outlook feeds are a candidate for a later layer (browser CORS not yet verified).",
+      "notLiveReason": "Deferred: v1 live layers are limited to NWS alerts and NWS point forecast/observations. The GeoJSON feeds send access-control-allow-origin: * (checked 2026-09-21), so they are a candidate for a later layer.",
       "tags": [
         "convective outlook",
         "tornado",
@@ -263,7 +386,8 @@
       "theme": "weather",
       "baseUrl": "https://www.wpc.ncep.noaa.gov/kml/",
       "formats": [
-        "other"
+        "kml",
+        "shapefile"
       ],
       "auth": {
         "type": "none"
@@ -609,12 +733,12 @@
       },
       "freshness": {
         "cadence": "periodic",
-        "note": "Issued multiple times daily on each product's forecast cycle."
+        "note": "Update schedule is not documented on the data page; products are issued multiple times daily in UTC."
       },
       "docUrl": "https://www.wpc.ncep.noaa.gov/kml/kmlproducts.php",
       "lastVerified": "2026-09-21",
       "liveLayer": false,
-      "notLiveReason": "KML and shapefile downloads only (no JSON or GeoJSON endpoint documented), so it cannot be drawn directly from the browser.",
+      "notLiveReason": "Deferred: this feed is KML and shapefile downloads. The same WPC products are also served as browser-callable ArcGIS REST layers, listed under nws-gis-portal.",
       "tags": [
         "QPF",
         "precipitation",
@@ -627,7 +751,7 @@
       "id": "cpc-gis-data",
       "kind": "service",
       "name": "CPC GIS Data",
-      "summary": "Climate Prediction Center drought, temperature and precipitation analyses and outlooks as shapefiles and GeoTIFFs on FTP.",
+      "summary": "Climate Prediction Center drought, temperature and precipitation analyses and outlooks as shapefiles and GeoTIFFs on FTP. Coverage is worldwide because of one global precipitation grid; most other products are US-only.",
       "owner": {
         "office": "NWS",
         "program": "Climate Prediction Center"
@@ -635,7 +759,8 @@
       "theme": "weather",
       "baseUrl": "https://www.cpc.ncep.noaa.gov/products/GIS/GIS_DATA/",
       "formats": [
-        "other"
+        "shapefile",
+        "geotiff"
       ],
       "auth": {
         "type": "none"
@@ -654,12 +779,12 @@
       },
       "freshness": {
         "cadence": "periodic",
-        "note": "No update schedule documented; cadence varies by product."
+        "note": "Update schedule is not documented on the data page; cadence varies by product."
       },
       "docUrl": "https://www.cpc.ncep.noaa.gov/products/GIS/GIS_DATA/",
       "lastVerified": "2026-09-21",
       "liveLayer": false,
-      "notLiveReason": "Files are served over FTP as shapefiles and GeoTIFFs, which a browser cannot fetch or render directly.",
+      "notLiveReason": "These files are served over FTP as shapefiles and GeoTIFFs, which a browser cannot fetch directly. CPC outlooks are also served as ArcGIS REST layers, listed under nws-gis-portal.",
       "tags": [
         "drought",
         "outlook",
