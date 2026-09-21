@@ -26,5 +26,17 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
+      - run: npm run test:coverage
+      - name: Coverage summary
+        if: always()
+        run: |
+          node -e "
+          const fs = require('fs');
+          if (!fs.existsSync('coverage/coverage-summary.json')) process.exit(0);
+          const t = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8')).total;
+          const rows = ['lines', 'statements', 'functions', 'branches']
+            .map((k) => '| ' + k + ' | ' + t[k].pct + '% | ' + t[k].covered + '/' + t[k].total + ' |');
+          const md = ['## Test coverage (gate: 75%)', '', '| Metric | Covered | Count |', '| --- | --- | --- |', ...rows, ''].join('\n');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
+          "
       - run: npm run build
