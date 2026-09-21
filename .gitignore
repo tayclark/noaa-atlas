@@ -25,3 +25,6 @@ dist-ssr
 
 # Test coverage
 coverage
+
+# Downloaded source data for scripts/coverage-geometry.ts
+scripts/.cache
