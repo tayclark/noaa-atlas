@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc -b",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "coverage-geometry": "node scripts/coverage-geometry.ts"
   },
   "dependencies": {
     "d3-drag": "^3.0.0",
