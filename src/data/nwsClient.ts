@@ -10,10 +10,12 @@
 import {
   parseAlertCollection,
   parseGridpointForecast,
+  parseObservation,
   parsePoint,
   parseStationCollection,
   type NwsAlertCollection,
   type NwsGridpointForecast,
+  type NwsObservation,
   type NwsPoint,
   type NwsStationCollection,
 } from './nwsSchema'
@@ -106,4 +108,8 @@ export function getGridpointForecast(wfo: string, x: number, y: number): Promise
 
 export function getStations(wfo: string, x: number, y: number): Promise<NwsStationCollection> {
   return request(`/gridpoints/${wfo}/${x},${y}/stations`, parseStationCollection)
+}
+
+export function getLatestObservation(stationId: string): Promise<NwsObservation> {
+  return request(`/stations/${stationId}/observations/latest`, parseObservation)
 }

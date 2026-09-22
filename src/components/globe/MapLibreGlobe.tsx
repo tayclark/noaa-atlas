@@ -1,8 +1,14 @@
-import { Map as MapLibreMap, Popup, type MapLayerMouseEvent } from 'maplibre-gl'
+import { Map as MapLibreMap, Popup, type MapLayerMouseEvent, type MapMouseEvent } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef, useState } from 'react'
 import './MapLibreGlobe.css'
-import { getActiveAlerts } from '../../data/nwsClient'
+import {
+  getActiveAlerts,
+  getGridpointForecast,
+  getLatestObservation,
+  getPoint,
+  getStations,
+} from '../../data/nwsClient'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
 import {
   GLOBE_PROJECTION,
@@ -15,6 +21,14 @@ import {
   describeAlertForPopup,
   splitAlertsByGeometry,
 } from './nwsAlertsLayer'
+import {
+  describePointError,
+  describePointForPopup,
+  formatPointErrorHtml,
+  formatPointLoadingHtml,
+  formatPointPopupHtml,
+  pickNearestStation,
+} from './nwsPointLookup'
 
 const ALERTS_SOURCE_ID = 'nws-alerts'
 const ALERTS_FILL_LAYER_ID = 'nws-alerts-fill'
@@ -40,6 +54,41 @@ export function MapLibreGlobe() {
     // MapLibre throws "Style is not done loading."
     map.on('load', () => {
       map.setProjection(GLOBE_PROJECTION)
+
+      // Point-click forecast/observation lookup (#39). Registered as a global click handler,
+      // not layer-scoped like the alerts click handler below, so it works immediately without
+      // waiting on the alerts fetch. Guarded so a click on an alert polygon is handled only by
+      // the alert popup below, not both — map.getLayer(...) also guards queryRenderedFeatures
+      // being called before the alerts layer exists.
+      map.on('click', (e: MapMouseEvent) => {
+        const alertFeatures = map.getLayer(ALERTS_FILL_LAYER_ID)
+          ? map.queryRenderedFeatures(e.point, { layers: [ALERTS_FILL_LAYER_ID] })
+          : []
+        if (alertFeatures.length > 0) return
+
+        const { lat, lng } = e.lngLat
+        const popup = new Popup().setLngLat(e.lngLat).setHTML(formatPointLoadingHtml()).addTo(map)
+
+        getPoint(lat, lng)
+          .then((point) =>
+            Promise.all([
+              getGridpointForecast(point.properties.gridId, point.properties.gridX, point.properties.gridY),
+              getStations(point.properties.gridId, point.properties.gridX, point.properties.gridY),
+            ]).then(([forecast, stations]) => {
+              const nearest = pickNearestStation(stations, lat, lng)
+              if (!nearest) throw new Error('No observation stations found near this location')
+              return getLatestObservation(nearest.properties.stationIdentifier).then((observation) => {
+                const period = forecast.properties.periods[0]
+                if (!period) throw new Error('No forecast periods returned for this location')
+                popup.setHTML(formatPointPopupHtml(describePointForPopup(period, observation)))
+              })
+            }),
+          )
+          .catch((err: unknown) => {
+            console.error('DEBUG point lookup error', err)
+            popup.setHTML(formatPointErrorHtml(describePointError(err)))
+          })
+      })
 
       getActiveAlerts()
         .then((alerts) => {
