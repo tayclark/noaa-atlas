@@ -39,6 +39,9 @@ export type NwsAlertCollection = z.infer<typeof alertCollectionSchema>
 
 export const pointSchema = z.object({
   properties: z.object({
+    gridId: z.string(),
+    gridX: z.number(),
+    gridY: z.number(),
     forecast: z.url(),
     forecastGridData: z.url(),
     forecastHourly: z.url(),
@@ -62,10 +65,14 @@ const forecastPeriodSchema = z.object({
   shortForecast: z.string(),
   detailedForecast: z.string(),
 })
+export type NwsForecastPeriod = z.infer<typeof forecastPeriodSchema>
 
 export const gridpointForecastSchema = z.object({
   properties: z.object({
-    updated: z.iso.datetime({ offset: true }),
+    // NWS omits `updated` entirely for some gridpoints in practice, despite documenting it as
+    // a required timestamp — nullish here so a real, valid forecast response doesn't fail to
+    // parse whether the field is missing or explicitly null.
+    updated: z.iso.datetime({ offset: true }).nullish(),
     periods: z.array(forecastPeriodSchema),
   }),
 })
@@ -75,12 +82,32 @@ const stationSchema = z.object({
   properties: z.object({ stationIdentifier: z.string(), name: z.string() }),
   geometry: z.object({ type: z.literal('Point'), coordinates: position }),
 })
+export type NwsStation = z.infer<typeof stationSchema>
 
 export const stationCollectionSchema = z.object({
   type: z.literal('FeatureCollection'),
   features: z.array(stationSchema),
 })
 export type NwsStationCollection = z.infer<typeof stationCollectionSchema>
+
+// NWS observation measurements are wrapped as { value, unitCode } and value is frequently
+// null (sensor down, calm wind, etc.) — that's a valid response, not an error, so value must
+// stay nullable or common real-world responses would fail to parse.
+const measurementSchema = z.object({
+  value: z.number().nullable(),
+  unitCode: z.string(),
+})
+
+export const observationSchema = z.object({
+  properties: z.object({
+    timestamp: z.iso.datetime({ offset: true }),
+    textDescription: z.string(),
+    temperature: measurementSchema,
+    windSpeed: measurementSchema,
+    windDirection: measurementSchema,
+  }),
+})
+export type NwsObservation = z.infer<typeof observationSchema>
 
 function parse<T>(schema: z.ZodType<T>, raw: unknown): T {
   const result = schema.safeParse(raw)
@@ -104,4 +131,8 @@ export function parseGridpointForecast(raw: unknown): NwsGridpointForecast {
 
 export function parseStationCollection(raw: unknown): NwsStationCollection {
   return parse(stationCollectionSchema, raw)
+}
+
+export function parseObservation(raw: unknown): NwsObservation {
+  return parse(observationSchema, raw)
 }

@@ -28,6 +28,9 @@ export function makeAlertCollection(features: unknown[] = [makeAlertFeature()]):
 export function makePoint(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     properties: {
+      gridId: 'SEW',
+      gridX: 125,
+      gridY: 68,
       forecast: 'https://api.weather.gov/gridpoints/SEW/125,68/forecast',
       forecastGridData: 'https://api.weather.gov/gridpoints/SEW/125,68',
       forecastHourly: 'https://api.weather.gov/gridpoints/SEW/125,68/forecast/hourly',
@@ -74,4 +77,17 @@ export function makeStation(overrides: Record<string, unknown> = {}): Record<str
 
 export function makeStationCollection(features: unknown[] = [makeStation()]): Record<string, unknown> {
   return { type: 'FeatureCollection', features }
+}
+
+export function makeObservation(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    properties: {
+      timestamp: '2026-09-21T18:00:00-07:00',
+      textDescription: 'Mostly Cloudy',
+      temperature: { value: 15.6, unitCode: 'wmoUnit:degC' },
+      windSpeed: { value: 8.3, unitCode: 'wmoUnit:km_h-1' },
+      windDirection: { value: 220, unitCode: 'wmoUnit:degree_(angle)' },
+      ...overrides,
+    },
+  }
 }

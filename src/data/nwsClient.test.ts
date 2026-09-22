@@ -3,12 +3,19 @@ import {
   clearNwsCache,
   getActiveAlerts,
   getGridpointForecast,
+  getLatestObservation,
   getPoint,
   getStations,
   NwsHttpError,
   NwsParseError,
 } from './nwsClient'
-import { makeAlertCollection, makeGridpointForecast, makePoint, makeStationCollection } from './nwsFixtures'
+import {
+  makeAlertCollection,
+  makeGridpointForecast,
+  makeObservation,
+  makePoint,
+  makeStationCollection,
+} from './nwsFixtures'
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status })
@@ -111,5 +118,37 @@ describe('getStations', () => {
     const stations = await getStations('SEW', 125, 68)
     expect(stations.features).toHaveLength(1)
     expect(fetch).toHaveBeenCalledWith('https://api.weather.gov/gridpoints/SEW/125,68/stations', expect.any(Object))
+  })
+})
+
+describe('getLatestObservation', () => {
+  it('requests the station latest-observation endpoint', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(makeObservation()))
+    const observation = await getLatestObservation('KSEA')
+    expect(observation.properties.textDescription).toBe('Mostly Cloudy')
+    expect(fetch).toHaveBeenCalledWith(
+      'https://api.weather.gov/stations/KSEA/observations/latest',
+      expect.any(Object),
+    )
+  })
+
+  it.each([
+    [403, 'forbidden'],
+    [429, 'rate-limited'],
+    [500, 'server-error'],
+    [503, 'server-error'],
+    [404, 'unknown'],
+  ] as const)('classifies a %i response as kind %s', async (status, kind) => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status }))
+    const error = await getLatestObservation('KSEA').catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(NwsHttpError)
+    expect((error as NwsHttpError).kind).toBe(kind)
+    expect((error as NwsHttpError).message).toBeTruthy()
+  })
+
+  it('wraps a malformed response as a parse error, not a raw Zod error', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ not: 'an observation' }))
+    const error = await getLatestObservation('KSEA').catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(NwsParseError)
   })
 })
