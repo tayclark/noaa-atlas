@@ -19,6 +19,7 @@ import {
 import {
   alertSeverityColorExpression,
   describeAlertForPopup,
+  describeAlertsFetchOutcome,
   splitAlertsByGeometry,
 } from './nwsAlertsLayer'
 import {
@@ -39,6 +40,8 @@ const ALERTS_LINE_LAYER_ID = 'nws-alerts-line'
 export function MapLibreGlobe() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [zoneOnlyAlerts, setZoneOnlyAlerts] = useState<NwsAlertCollection['features']>([])
+  const [alertsStatus, setAlertsStatus] = useState<'loading' | 'ok' | 'empty' | 'error'>('loading')
+  const [alertsErrorMessage, setAlertsErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -85,7 +88,6 @@ export function MapLibreGlobe() {
             }),
           )
           .catch((err: unknown) => {
-            console.error('DEBUG point lookup error', err)
             popup.setHTML(formatPointErrorHtml(describePointError(err)))
           })
       })
@@ -94,6 +96,7 @@ export function MapLibreGlobe() {
         .then((alerts) => {
           const { mappable, zoneOnly } = splitAlertsByGeometry(alerts)
           setZoneOnlyAlerts(zoneOnly)
+          setAlertsStatus(mappable.features.length === 0 && zoneOnly.length === 0 ? 'empty' : 'ok')
 
           map.addSource(ALERTS_SOURCE_ID, { type: 'geojson', data: mappable })
           map.addLayer({
@@ -137,8 +140,8 @@ export function MapLibreGlobe() {
           })
         })
         .catch((err: unknown) => {
-          // Full empty/error-state UI is #42; for now, don't let a failed alerts fetch break the globe.
-          console.error('Failed to load NWS alerts', err)
+          setAlertsStatus('error')
+          setAlertsErrorMessage(describeAlertsFetchOutcome(err))
         })
     })
 
@@ -153,7 +156,17 @@ export function MapLibreGlobe() {
         aria-label="Globe view of NOAA API coverage"
         style={{ width: '100%', height: '100%' }}
       />
-      {zoneOnlyAlerts.length > 0 && (
+      {alertsStatus === 'error' && (
+        <div className="zone-only-alerts" role="status" aria-label="Alerts status">
+          {alertsErrorMessage}
+        </div>
+      )}
+      {alertsStatus === 'empty' && (
+        <div className="zone-only-alerts" role="status" aria-label="Alerts status">
+          No active alerts.
+        </div>
+      )}
+      {alertsStatus === 'ok' && zoneOnlyAlerts.length > 0 && (
         <div className="zone-only-alerts" aria-label="Alerts without a mapped area">
           <strong>Zone alerts (no map location):</strong>
           <ul>

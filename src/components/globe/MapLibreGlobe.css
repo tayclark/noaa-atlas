@@ -21,6 +21,10 @@
   color: var(--color-text-muted);
 }
 
+.zone-only-alerts[role='status'] {
+  color: var(--color-text-muted);
+}
+
 .maplibregl-popup-content {
   background: var(--color-surface-raised);
   color: var(--color-text);

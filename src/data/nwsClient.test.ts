@@ -101,6 +101,20 @@ describe('getPoint', () => {
     expect(point.properties.relativeLocation.properties.city).toBe('Seattle')
     expect(fetch).toHaveBeenCalledWith('https://api.weather.gov/points/47.6,-122.3', expect.any(Object))
   })
+
+  it.each([
+    [403, 'forbidden'],
+    [429, 'rate-limited'],
+    [500, 'server-error'],
+    [503, 'server-error'],
+    [404, 'unknown'],
+  ] as const)('classifies a %i response as kind %s', async (status, kind) => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status }))
+    const error = await getPoint(47.6, -122.3).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(NwsHttpError)
+    expect((error as NwsHttpError).kind).toBe(kind)
+    expect((error as NwsHttpError).message).toBeTruthy()
+  })
 })
 
 describe('getGridpointForecast', () => {
