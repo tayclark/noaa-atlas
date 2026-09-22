@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import { NwsHttpError, NwsParseError } from '../../data/nwsClient'
 import { parseAlertCollection } from '../../data/nwsSchema'
 import { makeAlertCollection, makeAlertFeature } from '../../data/nwsFixtures'
 import {
   ALERT_SEVERITY_COLORS,
   alertSeverityColorExpression,
   describeAlertForPopup,
+  describeAlertsFetchOutcome,
   splitAlertsByGeometry,
 } from './nwsAlertsLayer'
 
@@ -62,5 +64,31 @@ describe('describeAlertForPopup', () => {
     expect(popup.areaDesc).toBe('King County, WA')
     expect(popup.effective).toBe(new Date(feature.properties.effective).toLocaleString())
     expect(popup.expires).toBe(new Date(feature.properties.expires).toLocaleString())
+  })
+})
+
+describe('describeAlertsFetchOutcome', () => {
+  it('describes a rate-limited error', () => {
+    const err = new NwsHttpError(429, 'rate-limited', 'rate limited')
+    expect(describeAlertsFetchOutcome(err)).toMatch(/rate limit/i)
+  })
+
+  it('describes a server error', () => {
+    const err = new NwsHttpError(500, 'server-error', 'server error')
+    expect(describeAlertsFetchOutcome(err)).toMatch(/service is unavailable/i)
+  })
+
+  it('describes a forbidden/unknown error as a generic load failure', () => {
+    expect(describeAlertsFetchOutcome(new NwsHttpError(403, 'forbidden', 'forbidden'))).toMatch(/could not load/i)
+    expect(describeAlertsFetchOutcome(new NwsHttpError(404, 'unknown', 'not found'))).toMatch(/could not load/i)
+  })
+
+  it('describes a parse error', () => {
+    const err = new NwsParseError('bad shape', new Error('cause'))
+    expect(describeAlertsFetchOutcome(err)).toMatch(/unexpected/i)
+  })
+
+  it('describes an unknown error generically', () => {
+    expect(describeAlertsFetchOutcome(new Error('boom'))).toMatch(/something went wrong/i)
   })
 })

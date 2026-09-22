@@ -3,6 +3,7 @@
 // is excluded from coverage and verified manually in the browser (see vite.config.ts).
 
 import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec'
+import { NwsHttpError, NwsParseError } from '../../data/nwsClient'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
 
 // Matches the --color-alert-danger/--color-alert-warning tokens in index.css (this module is
@@ -65,4 +66,15 @@ export function describeAlertForPopup(
     effective: new Date(properties.effective).toLocaleString(),
     expires: new Date(properties.expires).toLocaleString(),
   }
+}
+
+/** Builds a human-readable message for a failed alerts fetch, based on the error kind (#42 AC). */
+export function describeAlertsFetchOutcome(err: unknown): string {
+  if (err instanceof NwsHttpError) {
+    if (err.kind === 'rate-limited') return 'NWS rate limit exceeded — alerts unavailable, try again shortly.'
+    if (err.kind === 'server-error') return 'NWS service is unavailable — alerts could not be loaded.'
+    return 'Could not load NWS alerts right now.'
+  }
+  if (err instanceof NwsParseError) return 'NWS returned an unexpected alerts response.'
+  return 'Something went wrong loading alerts.'
 }
