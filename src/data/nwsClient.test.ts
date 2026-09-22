@@ -1,0 +1,115 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  clearNwsCache,
+  getActiveAlerts,
+  getGridpointForecast,
+  getPoint,
+  getStations,
+  NwsHttpError,
+  NwsParseError,
+} from './nwsClient'
+import { makeAlertCollection, makeGridpointForecast, makePoint, makeStationCollection } from './nwsFixtures'
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status })
+}
+
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn())
+  clearNwsCache()
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+describe('getActiveAlerts', () => {
+  it('fetches and parses the alerts collection', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(makeAlertCollection()))
+    const alerts = await getActiveAlerts()
+    expect(alerts.features).toHaveLength(1)
+    expect(fetch).toHaveBeenCalledWith('https://api.weather.gov/alerts/active', expect.any(Object))
+  })
+
+  it('sends an Accept header and no fake User-Agent', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(makeAlertCollection()))
+    await getActiveAlerts()
+    const [, init] = vi.mocked(fetch).mock.calls[0]
+    const headers = init?.headers as Record<string, string>
+    expect(headers.Accept).toBe('application/geo+json')
+    expect(headers['User-Agent']).toBeUndefined()
+  })
+
+  it('caches successful responses within the TTL', async () => {
+    vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse(makeAlertCollection())))
+    await getActiveAlerts()
+    await getActiveAlerts()
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not cache error responses', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(null, { status: 429 }))
+      .mockResolvedValueOnce(jsonResponse(makeAlertCollection()))
+    await expect(getActiveAlerts()).rejects.toThrow(NwsHttpError)
+    await getActiveAlerts()
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('refetches after the cache entry expires', async () => {
+    vi.useFakeTimers()
+    vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse(makeAlertCollection())))
+    await getActiveAlerts()
+    vi.advanceTimersByTime(61_000)
+    await getActiveAlerts()
+    expect(fetch).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
+
+  it.each([
+    [403, 'forbidden'],
+    [429, 'rate-limited'],
+    [500, 'server-error'],
+    [503, 'server-error'],
+    [404, 'unknown'],
+  ] as const)('classifies a %i response as kind %s', async (status, kind) => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status }))
+    const error = await getActiveAlerts().catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(NwsHttpError)
+    expect((error as NwsHttpError).kind).toBe(kind)
+    expect((error as NwsHttpError).message).toBeTruthy()
+  })
+
+  it('wraps a malformed response as a parse error, not a raw Zod error', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ not: 'an alert collection' }))
+    const error = await getActiveAlerts().catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(NwsParseError)
+  })
+})
+
+describe('getPoint', () => {
+  it('requests the points endpoint with lat,lon', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(makePoint()))
+    const point = await getPoint(47.6, -122.3)
+    expect(point.properties.relativeLocation.properties.city).toBe('Seattle')
+    expect(fetch).toHaveBeenCalledWith('https://api.weather.gov/points/47.6,-122.3', expect.any(Object))
+  })
+})
+
+describe('getGridpointForecast', () => {
+  it('requests the gridpoints forecast endpoint', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(makeGridpointForecast()))
+    const forecast = await getGridpointForecast('SEW', 125, 68)
+    expect(forecast.properties.periods).toHaveLength(1)
+    expect(fetch).toHaveBeenCalledWith('https://api.weather.gov/gridpoints/SEW/125,68/forecast', expect.any(Object))
+  })
+})
+
+describe('getStations', () => {
+  it('requests the gridpoints stations endpoint', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(makeStationCollection()))
+    const stations = await getStations('SEW', 125, 68)
+    expect(stations.features).toHaveLength(1)
+    expect(fetch).toHaveBeenCalledWith('https://api.weather.gov/gridpoints/SEW/125,68/stations', expect.any(Object))
+  })
+})
