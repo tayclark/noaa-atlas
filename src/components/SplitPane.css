@@ -1,0 +1,34 @@
+.split-pane {
+  display: flex;
+  height: 100%;
+}
+
+.split-pane--dragging {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.split-pane-side {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.split-pane-side--right {
+  flex: 1 1 0;
+}
+
+.split-pane-divider {
+  flex: none;
+  width: var(--divider-size);
+  background: var(--color-border);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.split-pane-divider:hover,
+.split-pane-divider:focus-visible,
+.split-pane--dragging .split-pane-divider {
+  background: var(--color-accent);
+  outline: none;
+}
