@@ -1,5 +1,6 @@
 import { Pane } from './components/Pane'
 import { SplitPane } from './components/SplitPane'
+import { MapLibreGlobe } from './components/globe/MapLibreGlobe'
 import './App.css'
 
 function App() {
@@ -11,7 +12,7 @@ function App() {
       <main className="app-main">
         <SplitPane
           left={<Pane title="Graph" note="NOAA API ecosystem — coming in M2" />}
-          right={<Pane title="Globe" note="NOAA APIs in action — coming in M4" />}
+          right={<MapLibreGlobe />}
         />
       </main>
     </div>
