@@ -16,6 +16,7 @@ import {
   makePoint,
   makeStationCollection,
 } from './nwsFixtures'
+import { clearRequestLog, getRequestLogSnapshot } from './requestLog'
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status })
@@ -24,6 +25,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn())
   clearNwsCache()
+  clearRequestLog()
 })
 
 afterEach(() => {
@@ -164,5 +166,49 @@ describe('getLatestObservation', () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ not: 'an observation' }))
     const error = await getLatestObservation('KSEA').catch((e: unknown) => e)
     expect(error).toBeInstanceOf(NwsParseError)
+  })
+})
+
+describe('request log', () => {
+  it('logs a successful call with the response body', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(makeAlertCollection()))
+    await getActiveAlerts()
+    const [entry] = getRequestLogSnapshot()
+    expect(entry.status).toBe('success')
+    expect(entry.url).toBe('https://api.weather.gov/alerts/active')
+    expect(entry.httpStatus).toBe(200)
+    expect(entry.responseBody).toEqual(makeAlertCollection())
+  })
+
+  it('does not log cache hits', async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(makeAlertCollection()))
+    await getActiveAlerts()
+    await getActiveAlerts()
+    expect(getRequestLogSnapshot()).toHaveLength(1)
+  })
+
+  it('logs an http-error call without a response body', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 429 }))
+    await getActiveAlerts().catch(() => undefined)
+    const [entry] = getRequestLogSnapshot()
+    expect(entry.status).toBe('http-error')
+    expect(entry.httpStatus).toBe(429)
+    expect(entry.responseBody).toBeUndefined()
+  })
+
+  it('logs a parse-error call with the raw response body', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ not: 'an alert collection' }))
+    await getActiveAlerts().catch(() => undefined)
+    const [entry] = getRequestLogSnapshot()
+    expect(entry.status).toBe('parse-error')
+    expect(entry.responseBody).toEqual({ not: 'an alert collection' })
+  })
+
+  it('logs a network-error call with the failure message', async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new Error('offline'))
+    await getActiveAlerts().catch(() => undefined)
+    const [entry] = getRequestLogSnapshot()
+    expect(entry.status).toBe('network-error')
+    expect(entry.errorMessage).toBe('offline')
   })
 })

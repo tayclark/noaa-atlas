@@ -1,0 +1,37 @@
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--color-surface);
+}
+
+.left-panel-tabs {
+  display: flex;
+  flex: none;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.left-panel-tab {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.left-panel-tab:hover {
+  color: var(--color-text);
+}
+
+.left-panel-tab-active {
+  color: var(--color-text);
+  box-shadow: inset 0 -2px 0 var(--color-accent);
+}
+
+.left-panel-content {
+  flex: 1;
+  min-height: 0;
+}
