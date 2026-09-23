@@ -45,6 +45,35 @@
       "nodes": [
         { "nodeId": "nws-api", "why": "Gridpoint forecast data as JSON-LD, suitable for programmatic use." }
       ]
+    },
+    {
+      "id": "tide-predictions-water-levels",
+      "label": "Get tide predictions or current water levels",
+      "nodes": [
+        { "nodeId": "coops-data-api", "why": "Observed and predicted water levels and tides at US coastal and Great Lakes stations." },
+        { "nodeId": "coops-metadata-api", "why": "Finds the nearest station and its datums, using the same station IDs." }
+      ]
+    },
+    {
+      "id": "buoy-wave-conditions",
+      "label": "Check buoy wind, wave and sea temperature conditions",
+      "nodes": [
+        { "nodeId": "ndbc-realtime", "why": "Latest 45 days of buoy and C-MAN observations, one text file per station." }
+      ]
+    },
+    {
+      "id": "sea-level-flooding-trends",
+      "label": "Look up sea level trends or high tide flooding",
+      "nodes": [
+        { "nodeId": "coops-derived-product-api", "why": "Sea level trends, high tide flooding and extreme water level products per station." }
+      ]
+    },
+    {
+      "id": "tsunami-buoy-data",
+      "label": "Get deep-ocean tsunami buoy readings",
+      "nodes": [
+        { "nodeId": "ndbc-dart-realtime", "why": "Real-time bottom-pressure water column heights from DART stations." }
+      ]
     }
   ]
 }
