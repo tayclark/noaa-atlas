@@ -104,6 +104,14 @@ export function GraphView() {
         const nodeId = this.dataset.nodeId
         if (nodeId) selectNode(nodeId)
       })
+      // SVG <g role="button"> has no native keyboard activation, so it's wired up explicitly
+      // here to match the click handler above (#35) — same selectNode() call, no branching.
+      .on('keydown', function onKeyDown(event: KeyboardEvent) {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        const nodeId = this.dataset.nodeId
+        if (nodeId) selectNode(nodeId)
+      })
 
     simulation.on('tick', () => {
       edgeElsRef.current.forEach((el, i) => {
