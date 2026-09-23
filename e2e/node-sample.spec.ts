@@ -15,7 +15,6 @@ test('non-live node shows a static sample; live node can run it', async ({ page 
   await mockAlerts(page, emptyAlertsFixture())
   await mockPointLookup(page)
   await page.goto('/')
-  await page.getByRole('tab', { name: 'Graph' }).click()
 
   await selectByKeyboard(page, 'spc-gis-data')
   const sample = page.getByRole('region', { name: 'Sample call' })

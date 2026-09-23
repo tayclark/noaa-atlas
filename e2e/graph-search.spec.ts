@@ -6,7 +6,6 @@ import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 test('searching dims non-matching nodes and reports no results', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await page.goto('/')
-  await page.getByRole('tab', { name: 'Graph' }).click()
 
   const search = page.getByRole('searchbox', { name: 'Search graph' })
   await search.fill('tornado')

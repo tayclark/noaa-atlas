@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { clearSelection, getSelectionSnapshot } from '../../data/selectionStore'
+import { clearSelection, getHighlightedNodeIds, getSelectionSnapshot } from '../../data/selectionStore'
 import tasksJson from '../../data/tasks.json'
 import { parseTasksFile } from '../../data/taskSchema'
 import { FinderPanel } from './FinderPanel'
@@ -52,5 +52,44 @@ describe('FinderPanel', () => {
     fireEvent.click(screen.getByText(firstNode.why))
 
     expect(getSelectionSnapshot().selectedNodeId).toBe(firstNode.nodeId)
+  })
+
+  it("selects the clicked task in the store, highlighting its whole path (#34)", () => {
+    const other = tasks.find((task) => task.id !== tasks[0]?.id)
+    if (!other) throw new Error('expected at least two authored tasks')
+    render(<FinderPanel />)
+
+    fireEvent.click(screen.getByText(other.label))
+
+    expect(getSelectionSnapshot().selectedTaskId).toBe(other.id)
+    expect(getHighlightedNodeIds()).toEqual(other.nodes.map((n) => n.nodeId))
+  })
+
+  it('does not select anything until the user acts', () => {
+    render(<FinderPanel />)
+    expect(getSelectionSnapshot().selectedTaskId).toBeNull()
+  })
+
+  it('numbers the path steps in order', () => {
+    render(<FinderPanel />)
+    const steps = screen.getAllByText(/^\d+\. (Primary|Also)$/)
+    expect(steps.map((el) => el.textContent)).toEqual(
+      (tasks[0]?.nodes ?? []).map((_, i) => `${i + 1}. ${i === 0 ? 'Primary' : 'Also'}`),
+    )
+  })
+
+  it('keeps showing the picked task after a step click replaces the task selection', () => {
+    const other = tasks.find((task) => task.id !== tasks[0]?.id)
+    const step = other?.nodes[0]
+    if (!other || !step) throw new Error('expected at least two authored tasks')
+    render(<FinderPanel />)
+
+    fireEvent.click(screen.getByText(other.label))
+    fireEvent.click(screen.getByText(step.why))
+
+    expect(getSelectionSnapshot()).toMatchObject({ selectedNodeId: step.nodeId, selectedTaskId: null })
+    for (const { why } of other.nodes) {
+      expect(screen.getByText(why)).toBeTruthy()
+    }
   })
 })

@@ -13,23 +13,19 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('LeftPanel', () => {
-  it('defaults to the Finder tab', () => {
+  it('defaults to the Explore tab, showing the finder and the graph together', () => {
     render(<LeftPanel />)
-    expect(screen.getByRole('tab', { name: 'Finder', selected: true })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Explore', selected: true })).toBeTruthy()
     expect(screen.getByText("Get today's local forecast")).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Graph' })).toBeTruthy()
   })
 
   it('switches to the Inspector tab and back', () => {
     render(<LeftPanel />)
     fireEvent.click(screen.getByRole('tab', { name: 'Inspector' }))
     expect(screen.getByText('No live requests yet.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('tab', { name: 'Finder' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Explore' }))
     expect(screen.getByText("Get today's local forecast")).toBeTruthy()
-  })
-
-  it('switches to the Graph tab', () => {
-    render(<LeftPanel />)
-    fireEvent.click(screen.getByRole('tab', { name: 'Graph' }))
     expect(screen.getByRole('region', { name: 'Graph' })).toBeTruthy()
   })
 })

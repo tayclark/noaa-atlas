@@ -20,7 +20,13 @@ import tasksJson from '../../data/tasks.json'
 import { buildGraph } from '../../data/buildGraph'
 import { parseGraphFile } from '../../data/graphSchema'
 import { parseTasksFile } from '../../data/taskSchema'
-import { getHighlightedNodeIds, getSelectionSnapshot, selectNode, subscribeSelection } from '../../data/selectionStore'
+import {
+  getHighlightedNodeIds,
+  getSelectedTaskPath,
+  getSelectionSnapshot,
+  selectNode,
+  subscribeSelection,
+} from '../../data/selectionStore'
 import { THEME_COLORS } from '../../data/themeColors'
 import { computeFitTransform, createGraphSimulation, EDGE_CLASS, nodeRadius, type SimEdge, type SimNode } from './graphLayout'
 import { GraphLegend } from './GraphLegend'
@@ -30,6 +36,21 @@ import { NodeDetailPanel } from './NodeDetailPanel'
 
 const graph = buildGraph(parseGraphFile(graphJson))
 const searchIndex = buildSearchIndex(graph.nodes, parseTasksFile(tasksJson).tasks)
+
+// Positions the synthetic task-path connectors (#34) from the live node positions. The lines are
+// React-rendered (they come and go with the selection) but positioned imperatively, like every
+// other element here, so simulation ticks don't trigger re-renders.
+function positionPathEdges(root: Element | null, positions: Map<string, { x: number; y: number }>) {
+  root?.querySelectorAll<SVGLineElement>('.graph-path-edge').forEach((el) => {
+    const source = positions.get(el.dataset.source ?? '')
+    const target = positions.get(el.dataset.target ?? '')
+    if (!source || !target) return
+    el.setAttribute('x1', String(source.x))
+    el.setAttribute('y1', String(source.y))
+    el.setAttribute('x2', String(target.x))
+    el.setAttribute('y2', String(target.y))
+  })
+}
 
 export function GraphView() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -45,6 +66,8 @@ export function GraphView() {
   const [size, setSize] = useState({ width: 600, height: 400 })
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const highlightedIds = getHighlightedNodeIds()
+  const taskPath = getSelectedTaskPath()
+  const pathPairs = taskPath.slice(1).map((target, i) => ({ source: taskPath[i] as string, target }))
   const [query, setQuery] = useState('')
   const matchedIds = useMemo(() => matchNodeIds(searchIndex, query), [query])
 
@@ -139,6 +162,7 @@ export function GraphView() {
         el.setAttribute('transform', `translate(${x},${y})`)
         nodePositionsRef.current.set(id, { x, y })
       })
+      positionPathEdges(zoomLayerRef.current, nodePositionsRef.current)
     })
 
     // Positions settle after ~100+ ticks, so a selection made before this effect ran (e.g. a
@@ -156,6 +180,7 @@ export function GraphView() {
   // that ref is populated on every tick regardless of which effect is currently running.
   useEffect(() => {
     const applyHighlightPan = () => {
+      positionPathEdges(zoomLayerRef.current, nodePositionsRef.current)
       const svgEl = svgRef.current
       const zoomBehavior = zoomBehaviorRef.current
       if (!svgEl || !zoomBehavior || highlightedIds.length === 0) return
@@ -185,6 +210,16 @@ export function GraphView() {
                 ref={(el) => {
                   edgeElsRef.current[i] = el as SVGLineElement
                 }}
+              />
+            ))}
+          </g>
+          <g className="graph-path-edges">
+            {pathPairs.map(({ source, target }) => (
+              <line
+                key={`${source}-${target}`}
+                className="graph-path-edge"
+                data-source={source}
+                data-target={target}
               />
             ))}
           </g>

@@ -35,3 +35,24 @@
   flex: 1;
   min-height: 0;
 }
+
+.left-panel-explore {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Fixed height (not max-height): the graph's ResizeObserver restarts its force simulation on any
+   size change, so a finder strip that grew/shrank with each task's step count would reshuffle the
+   graph on every task pick. */
+.left-panel-explore-finder {
+  flex: 0 0 40%;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.left-panel-explore-graph {
+  flex: 1;
+  min-height: 0;
+}
