@@ -1500,6 +1500,345 @@
         "atom",
         "earthquake"
       ]
+    },
+    {
+      "id": "goes-aws-open-data",
+      "name": "GOES-R ABI imagery and products (AWS Open Data)",
+      "summary": "Full GOES-East and GOES-West ABI imagery and derived products (cloud and moisture imagery, sea surface temperature, fire and lightning) as NetCDF files in public S3 buckets, organised by product, year, day-of-year and hour. Files are downloads listed through the S3 API, not a query API.",
+      "owner": {
+        "office": "NESDIS",
+        "program": "GOES-R Series (NOAA Open Data Dissemination)"
+      },
+      "theme": "satellite",
+      "baseUrl": "https://noaa-goes19.s3.amazonaws.com/",
+      "formats": [
+        "netcdf",
+        "xml"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public buckets, no account needed. Buckets are per satellite (noaa-goes19 for GOES-East, noaa-goes18 for GOES-West)."
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -60],
+            [-20, -60],
+            [-20, 60],
+            [-180, 60],
+            [-180, -60]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "minutes",
+        "note": "New files arrive every 5 to 15 minutes depending on product and scan mode."
+      },
+      "docUrl": "https://registry.opendata.aws/noaa-goes/",
+      "sample": {
+        "url": "https://noaa-goes19.s3.amazonaws.com/?list-type=2&prefix=ABI-L2-CMIPF/2026/266/12/&max-keys=2",
+        "responseExcerpt": "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>noaa-goes19</Name><Prefix>ABI-L2-CMIPF/2026/266/12/</Prefix><KeyCount>2</KeyCount><MaxKeys>2</MaxKeys><IsTruncated>true</IsTruncated><Contents><Key>ABI-L2-CMIPF/2026/266/12/OR_ABI-L2-CMIPF-M6C01_G19_s20262661200199_e20262661209508_c20262661209550.nc</Key><LastModified>2026-09-23T12:10:13.000Z</LastModified><Size>58771665</Size>...</Contents>...</ListBucketResult>"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: full-disk NetCDF files of tens of MB each, listed through S3 with no tile or image endpoint to draw on the globe.",
+      "tags": [
+        "satellite",
+        "goes",
+        "abi",
+        "imagery",
+        "netcdf",
+        "aws"
+      ],
+      "kind": "service",
+      "lastVerified": "2026-09-23"
+    },
+    {
+      "id": "star-goes-imagery",
+      "name": "NESDIS STAR GOES image CDN",
+      "summary": "Pre-rendered GOES-East and GOES-West JPEG imagery (GeoColor, infrared, water vapor and other bands) for the CONUS, full disk and regional sectors, at several resolutions, from a plain directory-listing CDN. Includes a stable latest image per sector and band.",
+      "owner": {
+        "office": "NESDIS",
+        "program": "Center for Satellite Applications and Research (STAR), GOES Image Viewer"
+      },
+      "theme": "satellite",
+      "baseUrl": "https://cdn.star.nesdis.noaa.gov/",
+      "formats": [
+        "other"
+      ],
+      "auth": {
+        "type": "none"
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -60],
+            [-20, -60],
+            [-20, 60],
+            [-180, 60],
+            [-180, -60]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "minutes",
+        "note": "CONUS GeoColor refreshes about every 5 minutes."
+      },
+      "docUrl": "https://www.star.nesdis.noaa.gov/GOES/index.php",
+      "sample": {
+        "url": "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/",
+        "responseExcerpt": "Directory listing of files such as:\n10000x6000.jpg\n1250x750.jpg\n20262562306_GOES19-ABI-CONUS-GEOCOLOR-10000x6000.jpg\n20262562306_GOES19-ABI-CONUS-GEOCOLOR-1250x750.jpg\n(abbreviated)"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: images are unprojected JPEGs with no georeferencing metadata, so they cannot be draped on the globe without extra work.",
+      "tags": [
+        "satellite",
+        "goes",
+        "imagery",
+        "geocolor",
+        "jpeg"
+      ],
+      "kind": "service",
+      "lastVerified": "2026-09-23"
+    },
+    {
+      "id": "nexrad-level2-aws",
+      "name": "NEXRAD Level II radar archive (AWS Open Data)",
+      "summary": "Raw Level II base data (reflectivity, velocity, spectrum width) from the national network of WSR-88D weather radars, as one file per volume scan under radar/date/site keys in a public S3 bucket. Files are downloads listed through the S3 API.",
+      "owner": {
+        "office": "NWS",
+        "program": "NEXRAD (WSR-88D), distributed via NOAA Open Data Dissemination"
+      },
+      "theme": "satellite",
+      "baseUrl": "https://unidata-nexrad-level2.s3.amazonaws.com/",
+      "formats": [
+        "other",
+        "xml"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public bucket, no account needed."
+      },
+      "coverage": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-130, 24],
+              [-66, 24],
+              [-66, 49.5],
+              [-130, 49.5],
+              [-130, 24]
+            ]
+          ],
+          [
+            [
+              [-180, 50],
+              [-129, 50],
+              [-129, 72],
+              [-180, 72],
+              [-180, 50]
+            ]
+          ],
+          [
+            [
+              [-161, 18],
+              [-154, 18],
+              [-154, 23],
+              [-161, 23],
+              [-161, 18]
+            ]
+          ],
+          [
+            [
+              [-68, 17],
+              [-64, 17],
+              [-64, 19],
+              [-68, 19],
+              [-68, 17]
+            ]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "minutes",
+        "note": "A new volume scan every 4 to 10 minutes per radar site; real-time chunks are in a separate bucket."
+      },
+      "docUrl": "https://registry.opendata.aws/noaa-nexrad/",
+      "sample": {
+        "url": "https://unidata-nexrad-level2.s3.amazonaws.com/?list-type=2&prefix=2026/09/22/KTLX/&max-keys=2",
+        "responseExcerpt": "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>unidata-nexrad-level2</Name><Prefix>2026/09/22/KTLX/</Prefix><KeyCount>2</KeyCount><IsTruncated>true</IsTruncated><Contents><Key>2026/09/22/KTLX/KTLX20260922_000126_V06</Key><LastModified>2026-09-22T00:05:48.000Z</LastModified><Size>8307731</Size>...</Contents>...</ListBucketResult>"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: binary Level II volume files that need a radar decoder, listed through S3 with no image or tile endpoint.",
+      "tags": [
+        "radar",
+        "nexrad",
+        "wsr-88d",
+        "level2",
+        "aws"
+      ],
+      "kind": "service",
+      "lastVerified": "2026-09-23"
+    },
+    {
+      "id": "mrms-aws-open-data",
+      "name": "MRMS multi-radar precipitation and severe-weather products (AWS Open Data)",
+      "summary": "Multi-Radar Multi-Sensor (MRMS) gridded products for the contiguous US and other domains, blending radar, satellite, lightning and model data (radar mosaics, precipitation rate and accumulations, echo tops, hail size), as GRIB2 files in a public S3 bucket, one prefix per product.",
+      "owner": {
+        "office": "NWS",
+        "program": "NCEP Central Operations / NSSL, Multi-Radar Multi-Sensor (MRMS)"
+      },
+      "theme": "satellite",
+      "baseUrl": "https://noaa-mrms-pds.s3.amazonaws.com/",
+      "formats": [
+        "grib2",
+        "xml"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public bucket, no account needed. A parallel feed is on https://mrms.ncep.noaa.gov/data/."
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-130, 20],
+            [-60, 20],
+            [-60, 55],
+            [-130, 55],
+            [-130, 20]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "minutes",
+        "note": "Most products update every 2 minutes."
+      },
+      "docUrl": "https://registry.opendata.aws/noaa-mrms-pds/",
+      "sample": {
+        "url": "https://noaa-mrms-pds.s3.amazonaws.com/?list-type=2&prefix=CONUS/&delimiter=/",
+        "responseExcerpt": "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>noaa-mrms-pds</Name><Prefix>CONUS/</Prefix><KeyCount>243</KeyCount><Delimiter>/</Delimiter><CommonPrefixes><Prefix>CONUS/ANC_ConvectiveLikelihood_00.00/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>CONUS/BREF_1HR_MAX_00.50/</Prefix></CommonPrefixes>...</ListBucketResult>"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: GRIB2 grids that need decoding before they can be drawn, and no tile or image endpoint.",
+      "tags": [
+        "radar",
+        "mrms",
+        "precipitation",
+        "grib2",
+        "aws"
+      ],
+      "kind": "service",
+      "lastVerified": "2026-09-23"
+    },
+    {
+      "id": "jpss-aws-open-data",
+      "name": "JPSS (NOAA-20 / VIIRS) satellite data (AWS Open Data)",
+      "summary": "Polar-orbiting JPSS instrument data (VIIRS imagery, ATMS, CrIS) and derived products from NOAA-20, plus sibling buckets for other JPSS satellites, as files in public S3 buckets organised by product.",
+      "owner": {
+        "office": "NESDIS",
+        "program": "Joint Polar Satellite System (JPSS), NOAA Open Data Dissemination"
+      },
+      "theme": "satellite",
+      "baseUrl": "https://noaa-nesdis-n20-pds.s3.amazonaws.com/",
+      "formats": [
+        "netcdf",
+        "other",
+        "xml"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public buckets, no account needed. NOAA-21 and Suomi NPP use sibling buckets."
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "hourly",
+        "note": "Granules arrive continuously as each pass is processed, typically within hours of observation."
+      },
+      "docUrl": "https://registry.opendata.aws/noaa-jpss/",
+      "sample": {
+        "url": "https://noaa-nesdis-n20-pds.s3.amazonaws.com/?list-type=2&delimiter=/",
+        "responseExcerpt": "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>noaa-nesdis-n20-pds</Name><KeyCount>95</KeyCount><Delimiter>/</Delimiter><Contents><Key>index.html</Key>...</Contents><CommonPrefixes><Prefix>ATMS-SCIENCE-RDR/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>ATMS-SDR-GEO/</Prefix></CommonPrefixes>...</ListBucketResult>"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: swath granules in instrument-specific formats that need processing before display.",
+      "tags": [
+        "satellite",
+        "jpss",
+        "viirs",
+        "noaa-20",
+        "polar",
+        "aws"
+      ],
+      "kind": "service",
+      "lastVerified": "2026-09-23"
+    },
+    {
+      "id": "coastwatch-erddap",
+      "name": "NOAA CoastWatch ERDDAP",
+      "summary": "ERDDAP data server for gridded and tabular satellite-derived ocean products (sea surface temperature, chlorophyll, ocean color, winds, sea ice) with a REST API: search datasets, then subset by time, area and variable and download as CSV, JSON, NetCDF, GeoTIFF or PNG, or view through WMS.",
+      "owner": {
+        "office": "NESDIS",
+        "program": "CoastWatch / OceanWatch (ERDDAP)"
+      },
+      "theme": "satellite",
+      "baseUrl": "https://coastwatch.pfeg.noaa.gov/erddap/",
+      "formats": [
+        "json",
+        "csv",
+        "netcdf",
+        "geotiff",
+        "other"
+      ],
+      "auth": {
+        "type": "none"
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "daily",
+        "note": "Varies by dataset from hourly composites to monthly climatologies."
+      },
+      "docUrl": "https://coastwatch.noaa.gov/erddap/information.html",
+      "sample": {
+        "url": "https://coastwatch.pfeg.noaa.gov/erddap/search/index.json?page=1&itemsPerPage=2&searchFor=sst",
+        "responseExcerpt": "{\"table\":{\"columnNames\":[\"griddap\",\"Subset\",\"tabledap\",\"Make A Graph\",\"wms\",\"files\",\"Accessible\",\"Title\",\"Summary\",...,\"Institution\",\"Dataset ID\"],\"rows\":[[\"https://coastwatch.pfeg.noaa.gov/erddap/griddap/erdHadISST\",\"\",\"\",\"https://coastwatch.pfeg.noaa.gov/erddap/griddap/erdHadISST.graph\",\"https://coastwatch.pfeg.noaa.gov/erddap/wms/erdHadISST/request\",\"https://coastwatch.pfeg.noaa.gov/erddap/files/erdHadISST/\",\"public\",\"HadISST Average Sea Surface Temperature, 1°;, Global, Monthly, 1870-present\",...]]}}"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: dataset-by-dataset API that needs a chosen dataset, variable and time range, and CORS support is unconfirmed.",
+      "tags": [
+        "satellite",
+        "erddap",
+        "coastwatch",
+        "sst",
+        "ocean-color",
+        "api"
+      ],
+      "kind": "service",
+      "lastVerified": "2026-09-23"
     }
   ],
   "edges": [

@@ -112,6 +112,30 @@
       "nodes": [
         { "nodeId": "ncei-storm-events-bulk", "why": "US storm events since 1950 as yearly CSV files with locations, damage and casualties." }
       ]
+    },
+    {
+      "id": "view-satellite-imagery",
+      "label": "Get satellite imagery of clouds and weather",
+      "nodes": [
+        { "nodeId": "star-goes-imagery", "why": "Ready-made GeoColor and band JPEGs for the US and full disk, with a fixed latest-image file." },
+        { "nodeId": "goes-aws-open-data", "why": "The underlying GOES NetCDF files for analysis, listed by product, day and hour." },
+        { "nodeId": "jpss-aws-open-data", "why": "Polar-orbiting VIIRS and other JPSS data for higher-resolution passes." }
+      ]
+    },
+    {
+      "id": "get-radar-data",
+      "label": "Get weather radar and radar-derived precipitation data",
+      "nodes": [
+        { "nodeId": "mrms-aws-open-data", "why": "Gridded radar mosaics, precipitation rates and hail products, updated about every 2 minutes." },
+        { "nodeId": "nexrad-level2-aws", "why": "Raw Level II volume scans for a single radar site and time." }
+      ]
+    },
+    {
+      "id": "satellite-ocean-data",
+      "label": "Get satellite-derived sea surface temperature, chlorophyll or ocean color",
+      "nodes": [
+        { "nodeId": "coastwatch-erddap", "why": "Search and subset gridded ocean products by area and time, downloadable as CSV, NetCDF or GeoTIFF." }
+      ]
     }
   ]
 }
