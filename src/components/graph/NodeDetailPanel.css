@@ -122,6 +122,52 @@
   overflow-wrap: anywhere;
 }
 
+.node-neighbors {
+  margin: var(--space-2) 0;
+}
+
+.node-neighbors h4,
+.node-neighbors h5 {
+  margin: 0 0 2px;
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+}
+
+.node-neighbors h5 {
+  margin-top: var(--space-1);
+}
+
+.node-neighbors ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.node-neighbors li {
+  margin-bottom: var(--space-1);
+  overflow-wrap: anywhere;
+}
+
+.node-neighbors button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.node-neighbors-reason {
+  display: block;
+  color: var(--color-text-muted);
+}
+
+.node-neighbors li a {
+  color: var(--color-accent);
+}
+
 .node-detail-not-live-reason {
   margin: var(--space-1) 0;
   color: var(--color-text-muted);

@@ -9,6 +9,7 @@ import type { ServiceNode } from '../../data/graphSchema'
 import { parseGraphFile } from '../../data/graphSchema'
 import { getSelectionSnapshot, subscribeSelection } from '../../data/selectionStore'
 import { formatAuth, formatFormats, formatFreshness, formatOwner, formatRateLimits, liveStatusLabel } from './nodeDetailFormat'
+import { NodeNeighborsSection } from './NodeNeighborsSection'
 import { NodeSampleSection } from './NodeSampleSection'
 import './NodeDetailPanel.css'
 
@@ -65,6 +66,7 @@ export function NodeDetailPanel() {
         </div>
       </dl>
       <NodeSampleSection node={node} />
+      <NodeNeighborsSection nodeId={node.id} />
       {!node.liveLayer && node.notLiveReason && <p className="node-detail-not-live-reason">{node.notLiveReason}</p>}
       <a className="node-detail-docs-link" href={node.docUrl} target="_blank" rel="noreferrer">
         Official docs ↗
