@@ -22,6 +22,7 @@ import { selectNode } from '../../data/selectionStore'
 import { THEME_COLORS } from '../../data/themeColors'
 import { createGraphSimulation, EDGE_CLASS, nodeRadius, type SimEdge, type SimNode } from './graphLayout'
 import { GraphLegend } from './GraphLegend'
+import { NodeDetailPanel } from './NodeDetailPanel'
 
 const graph = buildGraph(parseGraphFile(graphJson))
 
@@ -158,6 +159,7 @@ export function GraphView() {
           </g>
         </g>
       </svg>
+      <NodeDetailPanel />
       <GraphLegend />
     </section>
   )
