@@ -1190,6 +1190,192 @@
         "pressure",
         "hazards"
       ]
+    },
+    {
+      "id": "cdo-web-api",
+      "kind": "service",
+      "name": "Climate Data Online (CDO) Web Services v2",
+      "summary": "Token-gated REST API over NCEI's Climate Data Online holdings: browse datasets, data categories, data types, locations and stations, then pull daily, monthly and annual climate observations such as GHCN-Daily and Global Summary of the Month.",
+      "owner": {
+        "office": "NESDIS",
+        "program": "NCEI (Climate Data Online)"
+      },
+      "theme": "climate",
+      "baseUrl": "https://www.ncei.noaa.gov/cdo-web/api/v2/",
+      "formats": [
+        "json"
+      ],
+      "auth": {
+        "type": "token",
+        "note": "Free token, emailed on request; send it in a `token` request header."
+      },
+      "rateLimits": {
+        "text": "Each token is limited to 5 requests per second and 10,000 requests per day; results are capped at 1,000 per request.",
+        "sourceUrl": "https://www.ncei.noaa.gov/cdo-web/webservices/v2"
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "daily",
+        "note": "Dataset dependent; recent data trails observation time and archive-quality data can lag 45-60 days."
+      },
+      "docUrl": "https://www.ncei.noaa.gov/cdo-web/webservices/v2",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://www.ncei.noaa.gov/cdo-web/api/v2/data?datasetid=GSOM&stationid=GHCND:USC00010008&startdate=2010-05-01&enddate=2010-05-31&units=standard",
+        "headers": {
+          "token": "<your-token>"
+        },
+        "responseExcerpt": "Without a token the API replies:\n{\"status\" : \"400\", \"message\" : \"Token parameter is required.\"}\n(Request URL taken from the official docs; a live data response needs a token, so none is shown.)"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: requires a per-user token that cannot be shipped in a static app, and results are station time series rather than a map layer.",
+      "tags": [
+        "climate",
+        "historical",
+        "stations",
+        "ghcn",
+        "token"
+      ]
+    },
+    {
+      "id": "ncei-access-data-service",
+      "kind": "service",
+      "name": "NCEI Access Data Service",
+      "summary": "Tokenless REST API that subsets NCEI datasets by station, date range, data type and bounding box. Includes GHCN-Daily (dataset daily-summaries, 100,000+ stations in 180 countries) and monthly summaries, as JSON, CSV or NetCDF.",
+      "owner": {
+        "office": "NESDIS",
+        "program": "NCEI (Access Data Service)"
+      },
+      "theme": "climate",
+      "baseUrl": "https://www.ncei.noaa.gov/access/services/data/v1",
+      "formats": [
+        "json",
+        "csv",
+        "netcdf"
+      ],
+      "auth": {
+        "type": "none"
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "daily",
+        "note": "Dataset dependent; active US GHCN-Daily stations update from real-time feeds and are replaced by archive-quality data later."
+      },
+      "docUrl": "https://www.ncei.noaa.gov/support/access-data-service-api-user-documentation",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations=USW00013874&startDate=2024-01-01&endDate=2024-01-03&format=json&dataTypes=TMAX,TMIN,PRCP",
+        "responseExcerpt": "[\n{\"DATE\":\"2024-01-01\",\"STATION\":\"USW00013874\",\"TMAX\":\"  100\",\"TMIN\":\"   11\",\"PRCP\":\"    0\"}\n,{\"DATE\":\"2024-01-02\",\"STATION\":\"USW00013874\",\"TMAX\":\"  122\",\"TMIN\":\"  -10\",\"PRCP\":\"    0\"}\n,{\"DATE\":\"2024-01-03\",\"STATION\":\"USW00013874\",\"TMAX\":\"   83\",\"TMIN\":\"   -5\",\"PRCP\":\"    8\"}\n]"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: station time series and subsets, not a ready-made map layer.",
+      "tags": [
+        "climate",
+        "historical",
+        "ghcn",
+        "stations",
+        "daily-summaries"
+      ]
+    },
+    {
+      "id": "ncei-storm-events-bulk",
+      "kind": "service",
+      "name": "NCEI Storm Events Database (bulk CSV)",
+      "summary": "Bulk gzipped CSV files of US storm and weather events since 1950 (details, locations and fatalities tables), one file per year. Files are downloads, not a query API.",
+      "owner": {
+        "office": "NESDIS",
+        "program": "NCEI (Storm Events Database)"
+      },
+      "theme": "climate",
+      "baseUrl": "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/",
+      "formats": [
+        "csv"
+      ],
+      "auth": {
+        "type": "none"
+      },
+      "coverage": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-130, 24],
+              [-66, 24],
+              [-66, 49.5],
+              [-130, 49.5],
+              [-130, 24]
+            ]
+          ],
+          [
+            [
+              [-180, 50],
+              [-129, 50],
+              [-129, 72],
+              [-180, 72],
+              [-180, 50]
+            ]
+          ],
+          [
+            [
+              [-161, 18],
+              [-154, 18],
+              [-154, 23],
+              [-161, 23],
+              [-161, 18]
+            ]
+          ],
+          [
+            [
+              [-68, 17],
+              [-64, 17],
+              [-64, 19],
+              [-68, 19],
+              [-68, 17]
+            ]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "periodic",
+        "note": "Yearly files are regenerated periodically; the 2026 details file was last generated 2026-09-18."
+      },
+      "docUrl": "https://www.ncei.noaa.gov/access/storm-events-database/",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/",
+        "responseExcerpt": "Directory listing of files such as:\nStorm-Data-Bulk-csv-Format.pdf\nStormEvents_details-ftp_v1.0_d2026_c20260918.csv.gz\nStormEvents_details-ftp_v1.0_d2025_c20260819.csv.gz\n(abbreviated)"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: static bulk downloads with no query API, so nothing to fetch on demand.",
+      "tags": [
+        "climate",
+        "historical",
+        "storms",
+        "bulk",
+        "csv"
+      ]
     }
   ],
   "edges": [
@@ -1227,6 +1413,13 @@
       "type": "shared-id",
       "label": "Both APIs address stations by the same 7-digit CO-OPS station ID (e.g. 8729108)",
       "sourceUrl": "https://api.tidesandcurrents.noaa.gov/dpapi/prod/"
+    },
+    {
+      "source": "cdo-web-api",
+      "target": "ncei-access-data-service",
+      "type": "shared-id",
+      "label": "Both address GHCN-Daily stations by the same station ID (e.g. USC00010008, prefixed GHCND: in CDO)",
+      "sourceUrl": "https://www.ncei.noaa.gov/cdo-web/webservices/v2"
     }
   ]
 }

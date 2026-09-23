@@ -74,6 +74,28 @@
       "nodes": [
         { "nodeId": "ndbc-dart-realtime", "why": "Real-time bottom-pressure water column heights from DART stations." }
       ]
+    },
+    {
+      "id": "historical-daily-weather",
+      "label": "Look up historical daily temperature or rainfall for a station",
+      "nodes": [
+        { "nodeId": "ncei-access-data-service", "why": "GHCN-Daily records by station and date range, no token needed." },
+        { "nodeId": "cdo-web-api", "why": "Same GHCN-Daily stations plus monthly and annual summaries, with a free token." }
+      ]
+    },
+    {
+      "id": "find-climate-stations",
+      "label": "Find climate stations and see what data they have",
+      "nodes": [
+        { "nodeId": "cdo-web-api", "why": "Browse stations, locations, datasets and data types before requesting data." }
+      ]
+    },
+    {
+      "id": "past-storm-events",
+      "label": "Research past storms, tornadoes and floods",
+      "nodes": [
+        { "nodeId": "ncei-storm-events-bulk", "why": "US storm events since 1950 as yearly CSV files with locations, damage and casualties." }
+      ]
     }
   ]
 }
