@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createGraphSimulation, nodeRadius, type SimEdge, type SimNode } from './graphLayout'
+import type { GraphEdge } from '../../data/graphSchema'
+import { createGraphSimulation, EDGE_CLASS, EDGE_TYPE_LABELS, nodeRadius, type SimEdge, type SimNode } from './graphLayout'
 
 const serviceNode = (id: string): SimNode => ({
   id,
@@ -31,6 +32,24 @@ const themeEdge = (source: string, target: string): SimEdge => ({
 describe('nodeRadius', () => {
   it('renders theme hubs larger than service nodes', () => {
     expect(nodeRadius(themeNode('theme-weather'))).toBeGreaterThan(nodeRadius(serviceNode('nws-api')))
+  })
+})
+
+const EDGE_TYPES: GraphEdge['type'][] = ['theme', 'shared-id', 'data-flow']
+
+describe('EDGE_CLASS', () => {
+  it('has a distinct class name for every edge type', () => {
+    const classes = EDGE_TYPES.map((type) => EDGE_CLASS[type])
+    expect(classes.every((className) => typeof className === 'string' && className.length > 0)).toBe(true)
+    expect(new Set(classes).size).toBe(EDGE_TYPES.length)
+  })
+})
+
+describe('EDGE_TYPE_LABELS', () => {
+  it('has a label for every edge type', () => {
+    for (const type of EDGE_TYPES) {
+      expect(EDGE_TYPE_LABELS[type]).toBeTruthy()
+    }
   })
 })
 

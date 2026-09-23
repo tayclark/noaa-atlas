@@ -27,6 +27,20 @@ const LINK_STRENGTH: Record<GraphEdge['type'], number> = {
   'data-flow': 0.8,
 }
 
+/** CSS class per edge type (#29) — a fixed 3-value enum, so className rather than inline style. */
+export const EDGE_CLASS: Record<GraphEdge['type'], string> = {
+  theme: 'graph-edge-theme',
+  'shared-id': 'graph-edge-shared-id',
+  'data-flow': 'graph-edge-data-flow',
+}
+
+/** Human-readable label per edge type, shared by the legend so its key can't drift from EDGE_CLASS. */
+export const EDGE_TYPE_LABELS: Record<GraphEdge['type'], string> = {
+  theme: 'Theme link',
+  'shared-id': 'Shared ID',
+  'data-flow': 'Data flow',
+}
+
 /**
  * Builds a configured d3-force simulation for the given nodes/edges. Does not start or stop it —
  * the caller owns the simulation's lifecycle (ticking, stopping on unmount).

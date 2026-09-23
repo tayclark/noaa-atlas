@@ -5,7 +5,7 @@
   overflow: hidden;
 }
 
-.graph-view svg {
+.graph-view > svg {
   display: block;
   width: 100%;
   height: 100%;
@@ -17,6 +17,24 @@
   stroke-width: 1;
 }
 
+/* Theme edges (service -> theme hub) are a loose structural ring, not a direct relationship —
+   dashed and muted to read as background scaffolding behind the more meaningful edges below. */
+.graph-edge-theme {
+  stroke-dasharray: 2 3;
+  opacity: 0.5;
+}
+
+.graph-edge-shared-id {
+  stroke: var(--color-accent);
+  stroke-width: 1.5;
+}
+
+.graph-edge-data-flow {
+  stroke: var(--color-text-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 2;
+}
+
 .graph-node {
   cursor: pointer;
 }
@@ -26,13 +44,9 @@
   stroke-width: 1.5;
 }
 
-.graph-node-service circle {
-  fill: var(--color-accent);
-}
-
 .graph-node-theme circle {
-  fill: var(--color-surface-raised);
-  stroke: var(--color-accent-muted);
+  stroke: var(--color-text);
+  stroke-width: 2.5;
 }
 
 .graph-node text {
