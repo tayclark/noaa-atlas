@@ -18,7 +18,8 @@ test('graph -> globe: selecting a node updates the globe status overlay', async 
 
   const node = page.locator('.graph-node[data-node-id="nws-api"]')
   await expect(node).toBeVisible()
-  await node.click()
+  await node.focus()
+  await page.keyboard.press('Enter')
 
   await expect(node).toHaveClass(/graph-node-highlighted/)
 
