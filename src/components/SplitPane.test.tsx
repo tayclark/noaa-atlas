@@ -71,4 +71,23 @@ describe('SplitPane', () => {
     fireEvent.pointerMove(sep, { clientX: 300 })
     expect(value()).toBe(50)
   })
+
+  it('splits top/bottom in column mode using height, the Up/Down keys and a horizontal separator', () => {
+    const { container } = render(
+      <SplitPane direction="column" defaultFraction={0.4} dividerLabel="Resize top and bottom" left={<p>T</p>} right={<p>B</p>} />,
+    )
+    const sep = screen.getByRole('separator', { name: 'Resize top and bottom' })
+    expect(sep.getAttribute('aria-orientation')).toBe('horizontal')
+    expect(value()).toBe(40)
+    fireEvent.keyDown(sep, { key: 'ArrowDown' })
+    expect(value()).toBe(42)
+    fireEvent.keyDown(sep, { key: 'ArrowLeft' })
+    expect(value()).toBe(42)
+
+    const root = container.firstElementChild as HTMLElement
+    root.getBoundingClientRect = () => ({ top: 100, height: 1000 }) as DOMRect
+    fireEvent.pointerDown(sep)
+    fireEvent.pointerMove(sep, { clientY: 700 })
+    expect(value()).toBe(60)
+  })
 })
