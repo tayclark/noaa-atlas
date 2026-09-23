@@ -68,6 +68,26 @@ export function describeAlertForPopup(
   }
 }
 
+export interface VisibleZoneOnlyAlerts {
+  visible: NwsAlertCollection['features']
+  hiddenCount: number
+}
+
+/**
+ * Caps the zone-only alerts overlay list so an active event with many zone alerts doesn't
+ * dominate the screen (#106). `expanded` bypasses the cap once the user asks to see the rest.
+ */
+export function visibleZoneOnlyAlerts(
+  zoneOnly: NwsAlertCollection['features'],
+  cap: number,
+  expanded: boolean,
+): VisibleZoneOnlyAlerts {
+  if (expanded || zoneOnly.length <= cap) {
+    return { visible: zoneOnly, hiddenCount: 0 }
+  }
+  return { visible: zoneOnly.slice(0, cap), hiddenCount: zoneOnly.length - cap }
+}
+
 /** Builds a human-readable message for a failed alerts fetch, based on the error kind (#42 AC). */
 export function describeAlertsFetchOutcome(err: unknown): string {
   if (err instanceof NwsHttpError) {

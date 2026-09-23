@@ -25,6 +25,18 @@
   color: var(--color-text-muted);
 }
 
+.zone-only-alerts-toggle {
+  display: block;
+  margin-top: var(--space-2);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .maplibregl-popup-content {
   background: var(--color-surface-raised);
   color: var(--color-text);
