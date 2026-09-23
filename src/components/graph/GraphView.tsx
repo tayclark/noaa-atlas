@@ -12,15 +12,15 @@
 
 import { drag as d3drag } from 'd3-drag'
 import { select } from 'd3-selection'
-import { zoom as d3zoom, type ZoomTransform } from 'd3-zoom'
-import { useEffect, useRef, useState } from 'react'
+import { zoom as d3zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from 'd3-zoom'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import './GraphView.css'
 import graphJson from '../../data/graph.json'
 import { buildGraph } from '../../data/buildGraph'
 import { parseGraphFile } from '../../data/graphSchema'
-import { selectNode } from '../../data/selectionStore'
+import { getHighlightedNodeIds, getSelectionSnapshot, selectNode, subscribeSelection } from '../../data/selectionStore'
 import { THEME_COLORS } from '../../data/themeColors'
-import { createGraphSimulation, EDGE_CLASS, nodeRadius, type SimEdge, type SimNode } from './graphLayout'
+import { computeFitTransform, createGraphSimulation, EDGE_CLASS, nodeRadius, type SimEdge, type SimNode } from './graphLayout'
 import { GraphLegend } from './GraphLegend'
 import { NodeDetailPanel } from './NodeDetailPanel'
 
@@ -32,7 +32,14 @@ export function GraphView() {
   const zoomLayerRef = useRef<SVGGElement>(null)
   const nodeElsRef = useRef(new Map<string, SVGGElement>())
   const edgeElsRef = useRef<SVGLineElement[]>([])
+  const nodePositionsRef = useRef(new Map<string, { x: number; y: number }>())
+  const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
+  // Re-runs the current highlight/pan logic on demand (e.g. once the simulation settles),
+  // independent of the [selection, size]-keyed effect below (#45).
+  const applyHighlightPanRef = useRef<() => void>(() => {})
   const [size, setSize] = useState({ width: 600, height: 400 })
+  const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
+  const highlightedIds = getHighlightedNodeIds()
 
   useEffect(() => {
     const container = containerRef.current
@@ -64,6 +71,7 @@ export function GraphView() {
         zoomLayer.attr('transform', event.transform.toString())
       })
     svg.call(zoomBehavior)
+    zoomBehaviorRef.current = zoomBehavior
 
     const nodeById = new Map(simNodes.map((node) => [node.id, node]))
 
@@ -111,14 +119,43 @@ export function GraphView() {
       nodeElsRef.current.forEach((el, id) => {
         const node = nodeById.get(id)
         if (!node) return
-        el.setAttribute('transform', `translate(${node.x ?? 0},${node.y ?? 0})`)
+        const x = node.x ?? 0
+        const y = node.y ?? 0
+        el.setAttribute('transform', `translate(${x},${y})`)
+        nodePositionsRef.current.set(id, { x, y })
       })
     })
+
+    // Positions settle after ~100+ ticks, so a selection made before this effect ran (e.g. a
+    // globe click while the Inspector tab was active) needs one more pan attempt once real
+    // positions exist (#45).
+    simulation.on('end', () => applyHighlightPanRef.current())
 
     return () => {
       simulation.stop()
     }
   }, [size])
+
+  // Pans/zooms to frame the currently highlighted node(s) — the globe→graph direction of
+  // linking (#45). Reads positions from nodePositionsRef rather than the sim directly, since
+  // that ref is populated on every tick regardless of which effect is currently running.
+  useEffect(() => {
+    const applyHighlightPan = () => {
+      const svgEl = svgRef.current
+      const zoomBehavior = zoomBehaviorRef.current
+      if (!svgEl || !zoomBehavior || highlightedIds.length === 0) return
+      const positions = highlightedIds
+        .map((id) => nodePositionsRef.current.get(id))
+        .filter((p): p is { x: number; y: number } => p !== undefined)
+      const fit = computeFitTransform(positions, size.width, size.height)
+      if (!fit) return
+      // d3-transition isn't a dependency here, so the pan/zoom is applied immediately rather
+      // than animated (unlike MapLibre's flyTo in the reverse direction, #44).
+      select(svgEl).call(zoomBehavior.transform, zoomIdentity.translate(fit.x, fit.y).scale(fit.k))
+    }
+    applyHighlightPanRef.current = applyHighlightPan
+    applyHighlightPan()
+  }, [selection, size, highlightedIds])
 
   return (
     <section className="graph-view" aria-label="Graph" ref={containerRef}>
@@ -140,7 +177,7 @@ export function GraphView() {
             {graph.nodes.map((node) => (
               <g
                 key={node.id}
-                className={`graph-node graph-node-${node.kind}`}
+                className={`graph-node graph-node-${node.kind}${highlightedIds.includes(node.id) ? ' graph-node-highlighted' : ''}`}
                 data-node-id={node.id}
                 role="button"
                 tabIndex={0}

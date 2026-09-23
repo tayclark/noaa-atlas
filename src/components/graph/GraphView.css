@@ -49,6 +49,12 @@
   stroke-width: 2.5;
 }
 
+/* Selected via a graph node click or highlighted via a globe point/alert click (#45). */
+.graph-node-highlighted circle {
+  stroke: var(--color-accent);
+  stroke-width: 3;
+}
+
 .graph-node text {
   fill: var(--color-text-muted);
   font-family: var(--font-sans);

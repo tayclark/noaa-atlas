@@ -41,6 +41,54 @@ export const EDGE_TYPE_LABELS: Record<GraphEdge['type'], string> = {
   'data-flow': 'Data flow',
 }
 
+export interface FitTransform {
+  x: number
+  y: number
+  k: number
+}
+
+const FIT_SCALE_EXTENT: [number, number] = [0.25, 4]
+/** Half-size (px) of the box used to frame a single highlighted node, so scale doesn't blow up. */
+const SINGLE_POINT_HALF_SIZE = 40
+
+/**
+ * Computes a d3-zoom transform ({x, y, k}) that pans/zooms to frame the given node positions
+ * with padding, mirroring MapLibreGlobe's fitBounds behavior for the graph's screen space (#45).
+ * Pure — takes plain positions in, returns a plain transform, no d3-zoom/DOM dependency.
+ */
+export function computeFitTransform(
+  positions: readonly { x: number; y: number }[],
+  viewportWidth: number,
+  viewportHeight: number,
+  padding = 60,
+  maxScale = 2,
+): FitTransform | null {
+  if (positions.length === 0) return null
+
+  const xs = positions.map((p) => p.x)
+  const ys = positions.map((p) => p.y)
+  const minX = Math.min(...xs)
+  const maxX = Math.max(...xs)
+  const minY = Math.min(...ys)
+  const maxY = Math.max(...ys)
+
+  const bboxWidth = maxX - minX || SINGLE_POINT_HALF_SIZE * 2
+  const bboxHeight = maxY - minY || SINGLE_POINT_HALF_SIZE * 2
+  const centerX = (minX + maxX) / 2
+  const centerY = (minY + maxY) / 2
+
+  const availableWidth = Math.max(viewportWidth - 2 * padding, 1)
+  const availableHeight = Math.max(viewportHeight - 2 * padding, 1)
+  const k = Math.min(maxScale, FIT_SCALE_EXTENT[1], availableWidth / bboxWidth, availableHeight / bboxHeight)
+  const clampedK = Math.max(FIT_SCALE_EXTENT[0], k)
+
+  return {
+    x: viewportWidth / 2 - clampedK * centerX,
+    y: viewportHeight / 2 - clampedK * centerY,
+    k: clampedK,
+  }
+}
+
 /**
  * Builds a configured d3-force simulation for the given nodes/edges. Does not start or stop it —
  * the caller owns the simulation's lifecycle (ticking, stopping on unmount).
