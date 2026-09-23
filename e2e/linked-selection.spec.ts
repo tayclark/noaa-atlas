@@ -16,7 +16,6 @@ test('graph -> globe: selecting a node updates the globe status overlay', async 
   await mockAlerts(page, emptyAlertsFixture())
   await page.goto('/')
 
-  await page.getByRole('tab', { name: 'Graph' }).click()
   const node = page.locator('.graph-node[data-node-id="nws-api"]')
   await expect(node).toBeVisible()
   await node.click()
@@ -49,7 +48,6 @@ test('globe -> graph: clicking a point highlights the covering node(s) in the gr
   const expectedIds = nodesCoveringPoint(graphNodes, US_CENTER).map((n) => n.id)
   expect(expectedIds.length).toBeGreaterThan(0)
 
-  await page.getByRole('tab', { name: 'Graph' }).click()
   const highlighted = page.locator('.graph-node-highlighted')
   await expect(highlighted).toHaveCount(expectedIds.length)
   for (const id of expectedIds) {

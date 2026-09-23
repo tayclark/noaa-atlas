@@ -1,6 +1,7 @@
-// Tabbed container for the SplitPane left slot: the "I need…" task finder (#25), the request
-// Inspector (#40), and the API graph view (#28). Finder is the default tab (the app's primary
-// entry point per #25's framing).
+// Tabbed container for the SplitPane left slot: "Explore" (the "I need…" task finder from #25/#34
+// stacked above the API graph view from #28, so picking a task highlights its path in the graph
+// without switching tabs) and the request Inspector (#40). Explore is the default tab (the app's
+// primary entry point per #25's framing).
 
 import { useState } from 'react'
 import { FinderPanel } from './finder/FinderPanel'
@@ -8,16 +9,15 @@ import { GraphView } from './graph/GraphView'
 import { InspectorPanel } from './inspector/InspectorPanel'
 import './LeftPanel.css'
 
-type LeftTab = 'finder' | 'inspector' | 'graph'
+type LeftTab = 'explore' | 'inspector'
 
 const TABS: { id: LeftTab; label: string }[] = [
-  { id: 'finder', label: 'Finder' },
+  { id: 'explore', label: 'Explore' },
   { id: 'inspector', label: 'Inspector' },
-  { id: 'graph', label: 'Graph' },
 ]
 
 export function LeftPanel() {
-  const [activeTab, setActiveTab] = useState<LeftTab>('finder')
+  const [activeTab, setActiveTab] = useState<LeftTab>('explore')
 
   return (
     <div className="left-panel">
@@ -36,9 +36,17 @@ export function LeftPanel() {
         ))}
       </div>
       <div className="left-panel-content">
-        {activeTab === 'finder' && <FinderPanel />}
+        {activeTab === 'explore' && (
+          <div className="left-panel-explore">
+            <div className="left-panel-explore-finder">
+              <FinderPanel />
+            </div>
+            <div className="left-panel-explore-graph">
+              <GraphView />
+            </div>
+          </div>
+        )}
         {activeTab === 'inspector' && <InspectorPanel />}
-        {activeTab === 'graph' && <GraphView />}
       </div>
     </div>
   )

@@ -1,30 +1,44 @@
-// AC1: task-finder golden path (#25 → #46). Finder is the LeftPanel's default tab; picking a
-// task shows its ranked nodes, and clicking a node routes through the shared selectionStore
-// (#43) — proven here by checking the highlight actually lands in the Graph tab, not just that
-// the button is clickable.
+// Task-finder golden path (#25 → #46, #34). The Explore tab shows the finder above the graph;
+// picking a task highlights its whole recommended path in the graph, and clicking a step routes
+// through the shared selectionStore (#43) to a single-node selection.
 
 import { expect, test } from '@playwright/test'
+import { parseTasksFile } from '../src/data/taskSchema'
+import tasksJson from '../src/data/tasks.json' with { type: 'json' }
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 
-test('picking a task and a node highlights that node in the graph', async ({ page }) => {
+test('picking a task highlights its whole path in the graph, with connectors', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await page.goto('/')
 
-  const taskButtons = page.locator('.finder-task-item')
-  await expect(taskButtons.first()).toBeVisible()
-  const taskCount = await taskButtons.count()
-  expect(taskCount).toBeGreaterThan(0)
+  const tasks = parseTasksFile(tasksJson).tasks
+  const task = tasks.find((t) => t.nodes.length >= 2)
+  if (!task) throw new Error('expected an authored task with at least two nodes')
 
-  const nodeList = page.locator('ul[aria-label="Recommended nodes"] .finder-node-button')
-  await expect(nodeList.first()).toBeVisible()
+  await page.locator('.finder-task-item', { hasText: task.label }).click()
 
-  const firstNodeText = await nodeList.first().locator('.finder-node-name').innerText()
-  await nodeList.first().click()
+  const highlighted = page.locator('.graph-node-highlighted')
+  await expect(highlighted).toHaveCount(task.nodes.length)
+  for (const { nodeId } of task.nodes) {
+    await expect(page.locator(`.graph-node[data-node-id="${nodeId}"]`)).toHaveClass(/graph-node-highlighted/)
+  }
+  await expect(page.locator('.graph-path-edge')).toHaveCount(task.nodes.length - 1)
+})
 
-  await page.getByRole('tab', { name: 'Graph' }).click()
+test('clicking a path step narrows the highlight to that one node', async ({ page }) => {
+  await mockAlerts(page, emptyAlertsFixture())
+  await page.goto('/')
+
+  await page.locator('.finder-task-item').first().click()
+  const steps = page.locator('ol[aria-label="Recommended nodes"] .finder-node-button')
+  await expect(steps.first()).toBeVisible()
+  const firstNodeText = await steps.first().locator('.finder-node-name').innerText()
+  await steps.first().click()
+
   const highlighted = page.locator('.graph-node-highlighted')
   await expect(highlighted).toHaveCount(1)
   await expect(highlighted.locator('text')).toContainText(firstNodeText)
+  await expect(page.locator('.graph-path-edge')).toHaveCount(0)
 })
 
 test('switching tasks changes the ranked node list', async ({ page }) => {
