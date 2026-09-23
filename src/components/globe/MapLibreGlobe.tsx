@@ -9,7 +9,10 @@ import {
   getPoint,
   getStations,
 } from '../../data/nwsClient'
+import graphJson from '../../data/graph.json'
+import { parseGraphFile, type ServiceNode } from '../../data/graphSchema'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
+import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePopup'
 import {
   GLOBE_PROJECTION,
   GLOBE_STYLE_URL,
@@ -30,10 +33,15 @@ import {
   formatPointPopupHtml,
   pickNearestStation,
 } from './nwsPointLookup'
+import { nodesCoveringPoint } from '../../data/coverageLookup'
 
 const ALERTS_SOURCE_ID = 'nws-alerts'
 const ALERTS_FILL_LAYER_ID = 'nws-alerts-fill'
 const ALERTS_LINE_LAYER_ID = 'nws-alerts-line'
+
+// Parsed once at module scope — graph.json is small and static, so there's no need to
+// re-validate it on every click (#41).
+const graphNodes: ServiceNode[] = parseGraphFile(graphJson).nodes
 
 // Fly-to is out of scope for #38 (spike/globe-maplibre from the #82 engine spike has a
 // reference if a later issue wants it).
@@ -72,6 +80,12 @@ export function MapLibreGlobe() {
         const { lat, lng } = e.lngLat
         const popup = new Popup().setLngLat(e.lngLat).setHTML(formatPointLoadingHtml()).addTo(map)
 
+        // Coverage is purely local (no network call), so it's computed once up front and shown
+        // regardless of whether the NWS forecast/observation lookup below succeeds (#41).
+        const coverageHtml = formatCoveragePopupHtml(
+          describeCoverageForPopup(nodesCoveringPoint(graphNodes, [lng, lat])),
+        )
+
         getPoint(lat, lng)
           .then((point) =>
             Promise.all([
@@ -83,12 +97,12 @@ export function MapLibreGlobe() {
               return getLatestObservation(nearest.properties.stationIdentifier).then((observation) => {
                 const period = forecast.properties.periods[0]
                 if (!period) throw new Error('No forecast periods returned for this location')
-                popup.setHTML(formatPointPopupHtml(describePointForPopup(period, observation)))
+                popup.setHTML(`${formatPointPopupHtml(describePointForPopup(period, observation))}<hr/>${coverageHtml}`)
               })
             }),
           )
           .catch((err: unknown) => {
-            popup.setHTML(formatPointErrorHtml(describePointError(err)))
+            popup.setHTML(`${formatPointErrorHtml(describePointError(err))}<hr/>${coverageHtml}`)
           })
       })
 
