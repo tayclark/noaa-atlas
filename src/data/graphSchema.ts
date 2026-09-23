@@ -105,11 +105,31 @@ export const authoredEdgeSchema = z.strictObject({
 })
 export type AuthoredEdge = z.infer<typeof authoredEdgeSchema>
 
-export const graphFileSchema = z.strictObject({
-  version: z.literal(1),
-  nodes: z.array(serviceNodeSchema),
-  edges: z.array(authoredEdgeSchema),
-})
+export const graphFileSchema = z
+  .strictObject({
+    version: z.literal(1),
+    nodes: z.array(serviceNodeSchema),
+    edges: z.array(authoredEdgeSchema),
+  })
+  .superRefine((file, ctx) => {
+    const ids = new Set(file.nodes.map((node) => node.id))
+    const seen = new Set<string>()
+    file.edges.forEach((edge, i) => {
+      for (const end of ['source', 'target'] as const) {
+        if (!ids.has(edge[end])) {
+          ctx.addIssue({ code: 'custom', message: `unknown node id "${edge[end]}"`, path: ['edges', i, end] })
+        }
+      }
+      if (edge.source === edge.target) {
+        ctx.addIssue({ code: 'custom', message: 'edge cannot link a node to itself', path: ['edges', i, 'target'] })
+      }
+      const key = `${edge.source}|${edge.target}|${edge.type}`
+      if (seen.has(key)) {
+        ctx.addIssue({ code: 'custom', message: 'duplicate edge', path: ['edges', i] })
+      }
+      seen.add(key)
+    })
+  })
 export type GraphFile = z.infer<typeof graphFileSchema>
 
 export interface ThemeNode {
