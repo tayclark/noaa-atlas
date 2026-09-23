@@ -1,9 +1,9 @@
-// Tabbed container for the SplitPane left slot: the request Inspector (#40) and the future
-// API graph view (#-, "coming in M2"). Inspector defaults to active since the graph isn't built.
+// Tabbed container for the SplitPane left slot: the request Inspector (#40) and the API graph
+// view (#28). Inspector stays the default tab.
 
 import { useState } from 'react'
+import { GraphView } from './graph/GraphView'
 import { InspectorPanel } from './inspector/InspectorPanel'
-import { Pane } from './Pane'
 import './LeftPanel.css'
 
 type LeftTab = 'inspector' | 'graph'
@@ -33,11 +33,7 @@ export function LeftPanel() {
         ))}
       </div>
       <div className="left-panel-content">
-        {activeTab === 'inspector' ? (
-          <InspectorPanel />
-        ) : (
-          <Pane title="Graph" note="NOAA API ecosystem — coming in M2" />
-        )}
+        {activeTab === 'inspector' ? <InspectorPanel /> : <GraphView />}
       </div>
     </div>
   )
