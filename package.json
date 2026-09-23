@@ -11,7 +11,10 @@
     "test": "vitest run",
     "typecheck": "tsc -b",
     "test:coverage": "vitest run --coverage",
-    "coverage-geometry": "node scripts/coverage-geometry.ts"
+    "coverage-geometry": "node scripts/coverage-geometry.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:mocked": "playwright test --grep-invert @live",
+    "test:e2e:live": "playwright test --grep @live"
   },
   "dependencies": {
     "d3-drag": "^3.0.0",
@@ -25,6 +28,7 @@
   },
   "devDependencies": {
     "@maplibre/maplibre-gl-style-spec": "^26.4.4",
+    "@playwright/test": "^1.63.0",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@types/d3-drag": "^3.0.7",
