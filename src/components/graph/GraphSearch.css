@@ -1,0 +1,28 @@
+.graph-search {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: min(220px, calc(100% - 2 * var(--space-3)));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.graph-search input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+}
+
+.graph-search-status {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  text-align: right;
+}

@@ -13,18 +13,23 @@
 import { drag as d3drag } from 'd3-drag'
 import { select } from 'd3-selection'
 import { zoom as d3zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from 'd3-zoom'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import './GraphView.css'
 import graphJson from '../../data/graph.json'
+import tasksJson from '../../data/tasks.json'
 import { buildGraph } from '../../data/buildGraph'
 import { parseGraphFile } from '../../data/graphSchema'
+import { parseTasksFile } from '../../data/taskSchema'
 import { getHighlightedNodeIds, getSelectionSnapshot, selectNode, subscribeSelection } from '../../data/selectionStore'
 import { THEME_COLORS } from '../../data/themeColors'
 import { computeFitTransform, createGraphSimulation, EDGE_CLASS, nodeRadius, type SimEdge, type SimNode } from './graphLayout'
 import { GraphLegend } from './GraphLegend'
+import { GraphSearch } from './GraphSearch'
+import { buildSearchIndex, matchNodeIds } from './searchMatch'
 import { NodeDetailPanel } from './NodeDetailPanel'
 
 const graph = buildGraph(parseGraphFile(graphJson))
+const searchIndex = buildSearchIndex(graph.nodes, parseTasksFile(tasksJson).tasks)
 
 export function GraphView() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -40,6 +45,8 @@ export function GraphView() {
   const [size, setSize] = useState({ width: 600, height: 400 })
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const highlightedIds = getHighlightedNodeIds()
+  const [query, setQuery] = useState('')
+  const matchedIds = useMemo(() => matchNodeIds(searchIndex, query), [query])
 
   useEffect(() => {
     const container = containerRef.current
@@ -173,7 +180,7 @@ export function GraphView() {
             {graph.edges.map((edge, i) => (
               <line
                 key={`${edge.source}-${edge.target}-${edge.type}`}
-                className={`graph-edge ${EDGE_CLASS[edge.type]}`}
+                className={`graph-edge ${EDGE_CLASS[edge.type]}${matchedIds && !(matchedIds.has(edge.source) && matchedIds.has(edge.target)) ? ' graph-edge-dimmed' : ''}`}
                 data-edge-type={edge.type}
                 ref={(el) => {
                   edgeElsRef.current[i] = el as SVGLineElement
@@ -185,7 +192,7 @@ export function GraphView() {
             {graph.nodes.map((node) => (
               <g
                 key={node.id}
-                className={`graph-node graph-node-${node.kind}${highlightedIds.includes(node.id) ? ' graph-node-highlighted' : ''}`}
+                className={`graph-node graph-node-${node.kind}${highlightedIds.includes(node.id) ? ' graph-node-highlighted' : ''}${matchedIds ? (matchedIds.has(node.id) ? ' graph-node-match' : ' graph-node-dimmed') : ''}`}
                 data-node-id={node.id}
                 role="button"
                 tabIndex={0}
@@ -204,6 +211,7 @@ export function GraphView() {
           </g>
         </g>
       </svg>
+      <GraphSearch query={query} onQueryChange={setQuery} matchCount={matchedIds?.size ?? null} />
       <NodeDetailPanel />
       <GraphLegend />
     </section>

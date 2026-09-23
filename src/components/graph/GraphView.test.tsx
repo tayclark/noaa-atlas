@@ -127,3 +127,35 @@ function hexToRgb(hex: string): string {
   const b = parseInt(hex.slice(5, 7), 16)
   return `rgb(${r}, ${g}, ${b})`
 }
+
+describe('GraphView search', () => {
+  const nodeClass = (container: HTMLElement, id: string) =>
+    container.querySelector(`[data-node-id="${id}"]`)?.getAttribute('class') ?? ''
+
+  it('marks matches and dims the rest, then restores on clear', () => {
+    const { container } = render(<GraphView />)
+    const input = screen.getByRole('searchbox', { name: 'Search graph' })
+    fireEvent.change(input, { target: { value: 'tornado' } })
+    expect(nodeClass(container, 'spc-gis-data')).toContain('graph-node-match')
+    expect(nodeClass(container, 'nws-api')).toContain('graph-node-dimmed')
+    expect(screen.getByRole('status').textContent).toMatch(/match/)
+
+    fireEvent.change(input, { target: { value: '' } })
+    expect(nodeClass(container, 'nws-api')).not.toContain('graph-node-dimmed')
+    expect(nodeClass(container, 'spc-gis-data')).not.toContain('graph-node-match')
+  })
+
+  it('shows a no-results message when nothing matches', () => {
+    render(<GraphView />)
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search graph' }), { target: { value: 'xyzzy' } })
+    expect(screen.getByRole('status').textContent).toBe('No matches for "xyzzy"')
+  })
+
+  it('clears the query on Escape', () => {
+    render(<GraphView />)
+    const input = screen.getByRole('searchbox', { name: 'Search graph' }) as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'tornado' } })
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(input.value).toBe('')
+  })
+})
