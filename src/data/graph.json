@@ -822,6 +822,374 @@
         "6-10 day",
         "8-14 day"
       ]
+    },
+    {
+      "id": "coops-data-api",
+      "kind": "service",
+      "name": "CO-OPS Data API",
+      "summary": "Observed and predicted water levels, tides, currents and meteorological readings from US coastal and Great Lakes stations, as JSON, XML or CSV.",
+      "owner": {
+        "office": "NOS",
+        "program": "CO-OPS (Tides & Currents)"
+      },
+      "theme": "ocean",
+      "baseUrl": "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter",
+      "formats": [
+        "json",
+        "xml",
+        "csv"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "No key or token. Pass an application= parameter to identify your app in CO-OPS logs. Responses send access-control-allow-origin: *."
+      },
+      "rateLimits": {
+        "text": "Not published numerically; CO-OPS throttles heavy or repeated queries from a single customer. Add delays between calls and request only the data you need.",
+        "sourceUrl": "https://api.tidesandcurrents.noaa.gov/api/prod/"
+      },
+      "coverage": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-130, 24],
+              [-66, 24],
+              [-66, 49.5],
+              [-130, 49.5],
+              [-130, 24]
+            ]
+          ],
+          [
+            [
+              [-180, 50],
+              [-129, 50],
+              [-129, 72],
+              [-180, 72],
+              [-180, 50]
+            ]
+          ],
+          [
+            [
+              [-161, 18],
+              [-154, 18],
+              [-154, 23],
+              [-161, 23],
+              [-161, 18]
+            ]
+          ],
+          [
+            [
+              [-68, 17],
+              [-64, 17],
+              [-64, 19],
+              [-68, 19],
+              [-68, 17]
+            ]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "minutes",
+        "note": "Real-time observations are mostly 6-minute values; hourly, daily and monthly aggregates are also available, and verified data lags by about a month."
+      },
+      "docUrl": "https://api.tidesandcurrents.noaa.gov/api/prod/",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=noaa-atlas&date=latest&datum=MLLW&station=8729108&time_zone=gmt&units=metric&format=json",
+        "responseExcerpt": "{\"metadata\":{\"id\":\"8729108\",\"name\":\"Panama City\",\"lat\":\"30.1497\",\"lon\":\"-85.6644\"},\n \"data\":[{\"t\":\"2026-09-23 22:42\",\"v\":\"0.252\",\"s\":\"0.007\",\"f\":\"1,0,0,0\",\"q\":\"p\"}]}"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: station-based point data with no bulk layer to draw yet.",
+      "tags": [
+        "tides",
+        "water-level",
+        "currents",
+        "coastal",
+        "stations"
+      ]
+    },
+    {
+      "id": "coops-metadata-api",
+      "kind": "service",
+      "name": "CO-OPS Metadata API",
+      "summary": "Station metadata for CO-OPS water level, tide prediction and current stations: details, sensors, datums, flood levels, harmonic constituents and nearby stations.",
+      "owner": {
+        "office": "NOS",
+        "program": "CO-OPS (Tides & Currents)"
+      },
+      "theme": "ocean",
+      "baseUrl": "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/",
+      "formats": [
+        "json",
+        "xml"
+      ],
+      "auth": {
+        "type": "none"
+      },
+      "coverage": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-130, 24],
+              [-66, 24],
+              [-66, 49.5],
+              [-130, 49.5],
+              [-130, 24]
+            ]
+          ],
+          [
+            [
+              [-180, 50],
+              [-129, 50],
+              [-129, 72],
+              [-180, 72],
+              [-180, 50]
+            ]
+          ],
+          [
+            [
+              [-161, 18],
+              [-154, 18],
+              [-154, 23],
+              [-161, 23],
+              [-161, 18]
+            ]
+          ],
+          [
+            [
+              [-68, 17],
+              [-64, 17],
+              [-64, 19],
+              [-68, 19],
+              [-68, 17]
+            ]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "static",
+        "note": "Station and sensor metadata; changes when stations are installed, moved or reconfigured."
+      },
+      "docUrl": "https://api.tidesandcurrents.noaa.gov/mdapi/prod/",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/8729108.json",
+        "responseExcerpt": "{\n  \"count\": 1,\n  \"stations\": [\n    {\n      \"id\": \"8729108\",\n      \"name\": \"Panama City\",\n      \"state\": \"FL\",\n      \"lat\": 30.149723,\n      \"lng\": -85.664444,\n      \"details\": { \"self\": \".../stations/8729108/details.json\" },\n      \"datums\": { \"self\": \".../stations/8729108/datums.json\" }\n    }\n  ]\n}\n(abbreviated)"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: station-based point data with no bulk layer to draw yet.",
+      "tags": [
+        "stations",
+        "metadata",
+        "datums",
+        "harmonics"
+      ]
+    },
+    {
+      "id": "coops-derived-product-api",
+      "kind": "service",
+      "name": "CO-OPS Derived Product API",
+      "summary": "Analysis products built from CO-OPS water level records: sea level trends, high tide flooding, extreme water levels and monthly mean sea level.",
+      "owner": {
+        "office": "NOS",
+        "program": "CO-OPS (Tides & Currents)"
+      },
+      "theme": "ocean",
+      "baseUrl": "https://api.tidesandcurrents.noaa.gov/dpapi/prod/webapi/",
+      "formats": [
+        "json",
+        "xml",
+        "csv"
+      ],
+      "auth": {
+        "type": "none"
+      },
+      "coverage": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-130, 24],
+              [-66, 24],
+              [-66, 49.5],
+              [-130, 49.5],
+              [-130, 24]
+            ]
+          ],
+          [
+            [
+              [-180, 50],
+              [-129, 50],
+              [-129, 72],
+              [-180, 72],
+              [-180, 50]
+            ]
+          ],
+          [
+            [
+              [-161, 18],
+              [-154, 18],
+              [-154, 23],
+              [-161, 23],
+              [-161, 18]
+            ]
+          ],
+          [
+            [
+              [-68, 17],
+              [-64, 17],
+              [-64, 19],
+              [-68, 19],
+              [-68, 17]
+            ]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "periodic",
+        "note": "Derived from long-term records and updated as each product is reprocessed, not a live feed."
+      },
+      "docUrl": "https://api.tidesandcurrents.noaa.gov/dpapi/prod/",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://api.tidesandcurrents.noaa.gov/dpapi/prod/webapi/product/sealvltrends.json?station=8729108",
+        "responseExcerpt": "{\n  \"count\": 1,\n  \"SeaLvlTrends\": [\n    {\n      \"stationId\": \"8729108\",\n      \"stationName\": \"Panama City\",\n      \"trendUnits\": \"inches/decade\",\n      \"trend\": 1.21,\n      \"trendError\": 0.1\n    }\n  ]\n}\n(abbreviated)"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: station-based point data with no bulk layer to draw yet.",
+      "tags": [
+        "sea-level",
+        "flooding",
+        "trends",
+        "climatology"
+      ]
+    },
+    {
+      "id": "ndbc-realtime",
+      "kind": "service",
+      "name": "NDBC Real-Time Observations",
+      "summary": "Latest 45 days of buoy and C-MAN station observations (winds, waves, pressure, air and sea temperature) as plain-text files per station.",
+      "owner": {
+        "office": "NWS",
+        "program": "National Data Buoy Center (NDBC)"
+      },
+      "theme": "ocean",
+      "baseUrl": "https://www.ndbc.noaa.gov/data/realtime2/",
+      "formats": [
+        "text"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public files; no key. FTP access is being phased out in favor of HTTPS."
+      },
+      "rateLimits": {
+        "text": "No numeric limit; NDBC asks users to keep retrievals to a minimum to avoid overloading the servers.",
+        "sourceUrl": "https://www.ndbc.noaa.gov/faq/rt_data_access.shtml"
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "hourly",
+        "note": "Most stations report hourly and data is mostly available 25 minutes after the hour."
+      },
+      "docUrl": "https://www.ndbc.noaa.gov/faq/rt_data_access.shtml",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://www.ndbc.noaa.gov/data/realtime2/42001.txt",
+        "responseExcerpt": "#YY  MM DD hh mm WDIR WSPD GST  WVHT   DPD   APD MWD   PRES  ATMP  WTMP  DEWP  VIS PTDY  TIDE\n#yr  mo dy hr mn degT m/s  m/s     m   sec   sec degT   hPa  degC  degC  degC  nmi  hPa    ft\n2026 09 23 22 10  60  5.0  6.0   0.5    MM   3.8  52 1013.0  30.3  30.7  24.7   MM   MM    MM\n(abbreviated)"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: one text file per station, so a layer needs the station list and per-station fetches.",
+      "tags": [
+        "buoys",
+        "waves",
+        "marine",
+        "observations"
+      ]
+    },
+    {
+      "id": "ndbc-dart-realtime",
+      "kind": "service",
+      "name": "DART Tsunami Buoy Data",
+      "summary": "Deep-ocean bottom-pressure water column heights from NOAA's DART tsunami detection stations, as per-station real-time text files.",
+      "owner": {
+        "office": "NWS",
+        "program": "NDBC DART® (National Tsunami Hazard Mitigation Program)"
+      },
+      "theme": "ocean",
+      "baseUrl": "https://www.ndbc.noaa.gov/data/realtime2/",
+      "formats": [
+        "text"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public files served alongside NDBC real-time observations, as [stationid].dart. NCEI is the long-term archive for recovered DART data."
+      },
+      "rateLimits": {
+        "text": "No numeric limit published; the NDBC real-time access guide asks users to keep retrievals to a minimum.",
+        "sourceUrl": "https://www.ndbc.noaa.gov/faq/rt_data_access.shtml"
+      },
+      "coverage": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [100, -60],
+              [180, -60],
+              [180, 65],
+              [100, 65],
+              [100, -60]
+            ]
+          ],
+          [
+            [
+              [-180, -60],
+              [-70, -60],
+              [-70, 65],
+              [-180, 65],
+              [-180, -60]
+            ]
+          ],
+          [
+            [
+              [-90, 0],
+              [-40, 0],
+              [-40, 45],
+              [-90, 45],
+              [-90, 0]
+            ]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "periodic",
+        "note": "Real-time files list water column height in 15-minute steps; DART II stations transmit every six hours in standard mode, with high-rate event mode when a tsunami is detected."
+      },
+      "docUrl": "https://www.ndbc.noaa.gov/dart/dart.shtml",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://www.ndbc.noaa.gov/data/realtime2/21414.dart",
+        "responseExcerpt": "#YY  MM DD hh mm ss T   HEIGHT\n#yr  mo dy hr mn  s -        m\n2026 09 10 18 00 00 1 5421.034\n2026 09 10 17 45 00 1 5421.057\n(abbreviated)"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: per-station text files, and the height series is only meaningful as a time-series chart.",
+      "tags": [
+        "tsunami",
+        "deep-ocean",
+        "pressure",
+        "hazards"
+      ]
     }
   ],
   "edges": [
@@ -845,6 +1213,20 @@
       "type": "data-flow",
       "label": "CPC 6-10 day outlooks are also republished as the portal's cpc_6_10_day_outlk ArcGIS REST service",
       "sourceUrl": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_6_10_day_outlk/MapServer"
+    },
+    {
+      "source": "coops-metadata-api",
+      "target": "coops-data-api",
+      "type": "shared-id",
+      "label": "Both APIs address stations by the same 7-digit CO-OPS station ID (e.g. 8729108)",
+      "sourceUrl": "https://api.tidesandcurrents.noaa.gov/mdapi/prod/"
+    },
+    {
+      "source": "coops-metadata-api",
+      "target": "coops-derived-product-api",
+      "type": "shared-id",
+      "label": "Both APIs address stations by the same 7-digit CO-OPS station ID (e.g. 8729108)",
+      "sourceUrl": "https://api.tidesandcurrents.noaa.gov/dpapi/prod/"
     }
   ]
 }
