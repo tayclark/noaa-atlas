@@ -26,5 +26,11 @@ dist-ssr
 # Test coverage
 coverage
 
+# Playwright e2e output
+test-results
+playwright-report
+blob-report
+playwright/.cache
+
 # Downloaded source data for scripts/coverage-geometry.ts
 scripts/.cache
