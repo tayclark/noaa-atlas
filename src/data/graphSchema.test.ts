@@ -3,6 +3,8 @@ import graphJson from './graph.json'
 import { CONUS_RING, makeEdge, makeFile, makeNode } from './graphFixtures'
 import { parseGraphFile } from './graphSchema'
 
+const edgeNodes = [makeNode(), makeNode({ id: 'coops-data', name: 'CO-OPS Data' })]
+
 describe('parseGraphFile', () => {
   it('accepts an empty graph', () => {
     expect(parseGraphFile(makeFile())).toEqual({ version: 1, nodes: [], edges: [] })
@@ -25,7 +27,7 @@ describe('parseGraphFile', () => {
   })
 
   it('accepts a valid authored edge', () => {
-    expect(() => parseGraphFile(makeFile([], [makeEdge()]))).not.toThrow()
+    expect(() => parseGraphFile(makeFile(edgeNodes, [makeEdge()]))).not.toThrow()
   })
 
   it.each([
@@ -84,11 +86,25 @@ describe('parseGraphFile', () => {
 
   describe('authored edges', () => {
     it('rejects the derived theme edge type', () => {
-      expect(() => parseGraphFile(makeFile([], [makeEdge({ type: 'theme' })]))).toThrow()
+      expect(() => parseGraphFile(makeFile(edgeNodes, [makeEdge({ type: 'theme' })]))).toThrow()
     })
 
     it('requires a sourceUrl', () => {
-      expect(() => parseGraphFile(makeFile([], [makeEdge({ sourceUrl: undefined })]))).toThrow()
+      expect(() => parseGraphFile(makeFile(edgeNodes, [makeEdge({ sourceUrl: undefined })]))).toThrow()
+    })
+
+    it.each([
+      ['an unknown source id', { source: 'missing' }, /unknown node id "missing"/],
+      ['an unknown target id', { target: 'missing' }, /unknown node id "missing"/],
+      ['a self-loop', { target: 'nws-api' }, /itself/],
+    ])('rejects %s', (_label, overrides, message) => {
+      expect(() => parseGraphFile(makeFile(edgeNodes, [makeEdge(overrides)]))).toThrow(message)
+    })
+
+    it('rejects a duplicate source/target/type edge but allows a different type', () => {
+      expect(() => parseGraphFile(makeFile(edgeNodes, [makeEdge(), makeEdge()]))).toThrow(/duplicate edge/)
+      const other = makeEdge({ type: 'data-flow' })
+      expect(() => parseGraphFile(makeFile(edgeNodes, [makeEdge(), other]))).not.toThrow()
     })
   })
 
