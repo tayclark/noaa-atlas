@@ -11,7 +11,7 @@ const EDGE_TYPES: GraphEdge['type'][] = ['theme', 'shared-id', 'data-flow']
 
 export function GraphLegend() {
   return (
-    <div className="graph-legend" aria-label="Legend">
+    <div className="graph-legend" id="graph-legend" aria-label="Legend">
       <div className="graph-legend-group">
         <h3>Themes</h3>
         <ul className="graph-legend-themes">

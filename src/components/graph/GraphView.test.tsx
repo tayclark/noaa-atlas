@@ -22,9 +22,9 @@ const tasks = parseTasksFile(tasksJson).tasks
 
 describe('GraphView', () => {
   it('renders as a named region with a node per graph node', () => {
-    render(<GraphView />)
+    const { container } = render(<GraphView />)
     expect(screen.getByRole('region', { name: 'Graph' })).toBeTruthy()
-    expect(screen.getAllByRole('button')).toHaveLength(expectedGraph.nodes.length)
+    expect(container.querySelectorAll('.graph-node')).toHaveLength(expectedGraph.nodes.length)
   })
 
   it('colors each node circle by its theme', () => {
@@ -44,9 +44,22 @@ describe('GraphView', () => {
     }
   })
 
-  it('renders the legend', () => {
+  it('keeps the legend collapsed until its toolbar toggle is used', () => {
     render(<GraphView />)
+    const toggle = screen.getByRole('button', { name: 'Legend' })
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByLabelText('Legend')).toBeNull()
+    fireEvent.click(toggle)
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByLabelText('Legend')).toBeTruthy()
+    fireEvent.click(toggle)
+    expect(screen.queryByLabelText('Legend')).toBeNull()
+  })
+
+  it('has a Fit control in the toolbar that does not throw before the layout has settled', () => {
+    render(<GraphView />)
+    fireEvent.click(screen.getByRole('button', { name: 'Fit' }))
+    expect(screen.getByRole('region', { name: 'Graph' })).toBeTruthy()
   })
 
   it('selects a node in the shared selection store on click', () => {
