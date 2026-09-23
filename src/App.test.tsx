@@ -14,10 +14,10 @@ vi.mock('maplibre-gl', () => ({
 afterEach(cleanup)
 
 describe('App', () => {
-  it('renders the header, the left panel (Inspector tab by default), and the globe', () => {
+  it('renders the header, the left panel (Finder tab by default), and the globe', () => {
     render(<App />)
     expect(screen.getByRole('heading', { name: 'NOAA Atlas' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Inspector', selected: true })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Finder', selected: true })).toBeTruthy()
     expect(
       screen.getByRole('img', { name: 'Globe view of NOAA API coverage' }),
     ).toBeTruthy()

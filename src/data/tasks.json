@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "local-forecast",
+      "label": "Get today's local forecast",
+      "nodes": [
+        { "nodeId": "nws-api", "why": "Point and gridpoint forecasts for any US location." }
+      ]
+    },
+    {
+      "id": "active-alerts",
+      "label": "Check active weather alerts and warnings",
+      "nodes": [
+        { "nodeId": "nws-api", "why": "Live alerts endpoint covering the US and its territories." }
+      ]
+    },
+    {
+      "id": "severe-thunderstorm-tornado-risk",
+      "label": "See severe thunderstorm or tornado risk",
+      "nodes": [
+        { "nodeId": "spc-gis-data", "why": "Storm Prediction Center convective outlooks, watches and mesoscale discussions." },
+        { "nodeId": "nws-gis-portal", "why": "Hosts the same SPC layers as ArcGIS REST map/feature services." }
+      ]
+    },
+    {
+      "id": "winter-storm-rainfall-risk",
+      "label": "See winter storm or excessive rainfall risk",
+      "nodes": [
+        { "nodeId": "wpc-gis-products", "why": "Weather Prediction Center precipitation, excessive rainfall and winter weather products." },
+        { "nodeId": "nws-gis-portal", "why": "Hosts the same WPC layers as ArcGIS REST map/feature services." }
+      ]
+    },
+    {
+      "id": "drought-climate-outlook",
+      "label": "Check drought conditions or seasonal climate outlook",
+      "nodes": [
+        { "nodeId": "cpc-gis-data", "why": "Climate Prediction Center drought, temperature and precipitation analyses and outlooks." },
+        { "nodeId": "nws-gis-portal", "why": "Hosts the same CPC layers as ArcGIS REST map/feature services." }
+      ]
+    },
+    {
+      "id": "raw-gridded-forecast-data",
+      "label": "Get raw gridded forecast data",
+      "nodes": [
+        { "nodeId": "nws-api", "why": "Gridpoint forecast data as JSON-LD, suitable for programmatic use." }
+      ]
+    }
+  ]
+}
