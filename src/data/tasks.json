@@ -76,6 +76,22 @@
       ]
     },
     {
+      "id": "tsunami-warnings",
+      "label": "Check for tsunami warnings and messages",
+      "nodes": [
+        { "nodeId": "tsunami-warning-feeds", "why": "Atom and CAP feeds of warning, watch, advisory and information messages from the tsunami warning centers." },
+        { "nodeId": "ndbc-dart-realtime", "why": "The DART buoy readings the warning centers use to confirm a tsunami." }
+      ]
+    },
+    {
+      "id": "hurricane-tracking",
+      "label": "Track an active hurricane or tropical storm",
+      "nodes": [
+        { "nodeId": "nhc-active-storms", "why": "Active-storm list, advisories, forecast track and cone, and watches/warnings for Atlantic and eastern Pacific cyclones." },
+        { "nodeId": "nws-api", "why": "Active alerts, including hurricane and tropical storm watches and warnings, for a specific location." }
+      ]
+    },
+    {
       "id": "historical-daily-weather",
       "label": "Look up historical daily temperature or rainfall for a station",
       "nodes": [

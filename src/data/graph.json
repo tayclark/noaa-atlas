@@ -1376,6 +1376,130 @@
         "bulk",
         "csv"
       ]
+    },
+    {
+      "id": "nhc-active-storms",
+      "kind": "service",
+      "name": "NHC Active Tropical Cyclones",
+      "summary": "National Hurricane Center's machine-readable active-storm list (CurrentStorms.json), per-basin RSS feeds, and advisory GIS files (forecast track, cone, watches/warnings, wind radii) for Atlantic and eastern Pacific storms.",
+      "owner": {
+        "office": "NWS",
+        "program": "National Hurricane Center (NHC)"
+      },
+      "theme": "hazards",
+      "baseUrl": "https://www.nhc.noaa.gov/",
+      "formats": [
+        "json",
+        "xml",
+        "shapefile",
+        "kml"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public files; no key or token. A descriptive User-Agent is good practice."
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-140, 0],
+            [0, 0],
+            [0, 60],
+            [-140, 60],
+            [-140, 0]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "periodic",
+        "note": "Advisories are issued about every six hours per active storm (intermediate updates more often); CurrentStorms.json is empty when no storms are active."
+      },
+      "docUrl": "https://www.nhc.noaa.gov/gis/",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://www.nhc.noaa.gov/CurrentStorms.json",
+        "responseExcerpt": "{\n  \"activeStorms\": [\n    {\n      \"id\": \"al062026\",\n      \"name\": \"Fay\",\n      \"classification\": \"TD\",\n      \"intensity\": \"30\",\n      \"pressure\": \"1011\",\n      \"latitude\": \"30.1N\",\n      \"longitude\": \"39.2W\",\n      \"movementDir\": 270,\n      \"movementSpeed\": 8,\n      \"lastUpdate\": \"2026-09-23T21:00:00.000Z\"\n    }\n  ]\n}\n(trimmed: each storm also lists advisory text URLs and zip/kmz GIS file URLs)"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: storm data is only present while a cyclone is active, and the GIS files are shapefile/KMZ downloads that need per-storm handling.",
+      "tags": [
+        "hurricane",
+        "tropical-cyclone",
+        "storms",
+        "forecast-track",
+        "rss",
+        "gis"
+      ]
+    },
+    {
+      "id": "tsunami-warning-feeds",
+      "kind": "service",
+      "name": "Tsunami Warning Center Message Feeds",
+      "summary": "Atom and CAP 1.2 XML feeds of tsunami warning, watch, advisory and information messages from the National and Pacific Tsunami Warning Centers.",
+      "owner": {
+        "office": "NWS",
+        "program": "U.S. Tsunami Warning Centers (NTWC / PTWC)"
+      },
+      "theme": "hazards",
+      "baseUrl": "https://www.tsunami.gov/events/xml/",
+      "formats": [
+        "xml"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public feeds; PAAQ* files come from the National Tsunami Warning Center (Alaska), PHEB* from the Pacific Tsunami Warning Center (Hawaii)."
+      },
+      "coverage": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [100, -60],
+              [180, -60],
+              [180, 65],
+              [100, 65],
+              [100, -60]
+            ]
+          ],
+          [
+            [
+              [-180, -60],
+              [-70, -60],
+              [-70, 65],
+              [-180, 65],
+              [-180, -60]
+            ]
+          ],
+          [
+            [
+              [-90, 0],
+              [-40, 0],
+              [-40, 45],
+              [-90, 45],
+              [-90, 0]
+            ]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "periodic",
+        "note": "Event-driven: messages appear when a center issues a product for an earthquake or tsunami, otherwise the feed holds the last message."
+      },
+      "docUrl": "https://www.tsunami.gov/?page=cap",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://www.tsunami.gov/events/xml/PHEBCAP.xml",
+        "responseExcerpt": "<alert xmlns=\"urn:oasis:names:tc:emergency:cap:1.2\">\n  <identifier>PHEB-1-26261050</identifier>\n  <sender>ntwc@noaa.gov</sender>\n  <status>Actual</status>\n  <msgType>Alert</msgType>\n  <source>PTWC</source>\n  <info>\n    <event>Tsunami Information</event>\n    <severity>Minor</severity>\n    <certainty>Unlikely</certainty>\n    ...\n    <parameter><valueName>EventLocationName</valueName><value>VICINITY OF PUERTO RICO</value></parameter>\n    <parameter><valueName>EventPreliminaryMagnitude</valueName><value>4.6</value></parameter>\n  </info>\n</alert>"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: XML (Atom/CAP) feeds that only carry the latest event and are usually an information statement, with no query API.",
+      "tags": [
+        "tsunami",
+        "warnings",
+        "cap",
+        "atom",
+        "earthquake"
+      ]
     }
   ],
   "edges": [
@@ -1420,6 +1544,13 @@
       "type": "shared-id",
       "label": "Both address GHCN-Daily stations by the same station ID (e.g. USC00010008, prefixed GHCND: in CDO)",
       "sourceUrl": "https://www.ncei.noaa.gov/cdo-web/webservices/v2"
+    },
+    {
+      "source": "ndbc-dart-realtime",
+      "target": "tsunami-warning-feeds",
+      "type": "data-flow",
+      "label": "DART bottom-pressure data is used in the Tsunami Warning Centers' real-time forecasts and warnings",
+      "sourceUrl": "https://www.ndbc.noaa.gov/dart/dart.shtml"
     }
   ]
 }
