@@ -1,3 +1,20 @@
+.node-selection-status {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  max-width: 320px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.node-selection-status p {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+}
+
 .zone-only-alerts {
   position: absolute;
   bottom: var(--space-4);
