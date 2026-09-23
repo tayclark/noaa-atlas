@@ -55,6 +55,17 @@
   stroke-width: 3;
 }
 
+.graph-node:focus {
+  outline: none;
+}
+
+/* Dashed (vs. the solid selection ring above) so focus and selection read as related but
+   distinguishable when both apply to the same node (#35). */
+.graph-node:focus-visible {
+  outline: 2px dashed var(--color-accent);
+  outline-offset: 3px;
+}
+
 .graph-node text {
   fill: var(--color-text-muted);
   font-family: var(--font-sans);

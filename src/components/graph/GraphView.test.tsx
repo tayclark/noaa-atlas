@@ -54,6 +54,31 @@ describe('GraphView', () => {
     expect(getSelectionSnapshot().selectedNodeId).toBe(firstNode.id)
   })
 
+  it('selects a node in the shared selection store on Enter key (#35)', () => {
+    render(<GraphView />)
+    const firstNode = expectedGraph.nodes[0]
+    if (!firstNode) throw new Error('expected at least one graph node')
+    fireEvent.keyDown(screen.getByRole('button', { name: firstNode.name }), { key: 'Enter' })
+    expect(getSelectionSnapshot().selectedNodeId).toBe(firstNode.id)
+  })
+
+  it('selects a node in the shared selection store on Space key and prevents default scroll (#35)', () => {
+    render(<GraphView />)
+    const firstNode = expectedGraph.nodes[0]
+    if (!firstNode) throw new Error('expected at least one graph node')
+    const notCanceled = fireEvent.keyDown(screen.getByRole('button', { name: firstNode.name }), { key: ' ' })
+    expect(notCanceled).toBe(false)
+    expect(getSelectionSnapshot().selectedNodeId).toBe(firstNode.id)
+  })
+
+  it('ignores unrelated key presses on a graph node (#35)', () => {
+    render(<GraphView />)
+    const firstNode = expectedGraph.nodes[0]
+    if (!firstNode) throw new Error('expected at least one graph node')
+    fireEvent.keyDown(screen.getByRole('button', { name: firstNode.name }), { key: 'a' })
+    expect(getSelectionSnapshot().selectedNodeId).toBeNull()
+  })
+
   // jsdom's SVG implementation doesn't support the geometry APIs (e.g. viewBox.baseVal) that
   // d3-zoom/d3-drag read from real pointer events, so wheel/mousedown simulation here would
   // surface jsdom-only errors rather than exercising real behavior. Pan/zoom/drag — including
