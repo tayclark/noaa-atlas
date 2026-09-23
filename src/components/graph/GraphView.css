@@ -72,3 +72,15 @@
   font-size: var(--font-size-xs);
   user-select: none;
 }
+
+/* Search (#33): matches stay full-strength with a muted-accent ring; everything else dims but
+   remains clickable/focusable. */
+.graph-node-match circle {
+  stroke: var(--color-accent-muted);
+  stroke-width: 3;
+}
+
+.graph-node-dimmed,
+.graph-edge-dimmed {
+  opacity: 0.25;
+}
