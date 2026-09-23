@@ -824,5 +824,27 @@
       ]
     }
   ],
-  "edges": []
+  "edges": [
+    {
+      "source": "spc-gis-data",
+      "target": "nws-gis-portal",
+      "type": "data-flow",
+      "label": "SPC convective outlooks are also republished as the portal's SPC_wx_outlks ArcGIS REST service",
+      "sourceUrl": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/SPC_wx_outlks/MapServer"
+    },
+    {
+      "source": "wpc-gis-products",
+      "target": "nws-gis-portal",
+      "type": "data-flow",
+      "label": "WPC quantitative precipitation forecasts are also republished as the portal's wpc_qpf ArcGIS REST service",
+      "sourceUrl": "https://mapservices.weather.noaa.gov/vector/rest/services/precip/wpc_qpf/MapServer"
+    },
+    {
+      "source": "cpc-gis-data",
+      "target": "nws-gis-portal",
+      "type": "data-flow",
+      "label": "CPC 6-10 day outlooks are also republished as the portal's cpc_6_10_day_outlk ArcGIS REST service",
+      "sourceUrl": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_6_10_day_outlk/MapServer"
+    }
+  ]
 }
