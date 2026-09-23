@@ -19,7 +19,7 @@ function ringBbox(ring: readonly (readonly [number, number])[]): [number, number
   return [west, south, east, north]
 }
 
-function coverageBbox(coverage: Coverage): [number, number, number, number] {
+export function coverageBbox(coverage: Coverage): [number, number, number, number] {
   const rings = coverage.type === 'Polygon' ? coverage.coordinates : coverage.coordinates.flat()
   const bboxes = rings.map(ringBbox)
   const west = Math.min(...bboxes.map((b) => b[0]))

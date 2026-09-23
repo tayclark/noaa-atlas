@@ -1,6 +1,6 @@
 import { Map as MapLibreMap, Popup, type MapLayerMouseEvent, type MapMouseEvent } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import './MapLibreGlobe.css'
 import {
   getActiveAlerts,
@@ -35,6 +35,8 @@ import {
   pickNearestStation,
 } from './nwsPointLookup'
 import { nodesCoveringPoint } from '../../data/coverageLookup'
+import { describeNodeSelectionForGlobe } from './nodeSelectionStatus'
+import { subscribeSelection, getSelectionSnapshot } from '../../data/selectionStore'
 
 // Beyond this many zone-only alerts, the overlay collapses the rest behind a "N more" toggle
 // rather than growing unbounded during a high-volume event (#106).
@@ -43,19 +45,28 @@ const ZONE_ONLY_ALERTS_CAP = 5
 const ALERTS_SOURCE_ID = 'nws-alerts'
 const ALERTS_FILL_LAYER_ID = 'nws-alerts-fill'
 const ALERTS_LINE_LAYER_ID = 'nws-alerts-line'
+const ALERTS_FILL_OPACITY = 0.35
+const ALERTS_FILL_OPACITY_SELECTED = 0.6
+const ALERTS_LINE_WIDTH = 1.5
+const ALERTS_LINE_WIDTH_SELECTED = 3
 
 // Parsed once at module scope — graph.json is small and static, so there's no need to
 // re-validate it on every click (#41).
 const graphNodes: ServiceNode[] = parseGraphFile(graphJson).nodes
 
-// Fly-to is out of scope for #38 (spike/globe-maplibre from the #82 engine spike has a
-// reference if a later issue wants it).
 export function MapLibreGlobe() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<MapLibreMap | null>(null)
+  const [mapLoaded, setMapLoaded] = useState(false)
   const [zoneOnlyAlerts, setZoneOnlyAlerts] = useState<NwsAlertCollection['features']>([])
   const [alertsStatus, setAlertsStatus] = useState<'loading' | 'ok' | 'empty' | 'error'>('loading')
   const [alertsErrorMessage, setAlertsErrorMessage] = useState<string | null>(null)
   const [zoneAlertsExpanded, setZoneAlertsExpanded] = useState(false)
+  const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
+  const selectedNode = selection.selectedNodeId
+    ? graphNodes.find((n) => n.id === selection.selectedNodeId)
+    : undefined
+  const selectedNodeStatus = selectedNode ? describeNodeSelectionForGlobe(selectedNode) : null
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -66,11 +77,13 @@ export function MapLibreGlobe() {
       center: US_CENTER,
       zoom: US_ZOOM,
     })
+    mapRef.current = map
 
     // setProjection must run after the style has finished loading, or
     // MapLibre throws "Style is not done loading."
     map.on('load', () => {
       map.setProjection(GLOBE_PROJECTION)
+      setMapLoaded(true)
 
       // Point-click forecast/observation lookup (#39). Registered as a global click handler,
       // not layer-scoped like the alerts click handler below, so it works immediately without
@@ -125,7 +138,7 @@ export function MapLibreGlobe() {
             source: ALERTS_SOURCE_ID,
             paint: {
               'fill-color': alertSeverityColorExpression(),
-              'fill-opacity': 0.35,
+              'fill-opacity': ALERTS_FILL_OPACITY,
             },
           })
           map.addLayer({
@@ -134,7 +147,7 @@ export function MapLibreGlobe() {
             source: ALERTS_SOURCE_ID,
             paint: {
               'line-color': alertSeverityColorExpression(),
-              'line-width': 1.5,
+              'line-width': ALERTS_LINE_WIDTH,
             },
           })
 
@@ -165,8 +178,45 @@ export function MapLibreGlobe() {
         })
     })
 
-    return () => map.remove()
+    return () => {
+      mapRef.current = null
+      map.remove()
+    }
   }, [])
+
+  // Reacts to a graph node selection (#44): flies to the node's coverage, highlights the
+  // alerts layer when the node's live layer is the one being shown, and surfaces a status
+  // overlay explaining why nothing highlights for a not-live node. Gated on mapLoaded since
+  // fitBounds/setPaintProperty/getLayer all require a loaded style.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded) return
+
+    if (map.getLayer(ALERTS_FILL_LAYER_ID)) {
+      const highlighted = selectedNode?.liveLayer ?? false
+      map.setPaintProperty(
+        ALERTS_FILL_LAYER_ID,
+        'fill-opacity',
+        highlighted ? ALERTS_FILL_OPACITY_SELECTED : ALERTS_FILL_OPACITY,
+      )
+      map.setPaintProperty(
+        ALERTS_LINE_LAYER_ID,
+        'line-width',
+        highlighted ? ALERTS_LINE_WIDTH_SELECTED : ALERTS_LINE_WIDTH,
+      )
+    }
+
+    if (!selectedNode) return
+
+    const [west, south, east, north] = describeNodeSelectionForGlobe(selectedNode).bounds
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 60, maxZoom: 8, essential: true },
+    )
+  }, [selectedNode, mapLoaded])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -176,6 +226,12 @@ export function MapLibreGlobe() {
         aria-label="Globe view of NOAA API coverage"
         style={{ width: '100%', height: '100%' }}
       />
+      {selectedNode && selectedNodeStatus && (
+        <div className="node-selection-status" role="status" aria-label="Selected node status">
+          <strong>{selectedNode.name}</strong>
+          <p>{selectedNodeStatus.message}</p>
+        </div>
+      )}
       {alertsStatus === 'error' && (
         <div className="zone-only-alerts" role="status" aria-label="Alerts status">
           {alertsErrorMessage}
