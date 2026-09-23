@@ -5,7 +5,9 @@ import { GraphView } from './GraphView'
 import graphJson from '../../data/graph.json'
 import { buildGraph } from '../../data/buildGraph'
 import { parseGraphFile } from '../../data/graphSchema'
-import { clearSelection, getHighlightedNodeIds, getSelectionSnapshot, selectNode, selectPoint } from '../../data/selectionStore'
+import { clearSelection, getHighlightedNodeIds, getSelectionSnapshot, selectNode, selectPoint, selectTask } from '../../data/selectionStore'
+import { parseTasksFile } from '../../data/taskSchema'
+import tasksJson from '../../data/tasks.json'
 import { THEME_COLORS } from '../../data/themeColors'
 import { EDGE_CLASS } from './graphLayout'
 
@@ -16,6 +18,7 @@ beforeEach(() => {
 afterEach(cleanup)
 
 const expectedGraph = buildGraph(parseGraphFile(graphJson))
+const tasks = parseTasksFile(tasksJson).tasks
 
 describe('GraphView', () => {
   it('renders as a named region with a node per graph node', () => {
@@ -116,6 +119,30 @@ describe('GraphView', () => {
         'graph-node-highlighted',
       )
     }
+  })
+
+  it("highlights a selected task's whole path and draws a connector between consecutive steps (#34)", () => {
+    for (const task of tasks) {
+      clearSelection()
+      selectTask(task.id)
+      const { container, unmount } = render(<GraphView />)
+      const path = task.nodes.map((n) => n.nodeId)
+      const highlighted = [...container.querySelectorAll('.graph-node-highlighted')].map((el) =>
+        el.getAttribute('data-node-id'),
+      )
+      expect(highlighted.sort()).toEqual([...path].sort())
+      const connectors = [...container.querySelectorAll('.graph-path-edge')].map(
+        (el) => `${el.getAttribute('data-source')}>${el.getAttribute('data-target')}`,
+      )
+      expect(connectors).toEqual(path.slice(1).map((id, i) => `${path[i]}>${id}`))
+      unmount()
+    }
+  })
+
+  it('draws no path connectors for a node or point selection', () => {
+    selectNode('nws-api')
+    const { container } = render(<GraphView />)
+    expect(container.querySelectorAll('.graph-path-edge')).toHaveLength(0)
   })
 })
 

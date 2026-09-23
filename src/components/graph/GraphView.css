@@ -35,6 +35,15 @@
   stroke-dasharray: 6 2;
 }
 
+/* Recommended path of the selected "I need…" task (#34): synthetic connectors between
+   consecutive path nodes, not authored graph edges. */
+.graph-path-edge {
+  stroke: var(--color-accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
 .graph-node {
   cursor: pointer;
 }
