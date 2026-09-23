@@ -24,6 +24,7 @@ import {
   describeAlertForPopup,
   describeAlertsFetchOutcome,
   splitAlertsByGeometry,
+  visibleZoneOnlyAlerts,
 } from './nwsAlertsLayer'
 import {
   describePointError,
@@ -34,6 +35,10 @@ import {
   pickNearestStation,
 } from './nwsPointLookup'
 import { nodesCoveringPoint } from '../../data/coverageLookup'
+
+// Beyond this many zone-only alerts, the overlay collapses the rest behind a "N more" toggle
+// rather than growing unbounded during a high-volume event (#106).
+const ZONE_ONLY_ALERTS_CAP = 5
 
 const ALERTS_SOURCE_ID = 'nws-alerts'
 const ALERTS_FILL_LAYER_ID = 'nws-alerts-fill'
@@ -50,6 +55,7 @@ export function MapLibreGlobe() {
   const [zoneOnlyAlerts, setZoneOnlyAlerts] = useState<NwsAlertCollection['features']>([])
   const [alertsStatus, setAlertsStatus] = useState<'loading' | 'ok' | 'empty' | 'error'>('loading')
   const [alertsErrorMessage, setAlertsErrorMessage] = useState<string | null>(null)
+  const [zoneAlertsExpanded, setZoneAlertsExpanded] = useState(false)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -180,18 +186,43 @@ export function MapLibreGlobe() {
           No active alerts.
         </div>
       )}
-      {alertsStatus === 'ok' && zoneOnlyAlerts.length > 0 && (
-        <div className="zone-only-alerts" aria-label="Alerts without a mapped area">
-          <strong>Zone alerts (no map location):</strong>
-          <ul>
-            {zoneOnlyAlerts.map((feature) => (
-              <li key={feature.properties.id}>
-                {feature.properties.event} — {feature.properties.areaDesc}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {alertsStatus === 'ok' && zoneOnlyAlerts.length > 0 && (() => {
+        const { visible, hiddenCount } = visibleZoneOnlyAlerts(
+          zoneOnlyAlerts,
+          ZONE_ONLY_ALERTS_CAP,
+          zoneAlertsExpanded,
+        )
+        return (
+          <div className="zone-only-alerts" aria-label="Alerts without a mapped area">
+            <strong>Zone alerts (no map location):</strong>
+            <ul>
+              {visible.map((feature) => (
+                <li key={feature.properties.id}>
+                  {feature.properties.event} — {feature.properties.areaDesc}
+                </li>
+              ))}
+            </ul>
+            {hiddenCount > 0 && (
+              <button
+                type="button"
+                className="zone-only-alerts-toggle"
+                onClick={() => setZoneAlertsExpanded(true)}
+              >
+                {hiddenCount} more
+              </button>
+            )}
+            {zoneAlertsExpanded && zoneOnlyAlerts.length > ZONE_ONLY_ALERTS_CAP && (
+              <button
+                type="button"
+                className="zone-only-alerts-toggle"
+                onClick={() => setZoneAlertsExpanded(false)}
+              >
+                Show less
+              </button>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }

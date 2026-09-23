@@ -8,6 +8,7 @@ import {
   describeAlertForPopup,
   describeAlertsFetchOutcome,
   splitAlertsByGeometry,
+  visibleZoneOnlyAlerts,
 } from './nwsAlertsLayer'
 
 describe('alertSeverityColorExpression', () => {
@@ -64,6 +65,38 @@ describe('describeAlertForPopup', () => {
     expect(popup.areaDesc).toBe('King County, WA')
     expect(popup.effective).toBe(new Date(feature.properties.effective).toLocaleString())
     expect(popup.expires).toBe(new Date(feature.properties.expires).toLocaleString())
+  })
+})
+
+describe('visibleZoneOnlyAlerts', () => {
+  const baseProperties = makeAlertFeature().properties as Record<string, unknown>
+  const makeFeatures = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      parseAlertCollection(
+        makeAlertCollection([makeAlertFeature({ properties: { ...baseProperties, id: `zone-${i}` } })]),
+      ).features[0]!,
+    )
+
+  it('returns the full list unchanged when under the cap', () => {
+    const features = makeFeatures(3)
+    const result = visibleZoneOnlyAlerts(features, 5, false)
+    expect(result.visible).toEqual(features)
+    expect(result.hiddenCount).toBe(0)
+  })
+
+  it('caps the list and reports the hidden count when collapsed and over the cap', () => {
+    const features = makeFeatures(8)
+    const result = visibleZoneOnlyAlerts(features, 5, false)
+    expect(result.visible).toHaveLength(5)
+    expect(result.visible).toEqual(features.slice(0, 5))
+    expect(result.hiddenCount).toBe(3)
+  })
+
+  it('returns the full list with no hidden count when expanded', () => {
+    const features = makeFeatures(8)
+    const result = visibleZoneOnlyAlerts(features, 5, true)
+    expect(result.visible).toEqual(features)
+    expect(result.hiddenCount).toBe(0)
   })
 })
 
