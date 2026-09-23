@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { GraphEdge } from '../../data/graphSchema'
-import { createGraphSimulation, EDGE_CLASS, EDGE_TYPE_LABELS, nodeRadius, type SimEdge, type SimNode } from './graphLayout'
+import {
+  computeFitTransform,
+  createGraphSimulation,
+  EDGE_CLASS,
+  EDGE_TYPE_LABELS,
+  nodeRadius,
+  type SimEdge,
+  type SimNode,
+} from './graphLayout'
 
 const serviceNode = (id: string): SimNode => ({
   id,
@@ -79,5 +87,43 @@ describe('createGraphSimulation', () => {
     const simulation = createGraphSimulation([], [], 400, 300)
     expect(simulation.nodes()).toHaveLength(0)
     simulation.stop()
+  })
+})
+
+describe('computeFitTransform', () => {
+  it('returns null for no positions', () => {
+    expect(computeFitTransform([], 800, 600)).toBeNull()
+  })
+
+  it('centers a single position in the viewport without blowing up scale', () => {
+    const fit = computeFitTransform([{ x: 100, y: 100 }], 800, 600)
+    expect(fit).not.toBeNull()
+    expect(fit?.k).toBeLessThanOrEqual(2)
+    expect(fit?.k).toBeGreaterThan(0)
+    // x/y should place (100,100) at the viewport center once scaled: x + k*100 ≈ width/2
+    expect((fit?.x ?? 0) + (fit?.k ?? 0) * 100).toBeCloseTo(400, 0)
+    expect((fit?.y ?? 0) + (fit?.k ?? 0) * 100).toBeCloseTo(300, 0)
+  })
+
+  it('centers the bounding box of scattered positions', () => {
+    const positions = [
+      { x: 0, y: 0 },
+      { x: 200, y: 100 },
+    ]
+    const fit = computeFitTransform(positions, 800, 600)
+    expect(fit).not.toBeNull()
+    const centerX = (fit?.x ?? 0) + (fit?.k ?? 0) * 100
+    const centerY = (fit?.y ?? 0) + (fit?.k ?? 0) * 50
+    expect(centerX).toBeCloseTo(400, 0)
+    expect(centerY).toBeCloseTo(300, 0)
+  })
+
+  it('clamps scale to the given maxScale for a tightly clustered bounding box', () => {
+    const positions = [
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+    ]
+    const fit = computeFitTransform(positions, 800, 600, 60, 1.5)
+    expect(fit?.k).toBe(1.5)
   })
 })

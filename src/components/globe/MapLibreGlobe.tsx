@@ -36,7 +36,7 @@ import {
 } from './nwsPointLookup'
 import { nodesCoveringPoint } from '../../data/coverageLookup'
 import { describeNodeSelectionForGlobe } from './nodeSelectionStatus'
-import { subscribeSelection, getSelectionSnapshot } from '../../data/selectionStore'
+import { subscribeSelection, getSelectionSnapshot, selectPoint } from '../../data/selectionStore'
 
 // Beyond this many zone-only alerts, the overlay collapses the rest behind a "N more" toggle
 // rather than growing unbounded during a high-volume event (#106).
@@ -104,6 +104,8 @@ export function MapLibreGlobe() {
         const coverageHtml = formatCoveragePopupHtml(
           describeCoverageForPopup(nodesCoveringPoint(graphNodes, [lng, lat])),
         )
+        // Highlights the covering graph node(s) if/when the Graph tab is open (#45).
+        selectPoint([lng, lat])
 
         getPoint(lat, lng)
           .then((point) =>
@@ -158,6 +160,9 @@ export function MapLibreGlobe() {
             const { event, areaDesc, effective, expires } = describeAlertForPopup(
               properties as Parameters<typeof describeAlertForPopup>[0],
             )
+            // e.lngLat is guaranteed inside the clicked alert polygon (queryRenderedFeatures
+            // matched it), so it's a valid representative point for coverage lookup (#45).
+            selectPoint([e.lngLat.lng, e.lngLat.lat])
             new Popup()
               .setLngLat(e.lngLat)
               .setHTML(
