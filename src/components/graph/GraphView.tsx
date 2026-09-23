@@ -19,7 +19,9 @@ import graphJson from '../../data/graph.json'
 import { buildGraph } from '../../data/buildGraph'
 import { parseGraphFile } from '../../data/graphSchema'
 import { selectNode } from '../../data/selectionStore'
-import { createGraphSimulation, nodeRadius, type SimEdge, type SimNode } from './graphLayout'
+import { THEME_COLORS } from '../../data/themeColors'
+import { createGraphSimulation, EDGE_CLASS, nodeRadius, type SimEdge, type SimNode } from './graphLayout'
+import { GraphLegend } from './GraphLegend'
 
 const graph = buildGraph(parseGraphFile(graphJson))
 
@@ -125,7 +127,8 @@ export function GraphView() {
             {graph.edges.map((edge, i) => (
               <line
                 key={`${edge.source}-${edge.target}-${edge.type}`}
-                className="graph-edge"
+                className={`graph-edge ${EDGE_CLASS[edge.type]}`}
+                data-edge-type={edge.type}
                 ref={(el) => {
                   edgeElsRef.current[i] = el as SVGLineElement
                 }}
@@ -146,7 +149,7 @@ export function GraphView() {
                   else nodeElsRef.current.delete(node.id)
                 }}
               >
-                <circle r={nodeRadius(node)} />
+                <circle r={nodeRadius(node)} style={{ fill: THEME_COLORS[node.theme] }} />
                 <text x={nodeRadius(node) + 4} y={4}>
                   {node.name}
                 </text>
@@ -155,6 +158,7 @@ export function GraphView() {
           </g>
         </g>
       </svg>
+      <GraphLegend />
     </section>
   )
 }
