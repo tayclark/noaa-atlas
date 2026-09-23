@@ -3,15 +3,17 @@
 
 import type { RequestLogEntry } from './requestLog'
 
+type CopyableRequest = Pick<RequestLogEntry, 'url' | 'requestHeaders'>
+
 function headerFlags(headers: Record<string, string>): string[] {
   return Object.entries(headers).map(([key, value]) => `-H '${key}: ${value}'`)
 }
 
-export function toCurlCommand(entry: RequestLogEntry): string {
+export function toCurlCommand(entry: CopyableRequest): string {
   return ['curl', ...headerFlags(entry.requestHeaders), `'${entry.url}'`].join(' ')
 }
 
-export function toFetchSnippet(entry: RequestLogEntry): string {
+export function toFetchSnippet(entry: CopyableRequest): string {
   const headerEntries = Object.entries(entry.requestHeaders)
     .map(([key, value]) => `    ${JSON.stringify(key)}: ${JSON.stringify(value)},`)
     .join('\n')

@@ -78,6 +78,13 @@ export const serviceNodeSchema = z
     freshness: z.strictObject({ cadence: z.enum(CADENCES), note: nonEmpty.optional() }),
     docUrl: z.url(),
     lastVerified: z.iso.date(),
+    sample: z
+      .strictObject({
+        url: z.url(),
+        headers: z.record(z.string(), z.string()).optional(),
+        responseExcerpt: nonEmpty,
+      })
+      .optional(),
     liveLayer: z.boolean(),
     notLiveReason: nonEmpty.optional(),
     tags: z.array(nonEmpty).default([]),

@@ -99,6 +99,13 @@
       },
       "docUrl": "https://www.weather.gov/documentation/services-web-api",
       "lastVerified": "2026-09-21",
+      "sample": {
+        "url": "https://api.weather.gov/points/39.7456,-97.0892",
+        "headers": {
+          "Accept": "application/geo+json"
+        },
+        "responseExcerpt": "{\n  \"type\": \"Feature\",\n  \"geometry\": { \"type\": \"Point\", \"coordinates\": [-97.0892, 39.7456] },\n  \"properties\": {\n    \"gridId\": \"TOP\",\n    \"gridX\": 32,\n    \"gridY\": 81,\n    \"forecast\": \"https://api.weather.gov/gridpoints/TOP/32,81/forecast\",\n    \"forecastHourly\": \"https://api.weather.gov/gridpoints/TOP/32,81/forecast/hourly\",\n    \"timeZone\": \"America/Chicago\",\n    \"relativeLocation\": { \"properties\": { \"city\": \"Linn\", \"state\": \"KS\" } }\n  }\n}\n(abbreviated)"
+      },
       "liveLayer": true,
       "tags": [
         "forecast",
@@ -200,6 +207,13 @@
       },
       "docUrl": "https://www.weather.gov/gis/cloudgiswebservices",
       "lastVerified": "2026-09-21",
+      "sample": {
+        "url": "https://mapservices.weather.noaa.gov/vector/rest/services?f=json",
+        "headers": {
+          "Accept": "application/json"
+        },
+        "responseExcerpt": "{\n  \"currentVersion\": 11.3,\n  \"folders\": [\"aviation\", \"fire_weather\", \"hazards\", \"obs\", \"outlooks\", \"precip\", \"Utilities\"],\n  \"services\": []\n}"
+      },
       "liveLayer": false,
       "notLiveReason": "Deferred: outside the v1 live layers (NWS alerts and point forecast/observations). CORS works, so SPC, WPC and CPC layers here are the likeliest candidates for later map layers.",
       "tags": [
@@ -364,6 +378,13 @@
       },
       "docUrl": "https://www.spc.noaa.gov/gis/",
       "lastVerified": "2026-09-21",
+      "sample": {
+        "url": "https://www.spc.noaa.gov/products/outlook/day1otlk_cat.nolyr.geojson",
+        "headers": {
+          "Accept": "application/geo+json"
+        },
+        "responseExcerpt": "{\n  \"type\": \"FeatureCollection\",\n  \"features\": [\n    {\n      \"type\": \"Feature\",\n      \"properties\": {\n        \"VALID_ISO\": \"2026-09-23T16:30:00+00:00\",\n        \"EXPIRE_ISO\": \"2026-09-24T12:00:00+00:00\",\n        \"LABEL\": \"TSTM\",\n        \"LABEL2\": \"General Thunderstorms Risk\",\n        \"stroke\": \"#55BB55\",\n        \"fill\": \"#C1E9C1\"\n      },\n      \"geometry\": { \"type\": \"MultiPolygon\", \"coordinates\": [ ... ] }\n    }\n  ]\n}\n(abbreviated)"
+      },
       "liveLayer": false,
       "notLiveReason": "Deferred: v1 live layers are limited to NWS alerts and NWS point forecast/observations. The GeoJSON feeds send access-control-allow-origin: * (checked 2026-09-21), so they are a candidate for a later layer.",
       "tags": [
@@ -737,6 +758,10 @@
       },
       "docUrl": "https://www.wpc.ncep.noaa.gov/kml/kmlproducts.php",
       "lastVerified": "2026-09-21",
+      "sample": {
+        "url": "https://www.wpc.ncep.noaa.gov/kml/",
+        "responseExcerpt": "HTML index page listing downloadable files, for example:\n  artcc_boundaries.kml\n  cave_artcc.kmz\n  cave_statebounds.kmz\n  modified_state_bnds.kml\n(download only; no JSON API)"
+      },
       "liveLayer": false,
       "notLiveReason": "Deferred: this feed is KML and shapefile downloads. The same WPC products are also served as browser-callable ArcGIS REST layers, listed under nws-gis-portal.",
       "tags": [
@@ -783,6 +808,10 @@
       },
       "docUrl": "https://www.cpc.ncep.noaa.gov/products/GIS/GIS_DATA/",
       "lastVerified": "2026-09-21",
+      "sample": {
+        "url": "https://www.cpc.ncep.noaa.gov/products/GIS/GIS_DATA/",
+        "responseExcerpt": "HTML page linking to FTP directories of shapefiles and GeoTIFFs, for example:\n  https://ftp.cpc.ncep.noaa.gov/GIS/USDM_Products/precip/\n  https://ftp.cpc.ncep.noaa.gov/GIS/GRADS_GIS/GeoTIFF/TEMP/\n(FTP-hosted; not fetchable from a browser)"
+      },
       "liveLayer": false,
       "notLiveReason": "These files are served over FTP as shapefiles and GeoTIFFs, which a browser cannot fetch directly. CPC outlooks are also served as ArcGIS REST layers, listed under nws-gis-portal.",
       "tags": [
