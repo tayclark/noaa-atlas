@@ -1,4 +1,4 @@
-import { Map as MapLibreMap, Popup, type MapLayerMouseEvent, type MapMouseEvent } from 'maplibre-gl'
+import { GeolocateControl, Map as MapLibreMap, Popup, type MapLayerMouseEvent, type MapMouseEvent } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import './MapLibreGlobe.css'
@@ -13,6 +13,7 @@ import graphJson from '../../data/graph.json'
 import { parseGraphFile, type ServiceNode } from '../../data/graphSchema'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
 import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePopup'
+import { describeGeolocationError, GEOLOCATE_MAX_ZOOM, GEOLOCATE_POSITION_OPTIONS } from './geolocation'
 import {
   GLOBE_PROJECTION,
   GLOBE_STYLE_URL,
@@ -54,6 +55,37 @@ const ALERTS_LINE_WIDTH_SELECTED = 3
 // re-validate it on every click (#41).
 const graphNodes: ServiceNode[] = parseGraphFile(graphJson).nodes
 
+/**
+ * Point forecast/observation lookup (#39), shared by a globe click and the locate button. Coverage
+ * is purely local (no network call), so it's computed up front and shown whether or not the NWS
+ * lookup succeeds (#41).
+ */
+function showPointLookup(map: MapLibreMap, lng: number, lat: number) {
+  const popup = new Popup().setLngLat([lng, lat]).setHTML(formatPointLoadingHtml()).addTo(map)
+  const coverageHtml = formatCoveragePopupHtml(describeCoverageForPopup(nodesCoveringPoint(graphNodes, [lng, lat])))
+  // Highlights the covering graph node(s) if/when the Graph tab is open (#45).
+  selectPoint([lng, lat])
+
+  getPoint(lat, lng)
+    .then((point) =>
+      Promise.all([
+        getGridpointForecast(point.properties.gridId, point.properties.gridX, point.properties.gridY),
+        getStations(point.properties.gridId, point.properties.gridX, point.properties.gridY),
+      ]).then(([forecast, stations]) => {
+        const nearest = pickNearestStation(stations, lat, lng)
+        if (!nearest) throw new Error('No observation stations found near this location')
+        return getLatestObservation(nearest.properties.stationIdentifier).then((observation) => {
+          const period = forecast.properties.periods[0]
+          if (!period) throw new Error('No forecast periods returned for this location')
+          popup.setHTML(`${formatPointPopupHtml(describePointForPopup(period, observation))}<hr/>${coverageHtml}`)
+        })
+      }),
+    )
+    .catch((err: unknown) => {
+      popup.setHTML(`${formatPointErrorHtml(describePointError(err))}<hr/>${coverageHtml}`)
+    })
+}
+
 export function MapLibreGlobe() {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
@@ -62,6 +94,9 @@ export function MapLibreGlobe() {
   const [alertsStatus, setAlertsStatus] = useState<'loading' | 'ok' | 'empty' | 'error'>('loading')
   const [alertsErrorMessage, setAlertsErrorMessage] = useState<string | null>(null)
   const [zoneAlertsExpanded, setZoneAlertsExpanded] = useState(false)
+  // Collapsed to its title bar so it covers less of the globe.
+  const [zoneAlertsCollapsed, setZoneAlertsCollapsed] = useState(false)
+  const [geolocationError, setGeolocationError] = useState<string | null>(null)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const selectedNode = selection.selectedNodeId
     ? graphNodes.find((n) => n.id === selection.selectedNodeId)
@@ -79,6 +114,18 @@ export function MapLibreGlobe() {
     })
     mapRef.current = map
 
+    const geolocate = new GeolocateControl({
+      positionOptions: GEOLOCATE_POSITION_OPTIONS,
+      fitBoundsOptions: { maxZoom: GEOLOCATE_MAX_ZOOM },
+    })
+    map.addControl(geolocate, 'top-right')
+    // "Locate me" (the navigation-arrow button): the same lookup as a click, at the user's position.
+    geolocate.on('geolocate', (e) => {
+      setGeolocationError(null)
+      showPointLookup(map, e.coords.longitude, e.coords.latitude)
+    })
+    geolocate.on('error', (e) => setGeolocationError(describeGeolocationError(e.code)))
+
     // setProjection must run after the style has finished loading, or
     // MapLibre throws "Style is not done loading."
     map.on('load', () => {
@@ -95,36 +142,7 @@ export function MapLibreGlobe() {
           ? map.queryRenderedFeatures(e.point, { layers: [ALERTS_FILL_LAYER_ID] })
           : []
         if (alertFeatures.length > 0) return
-
-        const { lat, lng } = e.lngLat
-        const popup = new Popup().setLngLat(e.lngLat).setHTML(formatPointLoadingHtml()).addTo(map)
-
-        // Coverage is purely local (no network call), so it's computed once up front and shown
-        // regardless of whether the NWS forecast/observation lookup below succeeds (#41).
-        const coverageHtml = formatCoveragePopupHtml(
-          describeCoverageForPopup(nodesCoveringPoint(graphNodes, [lng, lat])),
-        )
-        // Highlights the covering graph node(s) if/when the Graph tab is open (#45).
-        selectPoint([lng, lat])
-
-        getPoint(lat, lng)
-          .then((point) =>
-            Promise.all([
-              getGridpointForecast(point.properties.gridId, point.properties.gridX, point.properties.gridY),
-              getStations(point.properties.gridId, point.properties.gridX, point.properties.gridY),
-            ]).then(([forecast, stations]) => {
-              const nearest = pickNearestStation(stations, lat, lng)
-              if (!nearest) throw new Error('No observation stations found near this location')
-              return getLatestObservation(nearest.properties.stationIdentifier).then((observation) => {
-                const period = forecast.properties.periods[0]
-                if (!period) throw new Error('No forecast periods returned for this location')
-                popup.setHTML(`${formatPointPopupHtml(describePointForPopup(period, observation))}<hr/>${coverageHtml}`)
-              })
-            }),
-          )
-          .catch((err: unknown) => {
-            popup.setHTML(`${formatPointErrorHtml(describePointError(err))}<hr/>${coverageHtml}`)
-          })
+        showPointLookup(map, e.lngLat.lng, e.lngLat.lat)
       })
 
       getActiveAlerts()
@@ -237,6 +255,14 @@ export function MapLibreGlobe() {
           <p>{selectedNodeStatus.message}</p>
         </div>
       )}
+      {geolocationError && (
+        <div className="geolocation-status" role="status" aria-label="Location status">
+          <p>{geolocationError}</p>
+          <button type="button" aria-label="Dismiss" onClick={() => setGeolocationError(null)}>
+            ×
+          </button>
+        </div>
+      )}
       {alertsStatus === 'error' && (
         <div className="zone-only-alerts" role="status" aria-label="Alerts status">
           {alertsErrorMessage}
@@ -255,15 +281,28 @@ export function MapLibreGlobe() {
         )
         return (
           <div className="zone-only-alerts" aria-label="Alerts without a mapped area">
-            <strong>Zone alerts (no map location):</strong>
-            <ul>
-              {visible.map((feature) => (
-                <li key={feature.properties.id}>
-                  {feature.properties.event} — {feature.properties.areaDesc}
-                </li>
-              ))}
-            </ul>
-            {hiddenCount > 0 && (
+            <div className="zone-only-alerts-header">
+              <strong>Zone alerts (no map location): {zoneOnlyAlerts.length}</strong>
+              <button
+                type="button"
+                className="zone-only-alerts-collapse"
+                aria-expanded={!zoneAlertsCollapsed}
+                aria-label={zoneAlertsCollapsed ? 'Expand zone alerts' : 'Collapse zone alerts'}
+                onClick={() => setZoneAlertsCollapsed((c) => !c)}
+              >
+                {zoneAlertsCollapsed ? '▸' : '▾'}
+              </button>
+            </div>
+            {!zoneAlertsCollapsed && (
+              <ul>
+                {visible.map((feature) => (
+                  <li key={feature.properties.id}>
+                    {feature.properties.event} — {feature.properties.areaDesc}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {!zoneAlertsCollapsed && hiddenCount > 0 && (
               <button
                 type="button"
                 className="zone-only-alerts-toggle"
@@ -272,7 +311,7 @@ export function MapLibreGlobe() {
                 {hiddenCount} more
               </button>
             )}
-            {zoneAlertsExpanded && zoneOnlyAlerts.length > ZONE_ONLY_ALERTS_CAP && (
+            {!zoneAlertsCollapsed && zoneAlertsExpanded && zoneOnlyAlerts.length > ZONE_ONLY_ALERTS_CAP && (
               <button
                 type="button"
                 className="zone-only-alerts-toggle"

@@ -5,7 +5,7 @@
 // from the deterministic mocked suite for local dev convenience (CI runs both).
 
 import { expect, test } from '@playwright/test'
-import { mappableAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
+import { mappableAlertsFixture, mockAlerts, zoneOnlyAlertsFixture } from './fixtures/nwsAlerts'
 
 const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
 
@@ -29,6 +29,26 @@ test('renders the NWS alerts layer from a mocked response', async ({ page }) => 
   await expect(page.getByText('Flood Warning')).toBeVisible()
   await expect(page.getByText('Test County')).toBeVisible()
   await expect(page.locator('.zone-only-alerts', { hasText: 'No active alerts.' })).toHaveCount(0)
+})
+
+test('the zone-only alerts overlay collapses to its title bar', async ({ page }) => {
+  await mockAlerts(page, zoneOnlyAlertsFixture(7))
+  await page.goto('/')
+
+  const overlay = page.getByLabel('Alerts without a mapped area')
+  await expect(overlay.getByText('Zone alerts (no map location): 7')).toBeVisible()
+  await expect(overlay.getByText('Winter Storm Watch — Zone 0')).toBeVisible()
+  await expect(overlay.getByRole('button', { name: '2 more' })).toBeVisible()
+
+  await overlay.getByRole('button', { name: 'Collapse zone alerts' }).click()
+  await expect(overlay.getByRole('listitem')).toHaveCount(0)
+  await expect(overlay.getByRole('button', { name: '2 more' })).toHaveCount(0)
+  await expect(overlay.getByText('Zone alerts (no map location): 7')).toBeVisible()
+
+  const expand = overlay.getByRole('button', { name: 'Expand zone alerts' })
+  await expect(expand).toHaveAttribute('aria-expanded', 'false')
+  await expand.click()
+  await expect(overlay.getByRole('listitem')).toHaveCount(5)
 })
 
 test('renders live NWS alerts @live', async ({ page }) => {
