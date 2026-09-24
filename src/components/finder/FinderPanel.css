@@ -4,6 +4,15 @@
   font-size: var(--font-size-sm);
 }
 
+.finder-heading {
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
 .finder-task-list {
   list-style: none;
   margin: 0;
@@ -77,4 +86,29 @@
 
 .finder-node-why {
   color: var(--color-text-muted);
+}
+
+/* Empty state (#148): what the app is, until a task is picked. */
+.finder-intro {
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-muted);
+}
+
+.finder-intro-lead {
+  margin: 0 0 var(--space-1);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.finder-intro ul {
+  margin: 0;
+  padding-left: 1.1em;
+}
+
+.finder-intro li + li {
+  margin-top: 2px;
+}
+
+.finder-intro strong {
+  color: var(--color-text);
 }
