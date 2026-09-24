@@ -1,6 +1,6 @@
-import { GeolocateControl, Map as MapLibreMap, Popup, type MapLayerMouseEvent, type MapMouseEvent } from 'maplibre-gl'
+import { GeolocateControl, Map as MapLibreMap, Popup, type GeoJSONSource, type MapLayerMouseEvent, type MapMouseEvent } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import './MapLibreGlobe.css'
 import {
   getActiveAlerts,
@@ -36,7 +36,9 @@ import {
   pickNearestStation,
 } from './nwsPointLookup'
 import { nodesCoveringPoint } from '../../data/coverageLookup'
-import { describeNodeSelectionForGlobe } from './nodeSelectionStatus'
+import { parseTasksFile } from '../../data/taskSchema'
+import tasksJson from '../../data/tasks.json'
+import { describeSelectionForGlobe, type GlobeViewContext } from './selectionGlobeView'
 import { subscribeSelection, getSelectionSnapshot, selectPoint } from '../../data/selectionStore'
 
 // Beyond this many zone-only alerts, the overlay collapses the rest behind a "N more" toggle
@@ -51,9 +53,21 @@ const ALERTS_FILL_OPACITY_SELECTED = 0.6
 const ALERTS_LINE_WIDTH = 1.5
 const ALERTS_LINE_WIDTH_SELECTED = 3
 
+// The selection's coverage footprint (#149), drawn under the alerts in each service's theme colour.
+const COVERAGE_SOURCE_ID = 'selected-coverage'
+const COVERAGE_FILL_LAYER_ID = 'selected-coverage-fill'
+const COVERAGE_LINE_LAYER_ID = 'selected-coverage-line'
+// Worldwide coverage tints the whole globe, so the default view is kept rather than framing the world.
+const GLOBAL_VIEW_ZOOM = 1.5
+
 // Parsed once at module scope — graph.json is small and static, so there's no need to
 // re-validate it on every click (#41).
 const graphNodes: ServiceNode[] = parseGraphFile(graphJson).nodes
+const globeViewContext: GlobeViewContext = {
+  nodes: graphNodes,
+  tasks: parseTasksFile(tasksJson).tasks,
+  nodesAtPoint: (point) => nodesCoveringPoint(graphNodes, point),
+}
 
 /**
  * Point forecast/observation lookup (#39), shared by a globe click and the locate button. Coverage
@@ -98,10 +112,7 @@ export function MapLibreGlobe() {
   const [zoneAlertsCollapsed, setZoneAlertsCollapsed] = useState(false)
   const [geolocationError, setGeolocationError] = useState<string | null>(null)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
-  const selectedNode = selection.selectedNodeId
-    ? graphNodes.find((n) => n.id === selection.selectedNodeId)
-    : undefined
-  const selectedNodeStatus = selectedNode ? describeNodeSelectionForGlobe(selectedNode) : null
+  const view = useMemo(() => describeSelectionForGlobe(selection, globeViewContext), [selection])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -130,6 +141,19 @@ export function MapLibreGlobe() {
     // MapLibre throws "Style is not done loading."
     map.on('load', () => {
       map.setProjection(GLOBE_PROJECTION)
+      map.addSource(COVERAGE_SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      map.addLayer({
+        id: COVERAGE_FILL_LAYER_ID,
+        type: 'fill',
+        source: COVERAGE_SOURCE_ID,
+        paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.14 },
+      })
+      map.addLayer({
+        id: COVERAGE_LINE_LAYER_ID,
+        type: 'line',
+        source: COVERAGE_SOURCE_ID,
+        paint: { 'line-color': ['get', 'color'], 'line-width': 1.5 },
+      })
       setMapLoaded(true)
 
       // Point-click forecast/observation lookup (#39). Registered as a global click handler,
@@ -207,39 +231,42 @@ export function MapLibreGlobe() {
     }
   }, [])
 
-  // Reacts to a graph node selection (#44): flies to the node's coverage, highlights the
-  // alerts layer when the node's live layer is the one being shown, and surfaces a status
-  // overlay explaining why nothing highlights for a not-live node. Gated on mapLoaded since
-  // fitBounds/setPaintProperty/getLayer all require a loaded style.
+  // Reacts to the selection (#44, #149): draws its coverage footprint, flies to it, and
+  // emphasises the alerts layer when a selected service's live layer is the one shown. Gated on
+  // mapLoaded since the source, fitBounds and setPaintProperty all require a loaded style.
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded) return
 
+    map.getSource<GeoJSONSource>(COVERAGE_SOURCE_ID)?.setData(view.footprint)
+
     if (map.getLayer(ALERTS_FILL_LAYER_ID)) {
-      const highlighted = selectedNode?.liveLayer ?? false
       map.setPaintProperty(
         ALERTS_FILL_LAYER_ID,
         'fill-opacity',
-        highlighted ? ALERTS_FILL_OPACITY_SELECTED : ALERTS_FILL_OPACITY,
+        view.liveHighlighted ? ALERTS_FILL_OPACITY_SELECTED : ALERTS_FILL_OPACITY,
       )
       map.setPaintProperty(
         ALERTS_LINE_LAYER_ID,
         'line-width',
-        highlighted ? ALERTS_LINE_WIDTH_SELECTED : ALERTS_LINE_WIDTH,
+        view.liveHighlighted ? ALERTS_LINE_WIDTH_SELECTED : ALERTS_LINE_WIDTH,
       )
     }
 
-    if (!selectedNode) return
-
-    const [west, south, east, north] = describeNodeSelectionForGlobe(selectedNode).bounds
-    map.fitBounds(
-      [
-        [west, south],
-        [east, north],
-      ],
-      { padding: 60, maxZoom: 8, essential: true },
-    )
-  }, [selectedNode, mapLoaded])
+    if (view.flyTarget?.kind === 'global') {
+      map.flyTo({ center: US_CENTER, zoom: GLOBAL_VIEW_ZOOM, essential: true })
+    } else if (view.flyTarget) {
+      // east may exceed 180 when the coverage crosses the antimeridian; MapLibre accepts that.
+      const [west, south, east, north] = view.flyTarget.bounds
+      map.fitBounds(
+        [
+          [west, south],
+          [east, north],
+        ],
+        { padding: 60, maxZoom: 6, essential: true },
+      )
+    }
+  }, [view, mapLoaded])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -247,12 +274,20 @@ export function MapLibreGlobe() {
         ref={containerRef}
         role="img"
         aria-label="Globe view of NOAA API coverage"
+        data-coverage-features={view.footprint.features.length}
         style={{ width: '100%', height: '100%' }}
       />
-      {selectedNode && selectedNodeStatus && (
-        <div className="node-selection-status" role="status" aria-label="Selected node status">
-          <strong>{selectedNode.name}</strong>
-          <p>{selectedNodeStatus.message}</p>
+      {view.card && (
+        <div className="node-selection-status" role="status" aria-label="Selection status">
+          <div className="node-selection-status-title">
+            {view.card.colors.map((color) => (
+              <span key={color} className="node-selection-status-swatch" style={{ background: color }} aria-hidden="true" />
+            ))}
+            <strong>{view.card.title}</strong>
+          </div>
+          {view.card.lines.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
         </div>
       )}
       {geolocationError && (

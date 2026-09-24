@@ -75,7 +75,12 @@ A 3D globe (MapLibre GL, OpenFreeMap dark basemap) that opens on the continental
 - **Active alerts layer.** Current NWS alerts are drawn as polygons coloured by severity (Extreme, Severe, Moderate, Minor, Unknown). Click a polygon for the event, affected area and effective/expiry times. Alerts that have no geometry (zone-only) cannot be drawn, so they are listed in an overlay instead, five at a time with a "N more" toggle. The overlay's header shows the count and can collapse the overlay to its title bar. If the fetch fails or nothing is active, the overlay says so.
 - **Click anywhere for a point lookup.** A popup shows the current forecast period and the nearest station's latest observation (temperature normalised to Fahrenheit, wind, conditions and observation time), followed by **APIs covering this point**: every service in the graph whose coverage contains the spot, each marked live or "available, not live yet". Errors (rate limiting, 403s, unexpected responses) are reported in the popup rather than failing silently.
 - **Locate me.** The navigation-arrow button (top right) asks the browser for your precise location (GPS where the device has it), flies there, marks the spot with an accuracy circle and runs the same point lookup. If location access is blocked or times out, a note says why.
-- **Linked selection.** Selecting a graph node flies the globe to that service's coverage and shows a status card: "Live layer highlighted below." (and the alerts layer is emphasised) for live nodes, otherwise the reason it is not on the map yet. Going the other way, clicking the globe (or an alert polygon) selects that point and highlights every graph node that covers it.
+- **Linked selection.** Selecting something in the graph or finder outlines its coverage on the globe in its theme colour and flies there:
+  - a service draws its own coverage; a status card says so, and either that its live layer is highlighted (the alerts layer is emphasised) or why it isn't on the map yet;
+  - a theme hub draws the coverage of all its services, and a task draws every API on its path;
+  - coverage that spans the antimeridian (Alaska's Aleutians, Guam) is framed across the dateline, and worldwide coverage tints the whole globe while the view stays on the US.
+
+  Going the other way, clicking the globe (or an alert polygon) selects that point, highlights every graph node that covers it, and the card says how many there are.
 
 Selection is a single shared state (a node, a globe point, or a task at any one time), so the finder, graph, detail panel and globe always agree.
 
