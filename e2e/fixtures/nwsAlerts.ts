@@ -37,10 +37,26 @@ export function mappableAlertsFixture() {
   }
 }
 
+/** `count` zone-only alerts (null geometry), which the globe lists in an overlay instead of drawing. */
+export function zoneOnlyAlertsFixture(count: number) {
+  const base = mappableAlertsFixture().features[0]!
+  return {
+    type: 'FeatureCollection' as const,
+    features: Array.from({ length: count }, (_, i) => ({
+      ...base,
+      properties: { ...base.properties, id: `e2e-zone-alert-${i}`, event: 'Winter Storm Watch', areaDesc: `Zone ${i}` },
+      geometry: null,
+    })),
+  }
+}
+
 export function emptyAlertsFixture() {
   return { type: 'FeatureCollection' as const, features: [] }
 }
 
-export async function mockAlerts(page: Page, fixture: ReturnType<typeof mappableAlertsFixture> | ReturnType<typeof emptyAlertsFixture>) {
+export async function mockAlerts(
+  page: Page,
+  fixture: ReturnType<typeof mappableAlertsFixture> | ReturnType<typeof zoneOnlyAlertsFixture> | ReturnType<typeof emptyAlertsFixture>,
+) {
   await page.route('**/alerts/active', (route) => route.fulfill({ json: fixture }))
 }

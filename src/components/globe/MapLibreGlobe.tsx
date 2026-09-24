@@ -62,6 +62,8 @@ export function MapLibreGlobe() {
   const [alertsStatus, setAlertsStatus] = useState<'loading' | 'ok' | 'empty' | 'error'>('loading')
   const [alertsErrorMessage, setAlertsErrorMessage] = useState<string | null>(null)
   const [zoneAlertsExpanded, setZoneAlertsExpanded] = useState(false)
+  // Collapsed to its title bar so it covers less of the globe.
+  const [zoneAlertsCollapsed, setZoneAlertsCollapsed] = useState(false)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const selectedNode = selection.selectedNodeId
     ? graphNodes.find((n) => n.id === selection.selectedNodeId)
@@ -255,15 +257,28 @@ export function MapLibreGlobe() {
         )
         return (
           <div className="zone-only-alerts" aria-label="Alerts without a mapped area">
-            <strong>Zone alerts (no map location):</strong>
-            <ul>
-              {visible.map((feature) => (
-                <li key={feature.properties.id}>
-                  {feature.properties.event} — {feature.properties.areaDesc}
-                </li>
-              ))}
-            </ul>
-            {hiddenCount > 0 && (
+            <div className="zone-only-alerts-header">
+              <strong>Zone alerts (no map location): {zoneOnlyAlerts.length}</strong>
+              <button
+                type="button"
+                className="zone-only-alerts-collapse"
+                aria-expanded={!zoneAlertsCollapsed}
+                aria-label={zoneAlertsCollapsed ? 'Expand zone alerts' : 'Collapse zone alerts'}
+                onClick={() => setZoneAlertsCollapsed((c) => !c)}
+              >
+                {zoneAlertsCollapsed ? '▸' : '▾'}
+              </button>
+            </div>
+            {!zoneAlertsCollapsed && (
+              <ul>
+                {visible.map((feature) => (
+                  <li key={feature.properties.id}>
+                    {feature.properties.event} — {feature.properties.areaDesc}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {!zoneAlertsCollapsed && hiddenCount > 0 && (
               <button
                 type="button"
                 className="zone-only-alerts-toggle"
@@ -272,7 +287,7 @@ export function MapLibreGlobe() {
                 {hiddenCount} more
               </button>
             )}
-            {zoneAlertsExpanded && zoneOnlyAlerts.length > ZONE_ONLY_ALERTS_CAP && (
+            {!zoneAlertsCollapsed && zoneAlertsExpanded && zoneOnlyAlerts.length > ZONE_ONLY_ALERTS_CAP && (
               <button
                 type="button"
                 className="zone-only-alerts-toggle"
