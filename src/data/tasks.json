@@ -141,6 +141,27 @@
       "nodes": [
         { "nodeId": "coastwatch-erddap", "why": "Search and subset gridded ocean products by area and time, downloadable as CSV, NetCDF or GeoTIFF." }
       ]
+    },
+    {
+      "id": "commercial-fishing-landings",
+      "label": "Look up commercial and recreational fishing landings",
+      "nodes": [
+        { "nodeId": "foss-landings-api", "why": "Annual landings in pounds and dollars by species, state and year, filterable through the q parameter." }
+      ]
+    },
+    {
+      "id": "critical-habitat-maps",
+      "label": "Find protected species and critical habitat boundaries",
+      "nodes": [
+        { "nodeId": "nmfs-arcgis-services", "why": "ESA critical habitat polygons per listed species from an ArcGIS REST MapServer that allows browser requests." }
+      ]
+    },
+    {
+      "id": "fisheries-survey-data",
+      "label": "Get fisheries survey and bottom-temperature data",
+      "nodes": [
+        { "nodeId": "nefsc-erddap", "why": "eMOLT bottom temperatures and hydrographic monitoring for the Northeast U.S. shelf, subsettable and downloadable as CSV or NetCDF." }
+      ]
     }
   ]
 }
