@@ -43,7 +43,12 @@
       "id": "raw-gridded-forecast-data",
       "label": "Get raw gridded forecast data",
       "nodes": [
-        { "nodeId": "nws-api", "why": "Gridpoint forecast data as JSON-LD, suitable for programmatic use." }
+        { "nodeId": "nws-api", "why": "Gridpoint forecast data as JSON-LD, suitable for programmatic use." },
+        { "nodeId": "nomads", "why": "GRIB filter that returns only the variables, levels and sub-region you pick from NCEP model runs." },
+        { "nodeId": "gfs-aws-open-data", "why": "Global GFS forecast files in a public S3 bucket that needs no account." },
+        { "nodeId": "hrrr-aws-open-data", "why": "3 km hourly-updating contiguous-US forecasts, with .idx files for reading single variables." },
+        { "nodeId": "nbm-aws-open-data", "why": "Blended, post-processed guidance for the contiguous US on an hourly cycle." },
+        { "nodeId": "gefs-aws-open-data", "why": "Ensemble members for judging forecast uncertainty rather than a single run." }
       ]
     },
     {
