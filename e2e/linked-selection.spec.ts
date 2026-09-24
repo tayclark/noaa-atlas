@@ -23,10 +23,27 @@ test('graph -> globe: selecting a node updates the globe status overlay', async 
 
   await expect(node).toHaveClass(/graph-node-highlighted/)
 
-  const status = page.locator('[aria-label="Selected node status"]')
+  const status = page.locator('[aria-label="Selection status"]')
   await expect(status).toBeVisible()
   await expect(status).toContainText('NWS API')
-  await expect(status).toContainText('Live layer highlighted below.')
+  await expect(status).toContainText('Coverage outlined on the globe.')
+  await expect(status).toContainText('Its live layer, active alerts, is highlighted.')
+  // The selection's coverage is drawn on the globe (#149).
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-coverage-features', '1')
+})
+
+test('graph -> globe: a theme hub draws the coverage of all its services (#149)', async ({ page }) => {
+  await mockAlerts(page, emptyAlertsFixture())
+  await page.goto('/')
+
+  const hub = page.locator('.graph-node[data-node-id="theme-ocean"]')
+  await expect(hub).toBeVisible()
+  await hub.focus()
+  await page.keyboard.press('Enter')
+
+  const ocean = graphNodes.filter((n) => n.theme === 'ocean')
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-coverage-features', String(ocean.length))
+  await expect(page.locator('[aria-label="Selection status"]')).toContainText(`Coverage of its ${ocean.length} services`)
 })
 
 test('globe -> graph: clicking a point highlights the covering node(s) in the graph', async ({ page }) => {
@@ -54,4 +71,7 @@ test('globe -> graph: clicking a point highlights the covering node(s) in the gr
   for (const id of expectedIds) {
     await expect(page.locator(`.graph-node[data-node-id="${id}"]`)).toHaveClass(/graph-node-highlighted/)
   }
+  await expect(page.locator('[aria-label="Selection status"]')).toContainText(
+    `${expectedIds.length} APIs cover this spot, highlighted in the graph.`,
+  )
 })

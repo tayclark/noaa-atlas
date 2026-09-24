@@ -11,8 +11,26 @@
 }
 
 .node-selection-status p {
-  margin: var(--space-2) 0 0;
+  margin: var(--space-1) 0 0;
   color: var(--color-text-muted);
+}
+
+.node-selection-status-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* One swatch per theme drawn, matching the footprint's outline colour (#149). */
+.node-selection-status-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.node-selection-status-title strong {
+  margin-left: 2px;
 }
 
 .zone-only-alerts {
