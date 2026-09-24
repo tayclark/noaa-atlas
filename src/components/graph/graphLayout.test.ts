@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import graphJson from '../../data/graph.json'
 import { buildGraph } from '../../data/buildGraph'
-import { parseGraphFile, THEMES, type GraphEdge } from '../../data/graphSchema'
+import { parseGraphFile, THEMES, type GraphEdge, type ServiceNode, type ThemeNode } from '../../data/graphSchema'
 import {
   computeFitTransform,
   createGraphSimulation,
@@ -104,20 +104,20 @@ describe('createGraphSimulation', () => {
   it('clusters shipped services closer to their own theme hub than to any other hub', () => {
     const graph = buildGraph(parseGraphFile(graphJson))
     // A direct edge to another theme's service legitimately pulls a node toward that cluster.
-    const themeOf = new Map(graph.nodes.map((node) => [node.id, node.theme]))
+    const themeOf = new Map(graph.nodes.map((node) => [node.id, node.kind === 'root' ? null : node.theme]))
     const bridging = new Set(
       graph.edges
-        .filter((edge) => edge.type !== 'theme' && themeOf.get(edge.source) !== themeOf.get(edge.target))
+        .filter((edge) => edge.type !== 'theme' && edge.type !== 'root' && themeOf.get(edge.source) !== themeOf.get(edge.target))
         .flatMap((edge) => [edge.source, edge.target]),
     )
     const nodes: SimNode[] = graph.nodes.map((node) => ({ ...node }))
     const simulation = createGraphSimulation(nodes, graph.edges.map((edge) => ({ ...edge })), 700, 470)
     simulation.stop().tick(300)
 
-    const hubs = nodes.filter((node) => node.kind === 'theme')
+    const hubs = nodes.filter((node): node is SimNode & ThemeNode => node.kind === 'theme')
     const dist = (a: SimNode, b: SimNode) => Math.hypot((a.x ?? 0) - (b.x ?? 0), (a.y ?? 0) - (b.y ?? 0))
     const misplaced = nodes
-      .filter((node) => node.kind === 'service' && !bridging.has(node.id))
+      .filter((node): node is SimNode & ServiceNode => node.kind === 'service' && !bridging.has(node.id))
       .filter((node) => {
         const own = hubs.find((hub) => hub.theme === node.theme) as SimNode
         return hubs.some((hub) => hub !== own && dist(node, hub) < dist(node, own))
