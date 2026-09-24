@@ -43,6 +43,8 @@ export const THEME_DESCRIPTIONS: Record<Theme, string> = {
 }
 
 export const THEME_ID_PREFIX = 'theme-'
+/** Id of the generated NOAA root node that every theme hub links to (#148). */
+export const ROOT_NODE_ID = 'noaa'
 
 const OFFICES = ['NWS', 'NOS', 'NESDIS', 'OAR', 'NMFS', 'OMAO', 'other'] as const
 const FORMATS = ['json', 'geojson', 'csv', 'xml', 'netcdf', 'grib2', 'geotiff', 'kml', 'shapefile', 'arcgis-rest', 'tiles', 'text', 'other'] as const
@@ -73,6 +75,7 @@ const slug = z
   .string()
   .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'must be a lowercase slug (a-z, 0-9, hyphens)')
   .refine((id) => !id.startsWith(THEME_ID_PREFIX), `ids starting with "${THEME_ID_PREFIX}" are reserved for theme hubs`)
+  .refine((id) => id !== ROOT_NODE_ID, `"${ROOT_NODE_ID}" is reserved for the root node`)
 
 const nonEmpty = z.string().trim().min(1)
 
@@ -154,17 +157,22 @@ export interface ThemeNode {
   name: string
   theme: Theme
 }
-export type GraphNode = ServiceNode | ThemeNode
+export interface RootNode {
+  id: typeof ROOT_NODE_ID
+  kind: 'root'
+  name: string
+}
+export type GraphNode = ServiceNode | ThemeNode | RootNode
 
 export interface GraphEdge {
   source: string
   target: string
-  type: 'theme' | 'shared-id' | 'data-flow'
+  type: 'root' | 'theme' | 'shared-id' | 'data-flow'
   label: string
   sourceUrl?: string
 }
 
-/** Runtime graph: authored services and edges plus generated theme hubs and theme edges. */
+/** Runtime graph: authored services and edges plus the generated root, theme hubs and their edges. */
 export interface Graph {
   nodes: GraphNode[]
   edges: GraphEdge[]

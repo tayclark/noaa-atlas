@@ -79,6 +79,19 @@ describe('NodeDetailPanel', () => {
     expect(getSelectionSnapshot().selectedNodeId).toBe(first.id)
   })
 
+  it('gives an overview of every theme for the NOAA root, linking to the hubs (#148)', () => {
+    selectNode('noaa')
+    render(panel)
+
+    expect(screen.getByRole('heading', { name: 'NOAA' })).toBeTruthy()
+    const live = nodes.filter((n) => n.liveLayer).length
+    expect(screen.getByRole('heading', { name: `${nodes.length} services · ${live} live` })).toBeTruthy()
+    expect(screen.getByText('none yet')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: THEME_LABELS.ocean }))
+    expect(getSelectionSnapshot().selectedNodeId).toBe('theme-ocean')
+  })
+
   it('shows only the title bar when collapsed, with a toggle that reports its state (#141)', () => {
     const node = nodes.find((n) => n.id === 'nws-api')
     if (!node) throw new Error('expected fixture node nws-api')

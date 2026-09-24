@@ -8,20 +8,24 @@ export interface SimEdge extends SimulationLinkDatum<SimNode> {
   sourceUrl?: string
 }
 
-/** Theme hubs render larger than service nodes since they're structural anchors, not real APIs. */
+/** The root and theme hubs render larger than service nodes: they're structural anchors, not real APIs. */
 export function nodeRadius(node: GraphNode): number {
+  if (node.kind === 'root') return 20
   return node.kind === 'theme' ? 14 : 8
 }
 
 // Theme edges are a loose hub-and-spoke ring around each hub, not a tight cluster — services
 // only share a theme, they aren't otherwise related. Other edge types (shared-id, data-flow)
 // mean the two services are directly related, so they're pulled closer together.
+// Root edges are weak: the theme anchors, not the links, place the hubs on their ring (#148).
 const LINK_DISTANCE: Record<GraphEdge['type'], number> = {
+  root: 150,
   theme: 55,
   'shared-id': 60,
   'data-flow': 60,
 }
 const LINK_STRENGTH: Record<GraphEdge['type'], number> = {
+  root: 0.02,
   theme: 0.3,
   'shared-id': 0.8,
   'data-flow': 0.8,
@@ -29,6 +33,7 @@ const LINK_STRENGTH: Record<GraphEdge['type'], number> = {
 
 /** CSS class per edge type (#29) — a fixed 3-value enum, so className rather than inline style. */
 export const EDGE_CLASS: Record<GraphEdge['type'], string> = {
+  root: 'graph-edge-root',
   theme: 'graph-edge-theme',
   'shared-id': 'graph-edge-shared-id',
   'data-flow': 'graph-edge-data-flow',
@@ -36,9 +41,10 @@ export const EDGE_CLASS: Record<GraphEdge['type'], string> = {
 
 /** Human-readable label per edge type, shared by the legend so its key can't drift from EDGE_CLASS. */
 export const EDGE_TYPE_LABELS: Record<GraphEdge['type'], string> = {
-  theme: 'Theme link',
-  'shared-id': 'Shared ID',
-  'data-flow': 'Data flow',
+  root: 'NOAA → theme',
+  theme: 'Theme → service',
+  'shared-id': 'Shared identifiers',
+  'data-flow': 'Data flows into',
 }
 
 export interface FitTransform {
@@ -114,7 +120,9 @@ export function createGraphSimulation(
   height: number,
 ): Simulation<SimNode, SimEdge> {
   const anchors = themeAnchors(THEMES, width, height)
-  const anchorOf = (node: SimNode) => anchors.get(node.theme) ?? { x: width / 2, y: height / 2 }
+  const center = { x: width / 2, y: height / 2 }
+  // The root sits at the centre of the ring of theme anchors.
+  const anchorOf = (node: SimNode) => (node.kind === 'root' ? center : (anchors.get(node.theme) ?? center))
   // Seed at the theme anchor so clusters form immediately instead of untangling from d3's
   // default spiral; the small index-based offset keeps coincident nodes from stacking exactly.
   nodes.forEach((node, i) => {
@@ -125,7 +133,7 @@ export function createGraphSimulation(
     node.y = y + Math.sin(angle) * (8 + (i % 5) * 4)
   })
 
-  const pull = (node: SimNode) => (node.kind === 'theme' ? 0.3 : 0.1)
+  const pull = (node: SimNode) => (node.kind === 'root' ? 1 : node.kind === 'theme' ? 0.3 : 0.1)
   return forceSimulation(nodes)
     .force(
       'link',
@@ -134,7 +142,7 @@ export function createGraphSimulation(
         .distance((edge) => LINK_DISTANCE[edge.type])
         .strength((edge) => LINK_STRENGTH[edge.type]),
     )
-    .force('charge', forceManyBody().strength(-110))
+    .force('charge', forceManyBody<SimNode>().strength((node) => (node.kind === 'root' ? -20 : -110)))
     .force('center', forceCenter(width / 2, height / 2))
     // Per-theme gravity: each node is pulled toward its theme's anchor, so services cluster
     // around their hub and disconnected nodes can't drift off and shrink the whole-graph fit.
@@ -148,8 +156,8 @@ export function createGraphSimulation(
 
 /** One anchor per theme, evenly spaced on an ellipse sized to the canvas, in the given order. */
 export function themeAnchors(themes: readonly Theme[], width: number, height: number): Map<Theme, { x: number; y: number }> {
-  const rx = width * 0.36
-  const ry = height * 0.36
+  const rx = width * 0.4
+  const ry = height * 0.4
   return new Map(
     themes.map((theme, i) => {
       const angle = (i / themes.length) * 2 * Math.PI - Math.PI / 2

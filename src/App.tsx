@@ -8,6 +8,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1 className="app-title">NOAA Atlas</h1>
+        <p className="app-subtitle">Which NOAA API do I use for X?</p>
       </header>
       <main className="app-main">
         <SplitPane left={<LeftPanel />} right={<MapLibreGlobe />} />

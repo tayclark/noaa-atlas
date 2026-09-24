@@ -16,13 +16,17 @@ const nodesById = new Map<string, ServiceNode>(parseGraphFile(graphJson).nodes.m
 
 export function FinderPanel() {
   // Local, not derived from the store: a step click replaces the store's task selection with a
-  // node selection, but the panel should keep showing the task the user picked.
-  const [selectedTaskId, setSelectedTaskId] = useState(tasks[0]?.id ?? null)
+  // node selection, but the panel should keep showing the task the user picked. Starts empty, so
+  // the panel never shows a task as picked when nothing is selected (#148).
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const selectedTask = tasks.find((task) => task.id === selectedTaskId)
 
   return (
     <div className="finder-panel">
-      <ul className="finder-task-list">
+      <h2 className="finder-heading" id="finder-heading">
+        I need to…
+      </h2>
+      <ul className="finder-task-list" aria-labelledby="finder-heading">
         {tasks.map((task) => (
           <li key={task.id}>
             <button
@@ -39,6 +43,7 @@ export function FinderPanel() {
           </li>
         ))}
       </ul>
+      {!selectedTask && <FinderIntro />}
       {selectedTask && (
         <ol className="finder-node-list" aria-label="Recommended nodes">
           {selectedTask.nodes.map(({ nodeId, why }, i) => {
@@ -59,5 +64,25 @@ export function FinderPanel() {
         </ol>
       )}
     </div>
+  )
+}
+
+/** What the app is and how to read it, shown until a task is picked (#148). */
+function FinderIntro() {
+  return (
+    <section className="finder-intro" aria-label="How to read NOAA Atlas">
+      <p className="finder-intro-lead">Pick a task above to see which NOAA APIs to use.</p>
+      <ul>
+        <li>
+          The <strong>graph</strong> below maps NOAA&apos;s public APIs: NOAA at the centre, then themes, then
+          services.
+        </li>
+        <li>
+          The <strong>globe</strong> shows where a selected service has data, plus live National Weather Service
+          alerts.
+        </li>
+        <li>Click anything, on either side, and the other side follows.</li>
+      </ul>
+    </section>
   )
 }
