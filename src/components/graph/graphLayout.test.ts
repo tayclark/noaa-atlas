@@ -1,14 +1,32 @@
 import { describe, expect, it } from 'vitest'
-import type { GraphEdge } from '../../data/graphSchema'
+import graphJson from '../../data/graph.json'
+import { buildGraph } from '../../data/buildGraph'
+import { parseGraphFile, THEMES, type GraphEdge } from '../../data/graphSchema'
 import {
   computeFitTransform,
   createGraphSimulation,
   EDGE_CLASS,
   EDGE_TYPE_LABELS,
   nodeRadius,
+  themeAnchors,
   type SimEdge,
   type SimNode,
 } from './graphLayout'
+
+describe('themeAnchors', () => {
+  it('gives every theme a distinct anchor inside the canvas', () => {
+    const anchors = themeAnchors(THEMES, 700, 470)
+    expect(anchors.size).toBe(THEMES.length)
+    const keys = new Set([...anchors.values()].map(({ x, y }) => `${Math.round(x)},${Math.round(y)}`))
+    expect(keys.size).toBe(THEMES.length)
+    for (const { x, y } of anchors.values()) {
+      expect(x).toBeGreaterThan(0)
+      expect(x).toBeLessThan(700)
+      expect(y).toBeGreaterThan(0)
+      expect(y).toBeLessThan(470)
+    }
+  })
+})
 
 const serviceNode = (id: string): SimNode => ({
   id,
@@ -81,6 +99,30 @@ describe('createGraphSimulation', () => {
     expect((resolved?.target as SimNode | undefined)?.id).toBe('theme-weather')
 
     simulation.stop()
+  })
+
+  it('clusters shipped services closer to their own theme hub than to any other hub', () => {
+    const graph = buildGraph(parseGraphFile(graphJson))
+    // A direct edge to another theme's service legitimately pulls a node toward that cluster.
+    const themeOf = new Map(graph.nodes.map((node) => [node.id, node.theme]))
+    const bridging = new Set(
+      graph.edges
+        .filter((edge) => edge.type !== 'theme' && themeOf.get(edge.source) !== themeOf.get(edge.target))
+        .flatMap((edge) => [edge.source, edge.target]),
+    )
+    const nodes: SimNode[] = graph.nodes.map((node) => ({ ...node }))
+    const simulation = createGraphSimulation(nodes, graph.edges.map((edge) => ({ ...edge })), 700, 470)
+    simulation.stop().tick(300)
+
+    const hubs = nodes.filter((node) => node.kind === 'theme')
+    const dist = (a: SimNode, b: SimNode) => Math.hypot((a.x ?? 0) - (b.x ?? 0), (a.y ?? 0) - (b.y ?? 0))
+    const misplaced = nodes
+      .filter((node) => node.kind === 'service' && !bridging.has(node.id))
+      .filter((node) => {
+        const own = hubs.find((hub) => hub.theme === node.theme) as SimNode
+        return hubs.some((hub) => hub !== own && dist(node, hub) < dist(node, own))
+      })
+    expect(misplaced.map((node) => node.id)).toEqual([])
   })
 
   it('builds an empty simulation for an empty graph without throwing', () => {

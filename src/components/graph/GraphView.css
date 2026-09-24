@@ -124,3 +124,22 @@
 .graph-edge-dimmed {
   opacity: 0.25;
 }
+
+/* Label decluttering (#138): labels keep a constant on-screen size (the zoom handler sets
+   --graph-label-px to 12 / scale), and ones that would overlap are hidden until hover/focus. */
+.graph-node text {
+  font-size: calc(var(--graph-label-px, 12) * 1px);
+  paint-order: stroke;
+  stroke: var(--color-surface);
+  stroke-width: calc(var(--graph-label-px, 12) * 0.25px);
+}
+
+.graph-label-hidden {
+  visibility: hidden;
+}
+
+.graph-node:hover text,
+.graph-node:focus-visible text,
+.graph-node-highlighted text {
+  visibility: visible;
+}
