@@ -14,9 +14,37 @@
   color: var(--color-text);
 }
 
+.node-detail-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
 .node-detail-panel h3 {
-  margin: 0 0 var(--space-1);
+  flex: 1;
+  margin: 0;
   font-size: 0.9rem;
+}
+
+.node-detail-toggle {
+  flex: none;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.node-detail-toggle:hover {
+  border-color: var(--color-accent);
+}
+
+/* Collapsed (#141): just the title bar, so it covers as little of the graph as possible. */
+.node-detail-panel-collapsed .node-detail-header {
+  margin-bottom: 0;
 }
 
 .node-detail-live-tag {

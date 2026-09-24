@@ -187,6 +187,6 @@ describe('computeFitTransform', () => {
     // the middle of the 400px-tall area below the inset.
     expect(k).toBeCloseTo(680 / 400)
     expect((fit?.y ?? 0) + k * 50).toBeCloseTo(400, 0)
-    expect((fit?.y ?? 0) + k * 0).toBeGreaterThanOrEqual(200)
+    expect(fit?.y ?? 0).toBeGreaterThanOrEqual(200) // the box's top edge (y = 0) lands below the inset
   })
 })

@@ -107,6 +107,8 @@ export function GraphView() {
   const [size, setSize] = useState({ width: 600, height: 400 })
   const initialSizeRef = useRef(size)
   const [legendOpen, setLegendOpen] = useState(false)
+  // Kept across selections, so a user who collapses the panel isn't fighting it on every click.
+  const [panelCollapsed, setPanelCollapsed] = useState(false)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const highlightedIds = getHighlightedNodeIds()
   const highlightKey = highlightedIds.join('|')
@@ -345,7 +347,8 @@ export function GraphView() {
     placeLabelsRef.current()
     // Keyed on the joined ids, not the array: highlightedIds is a fresh array every render, so
     // depending on it would reset the user's pan/zoom on each keystroke in the search box.
-  }, [selection, size, highlightKey])
+    // panelCollapsed changes the area the selection is framed into.
+  }, [selection, size, highlightKey, panelCollapsed])
 
   // Label priority (#138): what the user asked for wins space first (the selection, task path or
   // globe point, then search matches), then theme hubs, then a single selected node's
@@ -432,7 +435,7 @@ export function GraphView() {
             </g>
           </g>
         </svg>
-        <NodeDetailPanel />
+        <NodeDetailPanel collapsed={panelCollapsed} onToggleCollapsed={() => setPanelCollapsed((c) => !c)} />
         {legendOpen && <GraphLegend />}
       </div>
     </section>

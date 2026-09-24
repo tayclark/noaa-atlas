@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import graphJson from '../../data/graph.json'
 import type { ServiceNode } from '../../data/graphSchema'
@@ -9,6 +9,8 @@ import { NodeDetailPanel } from './NodeDetailPanel'
 
 const nodes = parseGraphFile(graphJson).nodes as ServiceNode[]
 
+const panel = <NodeDetailPanel collapsed={false} onToggleCollapsed={() => {}} />
+
 beforeEach(() => {
   clearSelection()
 })
@@ -17,7 +19,7 @@ afterEach(cleanup)
 
 describe('NodeDetailPanel', () => {
   it('renders nothing when no node is selected', () => {
-    const { container } = render(<NodeDetailPanel />)
+    const { container } = render(panel)
     expect(container.firstChild).toBeNull()
   })
 
@@ -25,7 +27,7 @@ describe('NodeDetailPanel', () => {
     const node = nodes.find((n) => n.id === 'nws-api')
     if (!node) throw new Error('expected fixture node nws-api')
     selectNode(node.id)
-    render(<NodeDetailPanel />)
+    render(panel)
 
     expect(screen.getByLabelText('Node detail')).toBeTruthy()
     expect(screen.getByText(node.name)).toBeTruthy()
@@ -39,7 +41,7 @@ describe('NodeDetailPanel', () => {
     const node = nodes.find((n) => !n.liveLayer)
     if (!node) throw new Error('expected at least one not-live fixture node')
     selectNode(node.id)
-    render(<NodeDetailPanel />)
+    render(panel)
 
     expect(screen.getByText('Available, not live yet')).toBeTruthy()
     if (node.notLiveReason) expect(screen.getByText(node.notLiveReason)).toBeTruthy()
@@ -51,12 +53,30 @@ describe('NodeDetailPanel', () => {
     if (!first || !second) throw new Error('expected at least two fixture nodes')
 
     selectNode(first.id)
-    const { unmount } = render(<NodeDetailPanel />)
+    const { unmount } = render(panel)
     expect(screen.getByText(first.name)).toBeTruthy()
     unmount()
 
     selectNode(second.id)
-    render(<NodeDetailPanel />)
+    render(panel)
     expect(screen.getByText(second.name)).toBeTruthy()
+  })
+
+  it('shows only the title bar when collapsed, with a toggle that reports its state (#141)', () => {
+    const node = nodes.find((n) => n.id === 'nws-api')
+    if (!node) throw new Error('expected fixture node nws-api')
+    selectNode(node.id)
+    let toggled = 0
+    const { rerender } = render(<NodeDetailPanel collapsed={false} onToggleCollapsed={() => toggled++} />)
+
+    const collapse = screen.getByRole('button', { name: 'Collapse details' })
+    expect(collapse.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(collapse)
+    expect(toggled).toBe(1)
+
+    rerender(<NodeDetailPanel collapsed onToggleCollapsed={() => toggled++} />)
+    expect(screen.getByText(node.name)).toBeTruthy()
+    expect(screen.queryByText(node.baseUrl)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Expand details' }).getAttribute('aria-expanded')).toBe('false')
   })
 })
