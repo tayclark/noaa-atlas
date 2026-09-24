@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { GraphView } from './GraphView'
 import graphJson from '../../data/graph.json'
@@ -25,6 +25,26 @@ describe('GraphView', () => {
     const { container } = render(<GraphView />)
     expect(screen.getByRole('region', { name: 'Graph' })).toBeTruthy()
     expect(container.querySelectorAll('.graph-node')).toHaveLength(expectedGraph.nodes.length)
+  })
+
+  it('labels a node with its shortName but keeps the full name accessible (#141)', () => {
+    const { container } = render(<GraphView />)
+    const node = container.querySelector<SVGGElement>('.graph-node[data-node-id="mrms-aws-open-data"]')!
+    expect(node.querySelector('text')?.textContent).toBe('MRMS (AWS)')
+    expect(node.getAttribute('aria-label')).toMatch(/^MRMS multi-radar/)
+    expect(node.querySelector('title')?.textContent).toMatch(/^MRMS multi-radar/)
+  })
+
+  it('keeps the detail panel collapsed across selection changes (#141)', () => {
+    const { container } = render(<GraphView />)
+    act(() => selectNode('nws-api'))
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse details' }))
+    expect(container.querySelector('.node-detail-panel-collapsed')).not.toBeNull()
+
+    act(() => selectNode('coops-data-api'))
+    expect(screen.getByRole('button', { name: 'Expand details' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Expand details' }))
+    expect(container.querySelector('.node-detail-panel-collapsed')).toBeNull()
   })
 
   it('colors each node circle by its theme', () => {

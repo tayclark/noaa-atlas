@@ -20,6 +20,7 @@ export function buildSearchIndex(nodes: GraphNode[], tasks: Task[]): SearchIndex
       node.kind === 'service'
         ? [
             node.name,
+            node.shortName ?? '',
             node.summary,
             ...node.tags,
             ...node.formats,

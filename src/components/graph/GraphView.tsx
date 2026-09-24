@@ -18,7 +18,7 @@ import './GraphView.css'
 import graphJson from '../../data/graph.json'
 import tasksJson from '../../data/tasks.json'
 import { buildGraph } from '../../data/buildGraph'
-import { parseGraphFile } from '../../data/graphSchema'
+import { parseGraphFile, type GraphNode } from '../../data/graphSchema'
 import { getNeighbors } from '../../data/neighbors'
 import { parseTasksFile } from '../../data/taskSchema'
 import {
@@ -29,11 +29,11 @@ import {
   subscribeSelection,
 } from '../../data/selectionStore'
 import { THEME_COLORS } from '../../data/themeColors'
-import { computeFitTransform, createGraphSimulation, EDGE_CLASS, nodeRadius, type SimEdge, type SimNode } from './graphLayout'
+import { computeFitTransform, createGraphSimulation, EDGE_CLASS, NO_INSET, nodeRadius, type Inset, type SimEdge, type SimNode } from './graphLayout'
 import { GraphLegend } from './GraphLegend'
 import { GraphSearch } from './GraphSearch'
 import { buildSearchIndex, matchNodeIds } from './searchMatch'
-import { LABEL_GAP, placeLabels, type LabelItem } from './labelPlacement'
+import { LABEL_GAP, placeLabels, type Box, type LabelItem } from './labelPlacement'
 import { NodeDetailPanel } from './NodeDetailPanel'
 
 const graph = buildGraph(parseGraphFile(graphJson))
@@ -44,8 +44,13 @@ const FIT_ALL_PADDING = 40
 const LABEL_PX = 12
 const LABEL_HEIGHT = 15
 const AUTOFIT_TICK_INTERVAL = 20
+// Clearance between the detail panel and the area a selection is framed into.
+const PANEL_GAP = 8
 
 const searchIndex = buildSearchIndex(graph.nodes, parseTasksFile(tasksJson).tasks)
+
+// The on-graph label; the full name stays in the tooltip, aria-label and detail panel (#141).
+const labelText = (node: GraphNode) => (node.kind === 'service' ? (node.shortName ?? node.name) : node.name)
 
 // Positions the synthetic task-path connectors (#34) from the live node positions. The lines are
 // React-rendered (they come and go with the selection) but positioned imperatively, like every
@@ -60,6 +65,23 @@ function positionPathEdges(root: Element | null, positions: Map<string, { x: num
     el.setAttribute('x2', String(target.x))
     el.setAttribute('y2', String(target.y))
   })
+}
+
+/** The node detail panel's box in the SVG's screen space, or null when it isn't shown. */
+function detailPanelBox(svgEl: SVGSVGElement): Box | null {
+  const panelRect = svgEl.parentElement?.querySelector('.node-detail-panel')?.getBoundingClientRect()
+  if (!panelRect || panelRect.width === 0 || panelRect.height === 0) return null
+  const svgRect = svgEl.getBoundingClientRect()
+  return { x0: panelRect.left - svgRect.left, y0: panelRect.top - svgRect.top, x1: panelRect.right - svgRect.left, y1: panelRect.bottom - svgRect.top }
+}
+
+// The panel sits in the top-left corner, so the free area is either the strip to its right or the
+// one below it; framing uses whichever is larger (#141).
+function panelInset(panel: Box | null, width: number, height: number): Inset {
+  if (!panel) return NO_INSET
+  const left = panel.x1 + PANEL_GAP
+  const top = panel.y1 + PANEL_GAP
+  return (width - left) * height >= width * (height - top) ? { ...NO_INSET, left } : { ...NO_INSET, top }
 }
 
 export function GraphView() {
@@ -85,6 +107,8 @@ export function GraphView() {
   const [size, setSize] = useState({ width: 600, height: 400 })
   const initialSizeRef = useRef(size)
   const [legendOpen, setLegendOpen] = useState(false)
+  // Kept across selections, so a user who collapses the panel isn't fighting it on every click.
+  const [panelCollapsed, setPanelCollapsed] = useState(false)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const highlightedIds = getHighlightedNodeIds()
   const highlightKey = highlightedIds.join('|')
@@ -135,7 +159,8 @@ export function GraphView() {
     nodeElsRef.current.forEach((el, id) => {
       const text = el.querySelector('text')
       const measured = text?.getComputedTextLength?.() ?? 0
-      labelWidthsRef.current.set(id, measured > 0 ? measured : (nodeById.get(id)?.name.length ?? 0) * 6.5)
+      const node = nodeById.get(id)
+      labelWidthsRef.current.set(id, measured > 0 ? measured : (node ? labelText(node).length : 0) * 6.5)
     })
 
     const svgEl = svgRef.current
@@ -159,11 +184,8 @@ export function GraphView() {
           overNodes: priority >= 3,
         })
       })
-      const svgRect = svgEl.getBoundingClientRect()
-      const panelRect = svgEl.parentElement?.querySelector('.node-detail-panel')?.getBoundingClientRect()
-      const obstacles = panelRect
-        ? [{ x0: panelRect.left - svgRect.left, y0: panelRect.top - svgRect.top, x1: panelRect.right - svgRect.left, y1: panelRect.bottom - svgRect.top }]
-        : []
+      const panel = detailPanelBox(svgEl)
+      const obstacles = panel ? [panel] : []
       const bounds = { width: svgEl.clientWidth || initialSizeRef.current.width, height: svgEl.clientHeight || initialSizeRef.current.height }
       const sides = placeLabels(items, bounds, obstacles)
       nodeElsRef.current.forEach((el, id) => {
@@ -289,7 +311,10 @@ export function GraphView() {
       const svgEl = svgRef.current
       const zoomBehavior = zoomBehaviorRef.current
       if (!svgEl || !zoomBehavior) return false
-      const fit = computeFitTransform(positions, size.width, size.height, padding, maxScale)
+      // Frames into the part of the canvas the detail panel doesn't cover, so the selection's
+      // neighbours (and their labels) aren't hidden under it (#141).
+      const inset = panelInset(detailPanelBox(svgEl), size.width, size.height)
+      const fit = computeFitTransform(positions, size.width, size.height, padding, maxScale, inset)
       if (!fit) return false
       // d3-transition isn't a dependency here, so the pan/zoom is applied immediately rather
       // than animated (unlike MapLibre's flyTo in the reverse direction, #44).
@@ -322,7 +347,8 @@ export function GraphView() {
     placeLabelsRef.current()
     // Keyed on the joined ids, not the array: highlightedIds is a fresh array every render, so
     // depending on it would reset the user's pan/zoom on each keystroke in the search box.
-  }, [selection, size, highlightKey])
+    // panelCollapsed changes the area the selection is framed into.
+  }, [selection, size, highlightKey, panelCollapsed])
 
   // Label priority (#138): what the user asked for wins space first (the selection, task path or
   // globe point, then search matches), then theme hubs, then a single selected node's
@@ -402,14 +428,14 @@ export function GraphView() {
                   <title>{node.name}</title>
                   <circle r={nodeRadius(node)} style={{ fill: THEME_COLORS[node.theme] }} />
                   <text x={nodeRadius(node) + 4} y={4}>
-                    {node.name}
+                    {labelText(node)}
                   </text>
                 </g>
               ))}
             </g>
           </g>
         </svg>
-        <NodeDetailPanel />
+        <NodeDetailPanel collapsed={panelCollapsed} onToggleCollapsed={() => setPanelCollapsed((c) => !c)} />
         {legendOpen && <GraphLegend />}
       </div>
     </section>

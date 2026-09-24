@@ -38,8 +38,13 @@ describe('parseGraphFile', () => {
     ['a malformed lastVerified date', { lastVerified: '09/21/2026' }],
     ['an unknown property', { colour: 'blue' }],
     ['an empty formats list', { formats: [] }],
+    ['a shortName over 24 characters', { shortName: 'A graph label that is far too long' }],
   ])('rejects %s', (_label, overrides) => {
     expect(() => parseGraphFile(makeFile([makeNode(overrides)]))).toThrow(/Invalid graph data/)
+  })
+
+  it('accepts an optional shortName', () => {
+    expect(parseGraphFile(makeFile([makeNode({ shortName: 'NWS' })])).nodes[0].shortName).toBe('NWS')
   })
 
   it('accepts GIS file and service formats', () => {

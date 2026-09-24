@@ -66,3 +66,53 @@ test('hovering a node reveals its hidden label', async ({ page }) => {
   await node.locator('circle').hover({ force: true })
   await expect(label).toBeVisible()
 })
+
+// #141: a selection is framed beside the detail panel, so its neighbours (and their labels)
+// aren't hidden under it, and the panel can collapse to its title bar.
+async function selectByKeyboard(page: Page, nodeId: string) {
+  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
+  await page.keyboard.press('Enter')
+}
+
+test('a selected node and its neighbours are framed clear of the detail panel, labels visible', async ({ page }) => {
+  await mockAlerts(page, emptyAlertsFixture())
+  await page.goto('/')
+  await expect(page.locator('.graph-label-hidden').first()).toBeAttached()
+  await page.waitForTimeout(3000)
+
+  await selectByKeyboard(page, 'coops-data-api')
+  const panel = page.getByLabel('Node detail')
+  await expect(panel).toBeVisible()
+  const framed = ['coops-data-api', 'coops-metadata-api', 'theme-ocean']
+  await expect
+    .poll(() =>
+      page.evaluate((ids) => {
+        const p = document.querySelector('.node-detail-panel')!.getBoundingClientRect()
+        return ids.filter((id) => {
+          const g = document.querySelector(`.graph-node[data-node-id="${id}"]`)!
+          const c = g.querySelector('circle')!.getBoundingClientRect()
+          const [cx, cy] = [c.x + c.width / 2, c.y + c.height / 2]
+          const underPanel = cx > p.left && cx < p.right && cy > p.top && cy < p.bottom
+          return underPanel || getComputedStyle(g.querySelector('text')!).visibility === 'hidden'
+        })
+      }, framed),
+    )
+    .toEqual([])
+})
+
+test('the detail panel collapses to its title bar and stays collapsed across selections', async ({ page }) => {
+  await mockAlerts(page, emptyAlertsFixture())
+  await page.goto('/')
+  await page.locator('.graph-node').first().waitFor()
+
+  await selectByKeyboard(page, 'coops-data-api')
+  const panel = page.getByLabel('Node detail')
+  await page.getByRole('button', { name: 'Collapse details' }).click()
+  await expect(panel.getByText('Base URL')).toHaveCount(0)
+  expect((await panel.boundingBox())!.height).toBeLessThan(48)
+
+  await selectByKeyboard(page, 'nws-api')
+  await expect(panel.getByRole('heading', { name: 'NWS API' })).toBeVisible()
+  await page.getByRole('button', { name: 'Expand details' }).click()
+  await expect(panel.getByText('Base URL')).toBeVisible()
+})

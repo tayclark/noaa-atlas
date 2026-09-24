@@ -15,15 +15,40 @@ import './NodeDetailPanel.css'
 
 const graphNodes: ServiceNode[] = parseGraphFile(graphJson).nodes as ServiceNode[]
 
-export function NodeDetailPanel() {
+interface NodeDetailPanelProps {
+  /** Collapsed to its title bar so it covers less of the graph (#141). Owned by GraphView, which re-frames on change. */
+  collapsed: boolean
+  onToggleCollapsed: () => void
+}
+
+export function NodeDetailPanel({ collapsed, onToggleCollapsed }: NodeDetailPanelProps) {
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const node = selection.selectedNodeId ? graphNodes.find((n) => n.id === selection.selectedNodeId) : undefined
 
   if (!node) return null
 
   return (
-    <div className="node-detail-panel" aria-label="Node detail">
-      <h3>{node.name}</h3>
+    <div className={`node-detail-panel${collapsed ? ' node-detail-panel-collapsed' : ''}`} aria-label="Node detail">
+      <div className="node-detail-header">
+        <h3>{node.name}</h3>
+        <button
+          type="button"
+          className="node-detail-toggle"
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expand details' : 'Collapse details'}
+          onClick={onToggleCollapsed}
+        >
+          {collapsed ? '▸' : '▾'}
+        </button>
+      </div>
+      {!collapsed && <NodeDetailBody node={node} />}
+    </div>
+  )
+}
+
+function NodeDetailBody({ node }: { node: ServiceNode }) {
+  return (
+    <>
       <span className={`node-detail-live-tag ${node.liveLayer ? 'node-detail-live' : 'node-detail-not-live'}`}>
         {liveStatusLabel(node)}
       </span>
@@ -71,6 +96,6 @@ export function NodeDetailPanel() {
       <a className="node-detail-docs-link" href={node.docUrl} target="_blank" rel="noreferrer">
         Official docs ↗
       </a>
-    </div>
+    </>
   )
 }
