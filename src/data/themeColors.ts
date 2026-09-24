@@ -8,7 +8,7 @@
 // per the skill's own docs, which cap all-pairs validation at 3-4 slots — so identity here also
 // leans on secondary encoding already present in the graph: every node renders its name as a
 // text label, and the legend pairs each swatch with its theme label.
-import type { Theme } from './graphSchema'
+import type { GraphNode, Theme } from './graphSchema'
 import { THEMES } from './graphSchema'
 
 const PALETTE: string[] = [
@@ -28,4 +28,11 @@ export const THEME_COLORS: Record<Theme, string> = Object.fromEntries(THEMES.map
 
 export function themeColor(theme: Theme): string {
   return THEME_COLORS[theme]
+}
+
+/** The NOAA root (#148) is neutral, so it doesn't read as an eleventh theme. */
+export const ROOT_COLOR = '#dde6f0'
+
+export function nodeColor(node: GraphNode): string {
+  return node.kind === 'root' ? ROOT_COLOR : THEME_COLORS[node.theme]
 }

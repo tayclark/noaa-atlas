@@ -28,7 +28,7 @@ import {
   selectNode,
   subscribeSelection,
 } from '../../data/selectionStore'
-import { THEME_COLORS } from '../../data/themeColors'
+import { nodeColor } from '../../data/themeColors'
 import { computeFitTransform, createGraphSimulation, EDGE_CLASS, NO_INSET, nodeRadius, type Inset, type SimEdge, type SimNode } from './graphLayout'
 import { GraphLegend } from './GraphLegend'
 import { GraphSearch } from './GraphSearch'
@@ -171,7 +171,7 @@ export function GraphView() {
         const pos = nodePositionsRef.current.get(id)
         const node = nodeById.get(id)
         if (!pos || !node) return
-        const priority = labelPriorityRef.current.get(id) ?? (node.kind === 'theme' ? 3 : 0)
+        const priority = labelPriorityRef.current.get(id) ?? (node.kind === 'service' ? 0 : 3)
         items.push({
           id,
           x: t.applyX(pos.x),
@@ -373,7 +373,7 @@ export function GraphView() {
       getNeighbors(graph, ids[0] as string).forEach((group) => group.neighbors.forEach((n) => priorities.set(n.node.id, 1)))
     }
     graph.nodes.forEach((node) => {
-      if (node.kind === 'theme') priorities.set(node.id, 3)
+      if (node.kind !== 'service') priorities.set(node.id, 3)
     })
     matchedIds?.forEach((id) => priorities.set(id, 4))
     ids.forEach((id) => priorities.set(id, 5))
@@ -438,7 +438,7 @@ export function GraphView() {
                   }}
                 >
                   <title>{node.name}</title>
-                  <circle r={nodeRadius(node)} style={{ fill: THEME_COLORS[node.theme] }} />
+                  <circle r={nodeRadius(node)} style={{ fill: nodeColor(node) }} />
                   <text x={nodeRadius(node) + 4} y={4}>
                     {labelText(node)}
                   </text>

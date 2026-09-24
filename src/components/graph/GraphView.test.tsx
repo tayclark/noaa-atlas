@@ -8,7 +8,7 @@ import { parseGraphFile } from '../../data/graphSchema'
 import { clearSelection, getHighlightedNodeIds, getSelectionSnapshot, selectNode, selectPoint, selectTask } from '../../data/selectionStore'
 import { parseTasksFile } from '../../data/taskSchema'
 import tasksJson from '../../data/tasks.json'
-import { THEME_COLORS } from '../../data/themeColors'
+import { nodeColor } from '../../data/themeColors'
 import { EDGE_CLASS } from './graphLayout'
 
 beforeEach(() => {
@@ -47,11 +47,11 @@ describe('GraphView', () => {
     expect(container.querySelector('.node-detail-panel-collapsed')).toBeNull()
   })
 
-  it('colors each node circle by its theme', () => {
+  it('colors each node circle by its theme (the root is neutral)', () => {
     const { container } = render(<GraphView />)
     for (const node of expectedGraph.nodes) {
       const el = container.querySelector(`[data-node-id="${node.id}"] circle`)
-      expect((el as SVGCircleElement | null)?.style.fill).toBe(hexToRgb(THEME_COLORS[node.theme]))
+      expect((el as SVGCircleElement | null)?.style.fill).toBe(hexToRgb(nodeColor(node)))
     }
   })
 
