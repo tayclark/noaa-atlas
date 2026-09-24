@@ -88,6 +88,11 @@ export function visibleZoneOnlyAlerts(
   return { visible: zoneOnly.slice(0, cap), hiddenCount: zoneOnly.length - cap }
 }
 
+/** Title of the zone-only alerts overlay (#151), e.g. "468 alerts without a map area". */
+export function zoneOnlyAlertsTitle(count: number): string {
+  return `${count} ${count === 1 ? 'alert' : 'alerts'} without a map area`
+}
+
 /** Builds a human-readable message for a failed alerts fetch, based on the error kind (#42 AC). */
 export function describeAlertsFetchOutcome(err: unknown): string {
   if (err instanceof NwsHttpError) {

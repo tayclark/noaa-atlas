@@ -9,6 +9,7 @@ import {
   describeAlertsFetchOutcome,
   splitAlertsByGeometry,
   visibleZoneOnlyAlerts,
+  zoneOnlyAlertsTitle,
 } from './nwsAlertsLayer'
 
 describe('alertSeverityColorExpression', () => {
@@ -123,5 +124,12 @@ describe('describeAlertsFetchOutcome', () => {
 
   it('describes an unknown error generically', () => {
     expect(describeAlertsFetchOutcome(new Error('boom'))).toMatch(/something went wrong/i)
+  })
+})
+
+describe('zoneOnlyAlertsTitle', () => {
+  it('counts the alerts, singular and plural', () => {
+    expect(zoneOnlyAlertsTitle(1)).toBe('1 alert without a map area')
+    expect(zoneOnlyAlertsTitle(468)).toBe('468 alerts without a map area')
   })
 })
