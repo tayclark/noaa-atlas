@@ -3084,6 +3084,108 @@
         "s3",
         "survey"
       ]
+    },
+    {
+      "id": "onestop-search-api",
+      "kind": "service",
+      "name": "NCEI OneStop search API",
+      "summary": "JSON search API behind data.noaa.gov/onestop, NCEI's dataset discovery system. POST a JSON body (e.g. a queryText query with page max/offset) to /search/collection; each hit is a collection with title, date range and download or service links (FTP, THREDDS and others). It finds datasets and points to where to get them; it does not serve the data itself.",
+      "owner": {
+        "office": "NESDIS",
+        "program": "NCEI OneStop"
+      },
+      "theme": "catalogs",
+      "baseUrl": "https://data.noaa.gov/onestop/api/search/",
+      "formats": [
+        "json"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "No key. GET returns 400 (a JSON body is required); POST works and returns access-control-allow-origin: * (checked 2026-09-23)."
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "periodic",
+        "note": "Catalog records are updated as providers publish or revise metadata; no fixed schedule is documented."
+      },
+      "docUrl": "https://cedardevs.github.io/onestop/api/search-api",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://data.noaa.gov/onestop/api/search/search/collection",
+        "responseExcerpt": "POST {\"queries\":[{\"type\":\"queryText\",\"value\":\"sea surface temperature\"}],\"page\":{\"max\":1,\"offset\":0}} -> {\"data\":[{\"attributes\":{\"title\":\"NOAA Daily Optimum Interpolation Sea Surface Temperature\",\"beginDate\":\"1971-01-01T00:00:00Z\",\"endDate\":\"2023-05-30T23:59:59.999Z\",\"links\":[{\"linkFunction\":\"download\",\"linkName\":\"Thredds Server\",\"linkUrl\":\"https://psl.noaa.gov/thredds/catalog/Datasets/noaa.oisst.v2.highres/catalog.html\"}]},\"id\":\"9f90fd45-3c05-49ce-a2c0-4d6d69b4527f\",\"type\":\"collection\"}],\"meta\":{\"took\":37,\"total\":16851,\"exactCount\":true}}"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Deferred: a dataset search catalog, not a map layer for v1.",
+      "tags": [
+        "catalog",
+        "discovery",
+        "search",
+        "metadata",
+        "ncei",
+        "onestop"
+      ]
+    },
+    {
+      "id": "aws-open-data-noaa",
+      "kind": "service",
+      "name": "NOAA datasets on the AWS Registry of Open Data",
+      "summary": "The registry's NOAA collection page lists NOAA Open Data Dissemination (NODD) datasets hosted in public AWS S3 buckets, such as NEXRAD, GOES, GFS and HRRR, Integrated Surface Database and World Ocean Database. Each entry links to its bucket name, region and access notes. It is a browsable directory; the registry exposes no documented search API, so use the bucket listings themselves for data.",
+      "owner": {
+        "office": "other",
+        "program": "NOAA Open Data Dissemination (NODD) via AWS Registry of Open Data"
+      },
+      "theme": "catalogs",
+      "baseUrl": "https://registry.opendata.aws/collab/noaa/",
+      "formats": [
+        "other"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public HTML page; the listed buckets allow anonymous S3 access. The page sends no access-control-allow-origin header (checked 2026-09-23), so browsers cannot fetch it cross-origin."
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "periodic",
+        "note": "Entries are added or changed as datasets join or leave NODD; no fixed schedule is documented."
+      },
+      "docUrl": "https://www.noaa.gov/information-technology/open-data-dissemination",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://registry.opendata.aws/collab/noaa/",
+        "responseExcerpt": "<h3><a href=\"/noaa-nexrad/\">NEXRAD on AWS</a></h3>\n          <p><a href=\"/noaa-nexrad/\">Details &rarr;</a></p>"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Deferred: an HTML dataset directory with no API, not a map layer for v1.",
+      "tags": [
+        "catalog",
+        "aws",
+        "s3",
+        "nodd",
+        "open-data",
+        "cloud"
+      ]
     }
   ],
   "edges": [

@@ -185,6 +185,15 @@
         { "nodeId": "ncei-wmm-declination-api", "why": "Magnetic declination for a latitude and longitude from the World Magnetic Model; needs a registered key." },
         { "nodeId": "noaa-cors-s3", "why": "Daily RINEX observation files from the NOAA CORS Network in a public S3 bucket." }
       ]
+    },
+    {
+      "id": "find-a-noaa-dataset",
+      "label": "Find a NOAA dataset and where to get it",
+      "nodes": [
+        { "nodeId": "onestop-search-api", "why": "Keyword search over NCEI's collection catalog, returning download and service links for each dataset." },
+        { "nodeId": "aws-open-data-noaa", "why": "Directory of NOAA datasets hosted in public AWS S3 buckets, for bulk or cloud-side access." },
+        { "nodeId": "cdo-web-api", "why": "Browse GHCN-Daily and other NCEI climate datasets, stations and data types before requesting data." }
+      ]
     }
   ]
 }
