@@ -1,8 +1,6 @@
 .graph-search {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
-  width: min(220px, calc(100% - 2 * var(--space-3)));
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -24,5 +22,5 @@
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  text-align: right;
+  min-height: 1em;
 }

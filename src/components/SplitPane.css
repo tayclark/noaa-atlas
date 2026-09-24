@@ -3,14 +3,23 @@
   height: 100%;
 }
 
+.split-pane--column {
+  flex-direction: column;
+}
+
 .split-pane--dragging {
   cursor: col-resize;
   user-select: none;
 }
 
+.split-pane--column.split-pane--dragging {
+  cursor: row-resize;
+}
+
 .split-pane-side {
   flex: 0 1 auto;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -26,9 +35,15 @@
   touch-action: none;
 }
 
+.split-pane--column > .split-pane-divider {
+  width: auto;
+  height: var(--divider-size);
+  cursor: row-resize;
+}
+
 .split-pane-divider:hover,
 .split-pane-divider:focus-visible,
-.split-pane--dragging .split-pane-divider {
+.split-pane--dragging > .split-pane-divider {
   background: var(--color-accent);
   outline: none;
 }

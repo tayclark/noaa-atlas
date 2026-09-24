@@ -7,12 +7,24 @@ const DEFAULT_FRACTION = 0.5
 const KEY_STEP = 0.02
 
 interface SplitPaneProps {
+  /** First pane: the left pane in a row split, the top pane in a column split. */
   left: ReactNode
+  /** Second pane: the right pane in a row split, the bottom pane in a column split. */
   right: ReactNode
+  direction?: 'row' | 'column'
+  defaultFraction?: number
+  dividerLabel?: string
 }
 
-export function SplitPane({ left, right }: SplitPaneProps) {
-  const [fraction, setFraction] = useState(DEFAULT_FRACTION)
+export function SplitPane({
+  left,
+  right,
+  direction = 'row',
+  defaultFraction = DEFAULT_FRACTION,
+  dividerLabel = 'Resize panes',
+}: SplitPaneProps) {
+  const isColumn = direction === 'column'
+  const [fraction, setFraction] = useState(clampFraction(defaultFraction))
   const [dragging, setDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -24,16 +36,19 @@ export function SplitPane({ left, right }: SplitPaneProps) {
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     if (!dragging || !containerRef.current) return
     const rect = containerRef.current.getBoundingClientRect()
-    if (rect.width === 0) return
-    setFraction(clampFraction((e.clientX - rect.left) / rect.width))
+    const size = isColumn ? rect.height : rect.width
+    if (size === 0) return
+    const offset = isColumn ? e.clientY - rect.top : e.clientX - rect.left
+    setFraction(clampFraction(offset / size))
   }
 
   const onPointerUp = () => setDragging(false)
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const [decrease, increase] = isColumn ? ['ArrowUp', 'ArrowDown'] : ['ArrowLeft', 'ArrowRight']
     const next: Record<string, number> = {
-      ArrowLeft: fraction - KEY_STEP,
-      ArrowRight: fraction + KEY_STEP,
+      [decrease]: fraction - KEY_STEP,
+      [increase]: fraction + KEY_STEP,
       Home: MIN_FRACTION,
       End: MAX_FRACTION,
     }
@@ -45,7 +60,7 @@ export function SplitPane({ left, right }: SplitPaneProps) {
   return (
     <div
       ref={containerRef}
-      className={dragging ? 'split-pane split-pane--dragging' : 'split-pane'}
+      className={`split-pane${isColumn ? ' split-pane--column' : ''}${dragging ? ' split-pane--dragging' : ''}`}
     >
       <div className="split-pane-side" style={{ flexBasis: `${fraction * 100}%` }}>
         {left}
@@ -53,8 +68,8 @@ export function SplitPane({ left, right }: SplitPaneProps) {
       <div
         className="split-pane-divider"
         role="separator"
-        aria-orientation="vertical"
-        aria-label="Resize panes"
+        aria-orientation={isColumn ? 'horizontal' : 'vertical'}
+        aria-label={dividerLabel}
         aria-valuenow={Math.round(fraction * 100)}
         aria-valuemin={MIN_FRACTION * 100}
         aria-valuemax={MAX_FRACTION * 100}

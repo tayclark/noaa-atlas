@@ -2,7 +2,7 @@
   position: absolute;
   right: var(--space-3);
   bottom: var(--space-3);
-  max-width: min(260px, calc(100% - 2 * var(--space-3)));
+  max-width: min(340px, calc(100% - 2 * var(--space-3)));
   max-height: calc(100% - 2 * var(--space-3));
   overflow: auto;
   /* Purely informational (no interactive controls), and force-layout node positions aren't
@@ -56,9 +56,6 @@
   gap: var(--space-1);
   min-width: 0;
   color: var(--color-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .graph-legend-swatch {

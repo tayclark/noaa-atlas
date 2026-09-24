@@ -21,7 +21,7 @@ describe('App', () => {
     expect(
       screen.getByRole('img', { name: 'Globe view of NOAA API coverage' }),
     ).toBeTruthy()
-    expect(screen.getByRole('separator')).toBeTruthy()
+    expect(screen.getByRole('separator', { name: 'Resize panes' })).toBeTruthy()
   })
 
   it('shows the graph alongside the finder on the default tab', () => {

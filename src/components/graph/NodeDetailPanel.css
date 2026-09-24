@@ -3,7 +3,7 @@
   left: var(--space-3);
   top: var(--space-3);
   max-width: min(280px, calc(100% - 2 * var(--space-3)));
-  max-height: calc(100% - 2 * var(--space-3));
+  max-height: 55%;
   overflow: auto;
   padding: var(--space-2);
   background: var(--color-surface-raised);

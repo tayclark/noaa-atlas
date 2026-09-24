@@ -1,4 +1,4 @@
-import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation, type Simulation, type SimulationLinkDatum, type SimulationNodeDatum } from 'd3-force'
+import { forceCenter, forceCollide, forceX, forceY, forceLink, forceManyBody, forceSimulation, type Simulation, type SimulationLinkDatum, type SimulationNodeDatum } from 'd3-force'
 import type { GraphEdge, GraphNode } from '../../data/graphSchema'
 
 export type SimNode = GraphNode & SimulationNodeDatum
@@ -17,7 +17,7 @@ export function nodeRadius(node: GraphNode): number {
 // only share a theme, they aren't otherwise related. Other edge types (shared-id, data-flow)
 // mean the two services are directly related, so they're pulled closer together.
 const LINK_DISTANCE: Record<GraphEdge['type'], number> = {
-  theme: 120,
+  theme: 90,
   'shared-id': 60,
   'data-flow': 60,
 }
@@ -107,10 +107,14 @@ export function createGraphSimulation(
         .distance((edge) => LINK_DISTANCE[edge.type])
         .strength((edge) => LINK_STRENGTH[edge.type]),
     )
-    .force('charge', forceManyBody().strength(-150))
+    .force('charge', forceManyBody().strength(-130))
     .force('center', forceCenter(width / 2, height / 2))
+    // Weak gravity: without it, nodes with no edges to the rest (and small disconnected groups)
+    // are only repelled, so they drift far out and the whole-graph fit shrinks to unreadable.
+    .force('x', forceX<SimNode>(width / 2).strength(0.035))
+    .force('y', forceY<SimNode>(height / 2).strength(0.035))
     .force(
       'collide',
-      forceCollide<SimNode>((node) => nodeRadius(node) + 4),
+      forceCollide<SimNode>((node) => nodeRadius(node) + 10),
     )
 }
