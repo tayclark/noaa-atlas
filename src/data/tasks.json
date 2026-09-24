@@ -162,6 +162,29 @@
       "nodes": [
         { "nodeId": "nefsc-erddap", "why": "eMOLT bottom temperatures and hydrographic monitoring for the Northeast U.S. shelf, subsettable and downloadable as CSV or NetCDF." }
       ]
+    },
+    {
+      "id": "weather-map-overlays",
+      "label": "Add weather and forecast layers to a web map",
+      "nodes": [
+        { "nodeId": "nowcoast-map-services", "why": "WMS and WMTS layers for radar, forecast grids, warnings and observations, with browser access enabled." },
+        { "nodeId": "nws-raster-map-services", "why": "ArcGIS REST raster services for NWS products such as NDFD, precipitation and snow." }
+      ]
+    },
+    {
+      "id": "nautical-chart-tiles",
+      "label": "Show NOAA nautical charts on a map",
+      "nodes": [
+        { "nodeId": "noaa-chart-services", "why": "WMTS and WMS endpoints for NOAA raster charts and ENC display from Coast Survey's ArcGIS server." }
+      ]
+    },
+    {
+      "id": "magnetic-declination-and-gnss",
+      "label": "Look up magnetic declination or GNSS reference-station data",
+      "nodes": [
+        { "nodeId": "ncei-wmm-declination-api", "why": "Magnetic declination for a latitude and longitude from the World Magnetic Model; needs a registered key." },
+        { "nodeId": "noaa-cors-s3", "why": "Daily RINEX observation files from the NOAA CORS Network in a public S3 bucket." }
+      ]
     }
   ]
 }
