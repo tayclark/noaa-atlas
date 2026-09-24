@@ -1839,6 +1839,495 @@
       ],
       "kind": "service",
       "lastVerified": "2026-09-23"
+    },
+    {
+      "id": "nomads",
+      "name": "NOMADS model data server (NCEP)",
+      "summary": "NOAA Operational Model Archive and Distribution System: NCEP model output (GFS, GDAS, GEFS and others) as GRIB2 files, with a GRIB filter that returns only the chosen variables, levels and sub-region. The OpenDAP service has been retired.",
+      "owner": {
+        "office": "NWS",
+        "program": "NCEP Central Operations, NOMADS"
+      },
+      "theme": "models",
+      "baseUrl": "https://nomads.ncep.noaa.gov/",
+      "formats": [
+        "grib2",
+        "text"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "No key needed."
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "hourly",
+        "note": "New cycles appear as each model run finishes."
+      },
+      "docUrl": "https://nomads.ncep.noaa.gov/info.php?page=gribfilter",
+      "sample": {
+        "url": "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl?dir=%2Fgfs.20260923%2F00%2Fatmos",
+        "responseExcerpt": "gfs.t00z.pgrb2.0p25.anl (424299480) gfs.t00z.pgrb2.0p25.f000 (487470450) gfs.t00z.pgrb2.0p25.f001 (514876701) ..."
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: GRIB2 grids that need decoding before they can be drawn, and no tile or image endpoint.",
+      "tags": [
+        "nomads",
+        "grib2",
+        "gfs",
+        "forecast-model",
+        "grib-filter"
+      ],
+      "kind": "service",
+      "lastVerified": "2026-09-23"
+    },
+    {
+      "id": "gfs-aws-open-data",
+      "name": "GFS global forecast model (AWS Open Data)",
+      "summary": "Global Forecast System output from NCEP as GRIB2 files in a public S3 bucket, one prefix per date and cycle (gfs.YYYYMMDD/HH/), with the GDAS analysis and ensemble Kalman filter (enkfgdas) products alongside.",
+      "owner": {
+        "office": "NWS",
+        "program": "NCEP Environmental Modeling Center, Global Forecast System (GFS)"
+      },
+      "theme": "models",
+      "baseUrl": "https://noaa-gfs-bdp-pds.s3.amazonaws.com/",
+      "formats": [
+        "grib2",
+        "xml"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public bucket, no account needed."
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "hourly",
+        "note": "Four cycles a day (00, 06, 12, 18 UTC); forecast hours for each cycle appear as the run completes."
+      },
+      "docUrl": "https://registry.opendata.aws/noaa-gfs-bdp-pds/",
+      "sample": {
+        "url": "https://noaa-gfs-bdp-pds.s3.amazonaws.com/?list-type=2&prefix=gfs.20260923/&delimiter=/",
+        "responseExcerpt": "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>noaa-gfs-bdp-pds</Name><Prefix>gfs.20260923/</Prefix><KeyCount>4</KeyCount><Delimiter>/</Delimiter><CommonPrefixes><Prefix>gfs.20260923/00/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>gfs.20260923/06/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>gfs.20260923/12/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>gfs.20260923/18/</Prefix></CommonPrefixes></ListBucketResult>"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: GRIB2 model output that needs decoding before it can be drawn, and no tile or image endpoint.",
+      "tags": [
+        "gfs",
+        "forecast-model",
+        "global",
+        "grib2",
+        "aws"
+      ],
+      "kind": "service",
+      "lastVerified": "2026-09-23"
+    },
+    {
+      "id": "hrrr-aws-open-data",
+      "name": "HRRR hourly rapid-refresh model (AWS Open Data)",
+      "summary": "High-Resolution Rapid Refresh 3 km forecasts for the contiguous US as GRIB2 files in a public S3 bucket (hrrr.YYYYMMDD/conus/hrrr.tHHz.wrfsfcfNN.grib2), each with a .idx sidecar for byte-range reads of single variables.",
+      "owner": {
+        "office": "NWS",
+        "program": "NCEP Environmental Modeling Center, High-Resolution Rapid Refresh (HRRR)"
+      },
+      "theme": "models",
+      "baseUrl": "https://noaa-hrrr-bdp-pds.s3.amazonaws.com/",
+      "formats": [
+        "grib2",
+        "xml"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public bucket, no account needed. The .idx files let you fetch a single variable with an HTTP Range request."
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-74.709, 45.004],
+            [-70.865, 45.271],
+            [-69.243, 47.463],
+            [-67.807, 47.083],
+            [-67.802, 45.728],
+            [-66.987, 44.828],
+            [-68.533, 44.259],
+            [-68.763, 44.571],
+            [-70.269, 43.672],
+            [-71.046, 42.331],
+            [-69.949, 41.677],
+            [-71.39, 41.795],
+            [-71.523, 41.379],
+            [-73.987, 40.751],
+            [-73.97, 41.25],
+            [-74.08, 39.788],
+            [-74.794, 39.002],
+            [-75.524, 39.49],
+            [-75.074, 39.983],
+            [-75.588, 39.641],
+            [-75.039, 38.426],
+            [-75.934, 37.152],
+            [-75.659, 37.954],
+            [-76.341, 38.71],
+            [-75.873, 39.511],
+            [-76.57, 39.269],
+            [-76.341, 38.087],
+            [-77.233, 38.408],
+            [-77.03, 38.889],
+            [-77.26, 38.6],
+            [-76.254, 37.431],
+            [-76.758, 37.505],
+            [-76.401, 36.991],
+            [-77.251, 37.329],
+            [-75.999, 36.913],
+            [-75.534, 35.819],
+            [-75.946, 36.659],
+            [-75.82, 36.113],
+            [-76.734, 36.229],
+            [-75.759, 35.843],
+            [-76.174, 35.354],
+            [-77.04, 35.527],
+            [-76.44, 34.843],
+            [-77.412, 34.731],
+            [-77.928, 33.94],
+            [-80.803, 32.448],
+            [-81.46, 31.127],
+            [-80.05, 26.808],
+            [-80.485, 25.23],
+            [-81.11, 25.138],
+            [-81.715, 25.983],
+            [-82.715, 27.5],
+            [-82.406, 27.863],
+            [-82.844, 27.846],
+            [-82.651, 28.888],
+            [-83.694, 29.926],
+            [-85.319, 29.68],
+            [-85.604, 30.287],
+            [-88.006, 30.231],
+            [-88.011, 30.694],
+            [-90.332, 30.278],
+            [-89.401, 30.046],
+            [-89.721, 29.619],
+            [-89.016, 29.203],
+            [-89.376, 28.981],
+            [-90.159, 29.537],
+            [-90.213, 29.105],
+            [-91.29, 29.289],
+            [-91.893, 29.836],
+            [-93.841, 29.98],
+            [-94.76, 29.384],
+            [-95.023, 29.702],
+            [-95.273, 28.964],
+            [-96.64, 28.709],
+            [-97.439, 27.328],
+            [-97.768, 27.458],
+            [-97.358, 25.871],
+            [-99.108, 26.447],
+            [-101.38, 29.743],
+            [-102.343, 29.865],
+            [-103.258, 29.001],
+            [-106.445, 31.768],
+            [-111.042, 31.324],
+            [-114.725, 32.715],
+            [-117.128, 32.533],
+            [-118.506, 34.017],
+            [-120.645, 34.58],
+            [-122.499, 37.543],
+            [-122.071, 37.478],
+            [-122.314, 38.007],
+            [-121.525, 38.056],
+            [-122.999, 37.989],
+            [-124.324, 40.252],
+            [-124.072, 41.46],
+            [-124.54, 42.813],
+            [-123.989, 46.219],
+            [-123.221, 46.154],
+            [-124.073, 46.279],
+            [-123.843, 46.963],
+            [-124.71, 48.38],
+            [-122.779, 48.138],
+            [-123.139, 47.386],
+            [-122.533, 47.92],
+            [-123.028, 47.139],
+            [-122.702, 47.111],
+            [-122.242, 48.011],
+            [-122.789, 48.993],
+            [-95.162, 48.992],
+            [-95.155, 49.37],
+            [-94.621, 48.743],
+            [-91.518, 48.058],
+            [-88.378, 48.303],
+            [-84.149, 46.543],
+            [-82.551, 45.347],
+            [-82.138, 43.571],
+            [-83.15, 42.142],
+            [-82.69, 41.675],
+            [-79.037, 42.802],
+            [-78.846, 43.583],
+            [-76.82, 43.629],
+            [-74.709, 45.004]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "hourly",
+        "note": "A new cycle every hour."
+      },
+      "docUrl": "https://registry.opendata.aws/noaa-hrrr-pds/",
+      "sample": {
+        "url": "https://noaa-hrrr-bdp-pds.s3.amazonaws.com/?list-type=2&prefix=hrrr.20260923/conus/hrrr.t00z.wrfsfcf00&max-keys=2",
+        "responseExcerpt": "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>noaa-hrrr-bdp-pds</Name><Prefix>hrrr.20260923/conus/hrrr.t00z.wrfsfcf00</Prefix><MaxKeys>2</MaxKeys><Contents><Key>hrrr.20260923/conus/hrrr.t00z.wrfsfcf00.grib2</Key></Contents><Contents><Key>hrrr.20260923/conus/hrrr.t00z.wrfsfcf00.grib2.idx</Key></Contents></ListBucketResult>"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: GRIB2 model output that needs decoding before it can be drawn, and no tile or image endpoint.",
+      "tags": [
+        "hrrr",
+        "forecast-model",
+        "conus",
+        "grib2",
+        "aws"
+      ],
+      "kind": "service",
+      "lastVerified": "2026-09-23"
+    },
+    {
+      "id": "gefs-aws-open-data",
+      "name": "GEFS global ensemble forecast (AWS Open Data)",
+      "summary": "Global Ensemble Forecast System output from NCEP as GRIB2 files in a public S3 bucket, one prefix per date and cycle (gefs.YYYYMMDD/HH/) with atmos, chem and wave sub-folders.",
+      "owner": {
+        "office": "NWS",
+        "program": "NCEP Environmental Modeling Center, Global Ensemble Forecast System (GEFS)"
+      },
+      "theme": "models",
+      "baseUrl": "https://noaa-gefs-pds.s3.amazonaws.com/",
+      "formats": [
+        "grib2",
+        "xml"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public bucket, no account needed."
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "hourly",
+        "note": "Four cycles a day (00, 06, 12, 18 UTC)."
+      },
+      "docUrl": "https://registry.opendata.aws/noaa-gefs/",
+      "sample": {
+        "url": "https://noaa-gefs-pds.s3.amazonaws.com/?list-type=2&prefix=gefs.20260923/00/&delimiter=/",
+        "responseExcerpt": "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>noaa-gefs-pds</Name><Prefix>gefs.20260923/00/</Prefix><Delimiter>/</Delimiter><CommonPrefixes><Prefix>gefs.20260923/00/atmos/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>gefs.20260923/00/chem/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>gefs.20260923/00/wave/</Prefix></CommonPrefixes></ListBucketResult>"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: GRIB2 model output that needs decoding before it can be drawn, and no tile or image endpoint.",
+      "tags": [
+        "gefs",
+        "ensemble",
+        "forecast-model",
+        "global",
+        "grib2",
+        "aws"
+      ],
+      "kind": "service",
+      "lastVerified": "2026-09-23"
+    },
+    {
+      "id": "nbm-aws-open-data",
+      "name": "National Blend of Models (AWS Open Data)",
+      "summary": "National Blend of Models guidance, a statistically post-processed blend of many models, as GRIB2 files in a public S3 bucket, one prefix per date and hour (blend.YYYYMMDD/HH/) with core, qmd and text sub-folders.",
+      "owner": {
+        "office": "NWS",
+        "program": "NWS Meteorological Development Laboratory, National Blend of Models (NBM)"
+      },
+      "theme": "models",
+      "baseUrl": "https://noaa-nbm-grib2-pds.s3.amazonaws.com/",
+      "formats": [
+        "grib2",
+        "xml"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public bucket, no account needed."
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-74.709, 45.004],
+            [-70.865, 45.271],
+            [-69.243, 47.463],
+            [-67.807, 47.083],
+            [-67.802, 45.728],
+            [-66.987, 44.828],
+            [-68.533, 44.259],
+            [-68.763, 44.571],
+            [-70.269, 43.672],
+            [-71.046, 42.331],
+            [-69.949, 41.677],
+            [-71.39, 41.795],
+            [-71.523, 41.379],
+            [-73.987, 40.751],
+            [-73.97, 41.25],
+            [-74.08, 39.788],
+            [-74.794, 39.002],
+            [-75.524, 39.49],
+            [-75.074, 39.983],
+            [-75.588, 39.641],
+            [-75.039, 38.426],
+            [-75.934, 37.152],
+            [-75.659, 37.954],
+            [-76.341, 38.71],
+            [-75.873, 39.511],
+            [-76.57, 39.269],
+            [-76.341, 38.087],
+            [-77.233, 38.408],
+            [-77.03, 38.889],
+            [-77.26, 38.6],
+            [-76.254, 37.431],
+            [-76.758, 37.505],
+            [-76.401, 36.991],
+            [-77.251, 37.329],
+            [-75.999, 36.913],
+            [-75.534, 35.819],
+            [-75.946, 36.659],
+            [-75.82, 36.113],
+            [-76.734, 36.229],
+            [-75.759, 35.843],
+            [-76.174, 35.354],
+            [-77.04, 35.527],
+            [-76.44, 34.843],
+            [-77.412, 34.731],
+            [-77.928, 33.94],
+            [-80.803, 32.448],
+            [-81.46, 31.127],
+            [-80.05, 26.808],
+            [-80.485, 25.23],
+            [-81.11, 25.138],
+            [-81.715, 25.983],
+            [-82.715, 27.5],
+            [-82.406, 27.863],
+            [-82.844, 27.846],
+            [-82.651, 28.888],
+            [-83.694, 29.926],
+            [-85.319, 29.68],
+            [-85.604, 30.287],
+            [-88.006, 30.231],
+            [-88.011, 30.694],
+            [-90.332, 30.278],
+            [-89.401, 30.046],
+            [-89.721, 29.619],
+            [-89.016, 29.203],
+            [-89.376, 28.981],
+            [-90.159, 29.537],
+            [-90.213, 29.105],
+            [-91.29, 29.289],
+            [-91.893, 29.836],
+            [-93.841, 29.98],
+            [-94.76, 29.384],
+            [-95.023, 29.702],
+            [-95.273, 28.964],
+            [-96.64, 28.709],
+            [-97.439, 27.328],
+            [-97.768, 27.458],
+            [-97.358, 25.871],
+            [-99.108, 26.447],
+            [-101.38, 29.743],
+            [-102.343, 29.865],
+            [-103.258, 29.001],
+            [-106.445, 31.768],
+            [-111.042, 31.324],
+            [-114.725, 32.715],
+            [-117.128, 32.533],
+            [-118.506, 34.017],
+            [-120.645, 34.58],
+            [-122.499, 37.543],
+            [-122.071, 37.478],
+            [-122.314, 38.007],
+            [-121.525, 38.056],
+            [-122.999, 37.989],
+            [-124.324, 40.252],
+            [-124.072, 41.46],
+            [-124.54, 42.813],
+            [-123.989, 46.219],
+            [-123.221, 46.154],
+            [-124.073, 46.279],
+            [-123.843, 46.963],
+            [-124.71, 48.38],
+            [-122.779, 48.138],
+            [-123.139, 47.386],
+            [-122.533, 47.92],
+            [-123.028, 47.139],
+            [-122.702, 47.111],
+            [-122.242, 48.011],
+            [-122.789, 48.993],
+            [-95.162, 48.992],
+            [-95.155, 49.37],
+            [-94.621, 48.743],
+            [-91.518, 48.058],
+            [-88.378, 48.303],
+            [-84.149, 46.543],
+            [-82.551, 45.347],
+            [-82.138, 43.571],
+            [-83.15, 42.142],
+            [-82.69, 41.675],
+            [-79.037, 42.802],
+            [-78.846, 43.583],
+            [-76.82, 43.629],
+            [-74.709, 45.004]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "hourly",
+        "note": "A new run every hour."
+      },
+      "docUrl": "https://registry.opendata.aws/noaa-nbm/",
+      "sample": {
+        "url": "https://noaa-nbm-grib2-pds.s3.amazonaws.com/?list-type=2&prefix=blend.20260923/00/&delimiter=/",
+        "responseExcerpt": "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>noaa-nbm-grib2-pds</Name><Prefix>blend.20260923/00/</Prefix><Delimiter>/</Delimiter><CommonPrefixes><Prefix>blend.20260923/00/core/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>blend.20260923/00/qmd/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>blend.20260923/00/text/</Prefix></CommonPrefixes></ListBucketResult>"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: GRIB2 model output that needs decoding before it can be drawn, and no tile or image endpoint.",
+      "tags": [
+        "nbm",
+        "blend",
+        "forecast-model",
+        "conus",
+        "grib2",
+        "aws"
+      ],
+      "kind": "service",
+      "lastVerified": "2026-09-23"
     }
   ],
   "edges": [
