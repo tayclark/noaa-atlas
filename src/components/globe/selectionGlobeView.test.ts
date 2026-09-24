@@ -65,7 +65,8 @@ describe('describeSelectionForGlobe', () => {
   })
 
   it('says an empty theme has no services and draws nothing', () => {
-    const view = describeSelectionForGlobe({ ...none, selectedNodeId: 'theme-space-weather' }, context)
+    const withoutSpaceWeather = { ...context, nodes: nodes.filter((n) => n.theme !== 'space-weather') }
+    const view = describeSelectionForGlobe({ ...none, selectedNodeId: 'theme-space-weather' }, withoutSpaceWeather)
     expect(view.footprint.features).toEqual([])
     expect(view.card?.lines).toEqual(['No services curated yet.'])
   })

@@ -3,14 +3,15 @@
 
 import graphJson from '../../data/graph.json'
 import { buildGraph, themeNodeId } from '../../data/buildGraph'
-import { parseGraphFile, THEME_LABELS } from '../../data/graphSchema'
+import { parseGraphFile, THEME_LABELS, type Graph } from '../../data/graphSchema'
 import { selectNode } from '../../data/selectionStore'
 import { THEME_COLORS } from '../../data/themeColors'
 import { summarizeRoot } from '../../data/themeSummary'
 
-const graph = buildGraph(parseGraphFile(graphJson))
+const defaultGraph = buildGraph(parseGraphFile(graphJson))
 
-export function RootDetailBody() {
+/** `graph` is only overridden by tests, to reach the empty-theme state. */
+export function RootDetailBody({ graph = defaultGraph }: { graph?: Graph }) {
   const { themes, services, live } = summarizeRoot(graph)
 
   return (

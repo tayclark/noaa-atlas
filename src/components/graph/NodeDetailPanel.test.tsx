@@ -2,12 +2,16 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import graphJson from '../../data/graph.json'
-import type { ServiceNode } from '../../data/graphSchema'
+import { buildGraph } from '../../data/buildGraph'
+import type { ServiceNode, ThemeNode } from '../../data/graphSchema'
 import { parseGraphFile, THEME_DESCRIPTIONS, THEME_LABELS } from '../../data/graphSchema'
 import { clearSelection, getSelectionSnapshot, selectNode } from '../../data/selectionStore'
 import { NodeDetailPanel } from './NodeDetailPanel'
+import { RootDetailBody } from './RootDetailBody'
+import { ThemeDetailBody } from './ThemeDetailBody'
 
-const nodes = parseGraphFile(graphJson).nodes as ServiceNode[]
+const file = parseGraphFile(graphJson)
+const nodes = file.nodes as ServiceNode[]
 
 const panel = <NodeDetailPanel collapsed={false} onToggleCollapsed={() => {}} />
 
@@ -86,10 +90,23 @@ describe('NodeDetailPanel', () => {
     expect(screen.getByRole('heading', { name: 'NOAA' })).toBeTruthy()
     const live = nodes.filter((n) => n.liveLayer).length
     expect(screen.getByRole('heading', { name: `${nodes.length} services · ${live} live` })).toBeTruthy()
-    expect(screen.getByText('none yet')).toBeTruthy()
+    expect(screen.queryByText('none yet')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: THEME_LABELS.ocean }))
     expect(getSelectionSnapshot().selectedNodeId).toBe('theme-ocean')
+  })
+
+  it('says a theme with no services has none yet, on the root and on its hub', () => {
+    const graph = buildGraph({ ...file, nodes: file.nodes.filter((n) => n.theme !== 'space-weather'), edges: [] })
+    const hub = graph.nodes.find((n): n is ThemeNode => n.id === 'theme-space-weather')
+    if (!hub) throw new Error('expected the space-weather hub')
+
+    const { unmount } = render(<RootDetailBody graph={graph} />)
+    expect(screen.getByText('none yet')).toBeTruthy()
+    unmount()
+
+    render(<ThemeDetailBody node={hub} graph={graph} />)
+    expect(screen.getByText('No services curated yet.')).toBeTruthy()
   })
 
   it('shows only the title bar when collapsed, with a toggle that reports its state (#141)', () => {
