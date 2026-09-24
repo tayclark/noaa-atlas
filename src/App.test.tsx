@@ -8,6 +8,10 @@ vi.mock('maplibre-gl', () => ({
     on = vi.fn()
     setProjection = vi.fn()
     remove = vi.fn()
+    addControl = vi.fn()
+  },
+  GeolocateControl: class {
+    on = vi.fn()
   },
 }))
 
