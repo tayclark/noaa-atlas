@@ -2598,6 +2598,492 @@
         "emolt",
         "api"
       ]
+    },
+    {
+      "id": "nowcoast-map-services",
+      "kind": "service",
+      "name": "nowCOAST web map services",
+      "summary": "NOAA's OGC web map services (WMS and WMTS on a GeoServer) serving near-real-time and forecast map layers: radar, NDFD forecast grids, watches and warnings, observations and marine guidance, for the US and territories.",
+      "owner": {
+        "office": "NOS",
+        "program": "nowCOAST (Office of Coast Survey)"
+      },
+      "theme": "geospatial",
+      "baseUrl": "https://nowcoast.noaa.gov/geoserver/ows",
+      "formats": [
+        "xml",
+        "tiles"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "access-control-allow-origin: * on WMS and WMTS GetCapabilities (checked 2026-09-23). The /arcgis/rest/services path returned 403, so use the GeoServer endpoints."
+      },
+      "coverage": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-133, 22],
+              [-63, 22],
+              [-63, 50],
+              [-133, 50],
+              [-133, 22]
+            ]
+          ],
+          [
+            [
+              [-180, 48],
+              [-125, 48],
+              [-125, 74],
+              [-180, 74],
+              [-180, 48]
+            ]
+          ],
+          [
+            [
+              [170, 48],
+              [180, 48],
+              [180, 58],
+              [170, 58],
+              [170, 48]
+            ]
+          ],
+          [
+            [
+              [-165, 15],
+              [-150, 15],
+              [-150, 25],
+              [-165, 25],
+              [-165, 15]
+            ]
+          ],
+          [
+            [
+              [-69, 16],
+              [-63, 16],
+              [-63, 20],
+              [-69, 20],
+              [-69, 16]
+            ]
+          ],
+          [
+            [
+              [144, 12],
+              [147, 12],
+              [147, 21],
+              [144, 21],
+              [144, 12]
+            ]
+          ],
+          [
+            [
+              [-171.5, -15],
+              [-168, -15],
+              [-168, -13],
+              [-171.5, -13],
+              [-171.5, -15]
+            ]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "minutes",
+        "note": "Varies by layer, from radar refreshed every few minutes to forecast grids updated hourly or daily."
+      },
+      "docUrl": "https://nowcoast.noaa.gov/",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://nowcoast.noaa.gov/geoserver/ows?service=wms&version=1.3.0&request=GetCapabilities",
+        "responseExcerpt": "<WMS_Capabilities ...><Service><Name>WMS</Name><Title>nowCOAST Web Map Services</Title> ... <Layer><Title>12-Hour Probability of Precipitation (%)</Title> ... <Name>ndfd_precipitation:conus_12hr_precipitation_probability</Name> ..."
+      },
+      "liveLayer": false,
+      "notLiveReason": "Deferred: outside the v1 live layers. CORS works and the WMS/WMTS layers are a plausible later basemap overlay.",
+      "tags": [
+        "wms",
+        "wmts",
+        "ogc",
+        "radar",
+        "forecast",
+        "map-tiles",
+        "gis"
+      ]
+    },
+    {
+      "id": "nws-raster-map-services",
+      "kind": "service",
+      "name": "NWS raster map services (ArcGIS REST)",
+      "summary": "ArcGIS REST server for NWS raster weather and climate products, organised in folders such as air_quality, climate, hazards, NDFD, obs, outlooks, precip and snow. The vector layers live under the separate NWS GIS portal node.",
+      "owner": {
+        "office": "NWS",
+        "program": "Enterprise GIS (mapservices.weather.noaa.gov)"
+      },
+      "theme": "geospatial",
+      "baseUrl": "https://mapservices.weather.noaa.gov/raster/rest/services",
+      "formats": [
+        "arcgis-rest",
+        "json",
+        "tiles"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Responses echo the request Origin in access-control-allow-origin (checked 2026-09-23)."
+      },
+      "coverage": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-133, 22],
+              [-63, 22],
+              [-63, 50],
+              [-133, 50],
+              [-133, 22]
+            ]
+          ],
+          [
+            [
+              [-180, 48],
+              [-125, 48],
+              [-125, 74],
+              [-180, 74],
+              [-180, 48]
+            ]
+          ],
+          [
+            [
+              [170, 48],
+              [180, 48],
+              [180, 58],
+              [170, 58],
+              [170, 48]
+            ]
+          ],
+          [
+            [
+              [-165, 15],
+              [-150, 15],
+              [-150, 25],
+              [-165, 25],
+              [-165, 15]
+            ]
+          ],
+          [
+            [
+              [-69, 16],
+              [-63, 16],
+              [-63, 20],
+              [-69, 20],
+              [-69, 16]
+            ]
+          ],
+          [
+            [
+              [144, 12],
+              [147, 12],
+              [147, 21],
+              [144, 21],
+              [144, 12]
+            ]
+          ],
+          [
+            [
+              [-171.5, -15],
+              [-168, -15],
+              [-168, -13],
+              [-171.5, -13],
+              [-171.5, -15]
+            ]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "hourly",
+        "note": "Varies by service, from observation mosaics to daily outlooks and snow analyses."
+      },
+      "docUrl": "https://www.weather.gov/gis/",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://mapservices.weather.noaa.gov/raster/rest/services?f=json",
+        "responseExcerpt": "{\"currentVersion\":11.3,\"folders\":[\"air_quality\",\"climate\",\"hazards\",\"NDFD\",\"obs\",\"outlooks\",\"precip\",\"snow\",\"Utilities\"],\"services\":[]}"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Deferred: outside the v1 live layers. CORS works and the raster services are a plausible later map layer.",
+      "tags": [
+        "arcgis",
+        "raster",
+        "weather",
+        "gis",
+        "map-tiles"
+      ]
+    },
+    {
+      "id": "noaa-chart-services",
+      "kind": "service",
+      "name": "NOAA nautical chart services",
+      "summary": "Office of Coast Survey ArcGIS REST server for nautical chart products, with OGC WMTS and WMS endpoints for NOAA raster charts and ENC display, plus folders for maritime boundaries, navigation services, hydrographic services and precision navigation.",
+      "owner": {
+        "office": "NOS",
+        "program": "Office of Coast Survey"
+      },
+      "theme": "geospatial",
+      "baseUrl": "https://gis.charttools.noaa.gov/arcgis/rest/services",
+      "formats": [
+        "arcgis-rest",
+        "json",
+        "xml",
+        "tiles"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Responses echo the request Origin in access-control-allow-origin (checked 2026-09-23). The tileservice.charts.noaa.gov tile URL pattern returned an HTML page and is not used."
+      },
+      "coverage": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-133, 22],
+              [-63, 22],
+              [-63, 50],
+              [-133, 50],
+              [-133, 22]
+            ]
+          ],
+          [
+            [
+              [-180, 48],
+              [-125, 48],
+              [-125, 74],
+              [-180, 74],
+              [-180, 48]
+            ]
+          ],
+          [
+            [
+              [170, 48],
+              [180, 48],
+              [180, 58],
+              [170, 58],
+              [170, 48]
+            ]
+          ],
+          [
+            [
+              [-165, 15],
+              [-150, 15],
+              [-150, 25],
+              [-165, 25],
+              [-165, 15]
+            ]
+          ],
+          [
+            [
+              [-69, 16],
+              [-63, 16],
+              [-63, 20],
+              [-69, 20],
+              [-69, 16]
+            ]
+          ],
+          [
+            [
+              [144, 12],
+              [147, 12],
+              [147, 21],
+              [144, 21],
+              [144, 12]
+            ]
+          ],
+          [
+            [
+              [-171.5, -15],
+              [-168, -15],
+              [-168, -13],
+              [-171.5, -13],
+              [-171.5, -15]
+            ]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "periodic",
+        "note": "Chart data is refreshed as Coast Survey publishes chart updates."
+      },
+      "docUrl": "https://nauticalcharts.noaa.gov/data/gis-data-and-services.html",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://gis.charttools.noaa.gov/arcgis/rest/services/MarineChart_Services/NOAACharts/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
+        "responseExcerpt": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Capabilities xmlns=\"http://www.opengis.net/wmts/1.0\" ... version=\"1.0.0\"> ..."
+      },
+      "liveLayer": false,
+      "notLiveReason": "Deferred: outside the v1 live layers. CORS works and the NOAA chart WMTS is a plausible later basemap overlay. Charts are not for navigation.",
+      "tags": [
+        "charts",
+        "nautical",
+        "wmts",
+        "wms",
+        "arcgis",
+        "enc",
+        "gis"
+      ]
+    },
+    {
+      "id": "ncei-wmm-declination-api",
+      "kind": "service",
+      "name": "NCEI magnetic declination API (World Magnetic Model)",
+      "summary": "NCEI geomagnetic calculator web service returning magnetic declination and related field values for a latitude and longitude, computed from the World Magnetic Model.",
+      "owner": {
+        "office": "NESDIS",
+        "program": "NCEI Geomagnetism"
+      },
+      "theme": "geospatial",
+      "baseUrl": "https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination",
+      "formats": [
+        "json"
+      ],
+      "auth": {
+        "type": "key",
+        "note": "Requires a key parameter; requests without one return 400 (\"the key parameter is missing or it is wrong\"). Registration is via the NCEI Geomagnetic Calculators page. access-control-allow-origin: * (checked 2026-09-23)."
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "static",
+        "note": "Computed on request from the current model epoch; the model is revised about every five years."
+      },
+      "docUrl": "https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?lat1=40&lon1=-100&resultFormat=json&key=YOUR_KEY",
+        "responseExcerpt": "{\"result\":[{\"date\":2026.7288,\"elevation\":0,\"declination\":4.66039,\"alt_info\":\" Warning: The height validity of the geomagnetic components is dependent on the geomagnetic activity level. ...\", ...}], ...}"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Deferred: a per-point calculator that needs a registered key, so it is not a map layer for v1.",
+      "tags": [
+        "wmm",
+        "declination",
+        "magnetic",
+        "geomagnetism",
+        "compass"
+      ]
+    },
+    {
+      "id": "noaa-cors-s3",
+      "kind": "service",
+      "name": "NOAA CORS Network data (AWS S3)",
+      "summary": "Public S3 bucket noaa-cors-pds with NOAA CORS Network GNSS data from the National Geodetic Survey, including daily RINEX observation files organised as rinex/<year>/<day-of-year>/<station>/, alongside coordinate and plot folders.",
+      "owner": {
+        "office": "NOS",
+        "program": "National Geodetic Survey (CORS)"
+      },
+      "theme": "geospatial",
+      "baseUrl": "https://noaa-cors-pds.s3.amazonaws.com/",
+      "formats": [
+        "xml",
+        "other"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Anonymous S3 listing and download work; access-control-allow-origin: * (checked 2026-09-23)."
+      },
+      "coverage": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-133, 22],
+              [-63, 22],
+              [-63, 50],
+              [-133, 50],
+              [-133, 22]
+            ]
+          ],
+          [
+            [
+              [-180, 48],
+              [-125, 48],
+              [-125, 74],
+              [-180, 74],
+              [-180, 48]
+            ]
+          ],
+          [
+            [
+              [170, 48],
+              [180, 48],
+              [180, 58],
+              [170, 58],
+              [170, 48]
+            ]
+          ],
+          [
+            [
+              [-165, 15],
+              [-150, 15],
+              [-150, 25],
+              [-165, 25],
+              [-165, 15]
+            ]
+          ],
+          [
+            [
+              [-69, 16],
+              [-63, 16],
+              [-63, 20],
+              [-69, 20],
+              [-69, 16]
+            ]
+          ],
+          [
+            [
+              [144, 12],
+              [147, 12],
+              [147, 21],
+              [144, 21],
+              [144, 12]
+            ]
+          ],
+          [
+            [
+              [-171.5, -15],
+              [-168, -15],
+              [-168, -13],
+              [-171.5, -13],
+              [-171.5, -15]
+            ]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "daily",
+        "note": "New daily RINEX files are added per station; NCEI's CLASS archive is the route for older or bulk orders."
+      },
+      "docUrl": "https://geodesy.noaa.gov/CORS/data.shtml",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://noaa-cors-pds.s3.amazonaws.com/?list-type=2&max-keys=3&delimiter=/",
+        "responseExcerpt": "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>noaa-cors-pds</Name> ... <CommonPrefixes><Prefix>Plots/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>coord/</Prefix></CommonPrefixes> ..."
+      },
+      "liveLayer": false,
+      "notLiveReason": "Deferred: GNSS observation files, not a map layer for v1.",
+      "tags": [
+        "cors",
+        "gnss",
+        "geodesy",
+        "rinex",
+        "s3",
+        "survey"
+      ]
     }
   ],
   "edges": [
