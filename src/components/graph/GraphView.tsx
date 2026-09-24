@@ -29,11 +29,11 @@ import {
   subscribeSelection,
 } from '../../data/selectionStore'
 import { THEME_COLORS } from '../../data/themeColors'
-import { computeFitTransform, createGraphSimulation, EDGE_CLASS, nodeRadius, type SimEdge, type SimNode } from './graphLayout'
+import { computeFitTransform, createGraphSimulation, EDGE_CLASS, NO_INSET, nodeRadius, type Inset, type SimEdge, type SimNode } from './graphLayout'
 import { GraphLegend } from './GraphLegend'
 import { GraphSearch } from './GraphSearch'
 import { buildSearchIndex, matchNodeIds } from './searchMatch'
-import { LABEL_GAP, placeLabels, type LabelItem } from './labelPlacement'
+import { LABEL_GAP, placeLabels, type Box, type LabelItem } from './labelPlacement'
 import { NodeDetailPanel } from './NodeDetailPanel'
 
 const graph = buildGraph(parseGraphFile(graphJson))
@@ -44,6 +44,8 @@ const FIT_ALL_PADDING = 40
 const LABEL_PX = 12
 const LABEL_HEIGHT = 15
 const AUTOFIT_TICK_INTERVAL = 20
+// Clearance between the detail panel and the area a selection is framed into.
+const PANEL_GAP = 8
 
 const searchIndex = buildSearchIndex(graph.nodes, parseTasksFile(tasksJson).tasks)
 
@@ -63,6 +65,23 @@ function positionPathEdges(root: Element | null, positions: Map<string, { x: num
     el.setAttribute('x2', String(target.x))
     el.setAttribute('y2', String(target.y))
   })
+}
+
+/** The node detail panel's box in the SVG's screen space, or null when it isn't shown. */
+function detailPanelBox(svgEl: SVGSVGElement): Box | null {
+  const panelRect = svgEl.parentElement?.querySelector('.node-detail-panel')?.getBoundingClientRect()
+  if (!panelRect || panelRect.width === 0 || panelRect.height === 0) return null
+  const svgRect = svgEl.getBoundingClientRect()
+  return { x0: panelRect.left - svgRect.left, y0: panelRect.top - svgRect.top, x1: panelRect.right - svgRect.left, y1: panelRect.bottom - svgRect.top }
+}
+
+// The panel sits in the top-left corner, so the free area is either the strip to its right or the
+// one below it; framing uses whichever is larger (#141).
+function panelInset(panel: Box | null, width: number, height: number): Inset {
+  if (!panel) return NO_INSET
+  const left = panel.x1 + PANEL_GAP
+  const top = panel.y1 + PANEL_GAP
+  return (width - left) * height >= width * (height - top) ? { ...NO_INSET, left } : { ...NO_INSET, top }
 }
 
 export function GraphView() {
@@ -163,11 +182,8 @@ export function GraphView() {
           overNodes: priority >= 3,
         })
       })
-      const svgRect = svgEl.getBoundingClientRect()
-      const panelRect = svgEl.parentElement?.querySelector('.node-detail-panel')?.getBoundingClientRect()
-      const obstacles = panelRect
-        ? [{ x0: panelRect.left - svgRect.left, y0: panelRect.top - svgRect.top, x1: panelRect.right - svgRect.left, y1: panelRect.bottom - svgRect.top }]
-        : []
+      const panel = detailPanelBox(svgEl)
+      const obstacles = panel ? [panel] : []
       const bounds = { width: svgEl.clientWidth || initialSizeRef.current.width, height: svgEl.clientHeight || initialSizeRef.current.height }
       const sides = placeLabels(items, bounds, obstacles)
       nodeElsRef.current.forEach((el, id) => {
@@ -293,7 +309,10 @@ export function GraphView() {
       const svgEl = svgRef.current
       const zoomBehavior = zoomBehaviorRef.current
       if (!svgEl || !zoomBehavior) return false
-      const fit = computeFitTransform(positions, size.width, size.height, padding, maxScale)
+      // Frames into the part of the canvas the detail panel doesn't cover, so the selection's
+      // neighbours (and their labels) aren't hidden under it (#141).
+      const inset = panelInset(detailPanelBox(svgEl), size.width, size.height)
+      const fit = computeFitTransform(positions, size.width, size.height, padding, maxScale, inset)
       if (!fit) return false
       // d3-transition isn't a dependency here, so the pan/zoom is applied immediately rather
       // than animated (unlike MapLibre's flyTo in the reverse direction, #44).

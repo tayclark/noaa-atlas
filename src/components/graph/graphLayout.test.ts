@@ -168,4 +168,25 @@ describe('computeFitTransform', () => {
     const fit = computeFitTransform(positions, 800, 600, 60, 1.5)
     expect(fit?.k).toBe(1.5)
   })
+
+  it('centers a single position in the area right of a left inset (#141)', () => {
+    const fit = computeFitTransform([{ x: 100, y: 100 }], 800, 600, 60, 2, { left: 300, top: 0, right: 0, bottom: 0 })
+    expect((fit?.x ?? 0) + (fit?.k ?? 0) * 100).toBeCloseTo(550, 0)
+    expect((fit?.y ?? 0) + (fit?.k ?? 0) * 100).toBeCloseTo(300, 0)
+  })
+
+  it('fits the bounding box inside the inset area (#141)', () => {
+    const positions = [
+      { x: 0, y: 0 },
+      { x: 400, y: 100 },
+    ]
+    const inset = { left: 0, top: 200, right: 0, bottom: 0 }
+    const fit = computeFitTransform(positions, 800, 600, 60, 4, inset)
+    const k = fit?.k ?? 0
+    // Scale is limited by the 800 - 2*60 = 680px available width, and the box centre sits in
+    // the middle of the 400px-tall area below the inset.
+    expect(k).toBeCloseTo(680 / 400)
+    expect((fit?.y ?? 0) + k * 50).toBeCloseTo(400, 0)
+    expect((fit?.y ?? 0) + k * 0).toBeGreaterThanOrEqual(200)
+  })
 })

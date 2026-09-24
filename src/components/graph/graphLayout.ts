@@ -47,6 +47,16 @@ export interface FitTransform {
   k: number
 }
 
+/** Viewport edges (px) covered by an overlay, such as the node detail panel (#141). */
+export interface Inset {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+export const NO_INSET: Inset = { left: 0, top: 0, right: 0, bottom: 0 }
+
 const FIT_SCALE_EXTENT: [number, number] = [0.25, 4]
 /** Half-size (px) of the box used to frame a single highlighted node, so scale doesn't blow up. */
 const SINGLE_POINT_HALF_SIZE = 40
@@ -55,6 +65,7 @@ const SINGLE_POINT_HALF_SIZE = 40
  * Computes a d3-zoom transform ({x, y, k}) that pans/zooms to frame the given node positions
  * with padding, mirroring MapLibreGlobe's fitBounds behavior for the graph's screen space (#45).
  * Pure — takes plain positions in, returns a plain transform, no d3-zoom/DOM dependency.
+ * `inset` shrinks the target area to the part of the viewport not covered by an overlay.
  */
 export function computeFitTransform(
   positions: readonly { x: number; y: number }[],
@@ -62,6 +73,7 @@ export function computeFitTransform(
   viewportHeight: number,
   padding = 60,
   maxScale = 2,
+  inset: Inset = NO_INSET,
 ): FitTransform | null {
   if (positions.length === 0) return null
 
@@ -77,14 +89,16 @@ export function computeFitTransform(
   const centerX = (minX + maxX) / 2
   const centerY = (minY + maxY) / 2
 
-  const availableWidth = Math.max(viewportWidth - 2 * padding, 1)
-  const availableHeight = Math.max(viewportHeight - 2 * padding, 1)
+  const areaWidth = viewportWidth - inset.left - inset.right
+  const areaHeight = viewportHeight - inset.top - inset.bottom
+  const availableWidth = Math.max(areaWidth - 2 * padding, 1)
+  const availableHeight = Math.max(areaHeight - 2 * padding, 1)
   const k = Math.min(maxScale, FIT_SCALE_EXTENT[1], availableWidth / bboxWidth, availableHeight / bboxHeight)
   const clampedK = Math.max(FIT_SCALE_EXTENT[0], k)
 
   return {
-    x: viewportWidth / 2 - clampedK * centerX,
-    y: viewportHeight / 2 - clampedK * centerY,
+    x: inset.left + areaWidth / 2 - clampedK * centerX,
+    y: inset.top + areaHeight / 2 - clampedK * centerY,
     k: clampedK,
   }
 }
