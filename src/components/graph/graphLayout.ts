@@ -1,5 +1,5 @@
 import { forceCenter, forceCollide, forceX, forceY, forceLink, forceManyBody, forceSimulation, type Simulation, type SimulationLinkDatum, type SimulationNodeDatum } from 'd3-force'
-import type { GraphEdge, GraphNode } from '../../data/graphSchema'
+import { THEMES, type GraphEdge, type GraphNode, type Theme } from '../../data/graphSchema'
 
 export type SimNode = GraphNode & SimulationNodeDatum
 export interface SimEdge extends SimulationLinkDatum<SimNode> {
@@ -17,7 +17,7 @@ export function nodeRadius(node: GraphNode): number {
 // only share a theme, they aren't otherwise related. Other edge types (shared-id, data-flow)
 // mean the two services are directly related, so they're pulled closer together.
 const LINK_DISTANCE: Record<GraphEdge['type'], number> = {
-  theme: 90,
+  theme: 55,
   'shared-id': 60,
   'data-flow': 60,
 }
@@ -99,6 +99,19 @@ export function createGraphSimulation(
   width: number,
   height: number,
 ): Simulation<SimNode, SimEdge> {
+  const anchors = themeAnchors(THEMES, width, height)
+  const anchorOf = (node: SimNode) => anchors.get(node.theme) ?? { x: width / 2, y: height / 2 }
+  // Seed at the theme anchor so clusters form immediately instead of untangling from d3's
+  // default spiral; the small index-based offset keeps coincident nodes from stacking exactly.
+  nodes.forEach((node, i) => {
+    if (node.x !== undefined) return
+    const { x, y } = anchorOf(node)
+    const angle = i * 2.399963
+    node.x = x + Math.cos(angle) * (8 + (i % 5) * 4)
+    node.y = y + Math.sin(angle) * (8 + (i % 5) * 4)
+  })
+
+  const pull = (node: SimNode) => (node.kind === 'theme' ? 0.3 : 0.1)
   return forceSimulation(nodes)
     .force(
       'link',
@@ -107,14 +120,26 @@ export function createGraphSimulation(
         .distance((edge) => LINK_DISTANCE[edge.type])
         .strength((edge) => LINK_STRENGTH[edge.type]),
     )
-    .force('charge', forceManyBody().strength(-130))
+    .force('charge', forceManyBody().strength(-110))
     .force('center', forceCenter(width / 2, height / 2))
-    // Weak gravity: without it, nodes with no edges to the rest (and small disconnected groups)
-    // are only repelled, so they drift far out and the whole-graph fit shrinks to unreadable.
-    .force('x', forceX<SimNode>(width / 2).strength(0.035))
-    .force('y', forceY<SimNode>(height / 2).strength(0.035))
+    // Per-theme gravity: each node is pulled toward its theme's anchor, so services cluster
+    // around their hub and disconnected nodes can't drift off and shrink the whole-graph fit.
+    .force('x', forceX<SimNode>((node) => anchorOf(node).x).strength(pull))
+    .force('y', forceY<SimNode>((node) => anchorOf(node).y).strength(pull))
     .force(
       'collide',
       forceCollide<SimNode>((node) => nodeRadius(node) + 10),
     )
+}
+
+/** One anchor per theme, evenly spaced on an ellipse sized to the canvas, in the given order. */
+export function themeAnchors(themes: readonly Theme[], width: number, height: number): Map<Theme, { x: number; y: number }> {
+  const rx = width * 0.36
+  const ry = height * 0.36
+  return new Map(
+    themes.map((theme, i) => {
+      const angle = (i / themes.length) * 2 * Math.PI - Math.PI / 2
+      return [theme, { x: width / 2 + rx * Math.cos(angle), y: height / 2 + ry * Math.sin(angle) }]
+    }),
+  )
 }

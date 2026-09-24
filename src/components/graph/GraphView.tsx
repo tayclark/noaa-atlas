@@ -12,7 +12,7 @@
 
 import { drag as d3drag } from 'd3-drag'
 import { select } from 'd3-selection'
-import { zoom as d3zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from 'd3-zoom'
+import { zoom as d3zoom, zoomIdentity, zoomTransform, type ZoomBehavior, type ZoomTransform } from 'd3-zoom'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import './GraphView.css'
 import graphJson from '../../data/graph.json'
@@ -33,15 +33,16 @@ import { computeFitTransform, createGraphSimulation, EDGE_CLASS, nodeRadius, typ
 import { GraphLegend } from './GraphLegend'
 import { GraphSearch } from './GraphSearch'
 import { buildSearchIndex, matchNodeIds } from './searchMatch'
+import { LABEL_GAP, placeLabels, type LabelItem } from './labelPlacement'
 import { NodeDetailPanel } from './NodeDetailPanel'
 
 const graph = buildGraph(parseGraphFile(graphJson))
 // A selected node is framed together with its neighbors, at a scale capped so labels stay legible.
 const SELECTION_MAX_SCALE = 1.25
 const FIT_ALL_PADDING = 40
-// Node labels extend to the right of the node centre; the fit is computed from centres only, so
-// this stands in for the label width to keep the last column of labels inside the view.
-const LABEL_ALLOWANCE = 140
+// Labels render at this size on screen at every zoom level (#138); overlaps are hidden instead.
+const LABEL_PX = 12
+const LABEL_HEIGHT = 15
 const AUTOFIT_TICK_INTERVAL = 20
 
 const searchIndex = buildSearchIndex(graph.nodes, parseTasksFile(tasksJson).tasks)
@@ -74,6 +75,10 @@ export function GraphView() {
   const applyHighlightPanRef = useRef<(settled?: boolean) => void>(() => {})
   const highlightKeyRef = useRef('')
   const fitAllRef = useRef<() => void>(() => {})
+  const placeLabelsRef = useRef<() => void>(() => {})
+  const labelWidthsRef = useRef(new Map<string, number>())
+  // Read by placeLabelsRef, which runs outside React renders (zoom, ticks), so it's a ref.
+  const labelPriorityRef = useRef(new Map<string, number>())
   // The first settled layout is auto-fit once; later settles (e.g. after a node drag) must not
   // yank the view away from where the user left it.
   const initialFitDoneRef = useRef(false)
@@ -116,6 +121,8 @@ export function GraphView() {
       .scaleExtent([0.25, 4])
       .on('zoom', (event: { transform: ZoomTransform; sourceEvent: unknown }) => {
         zoomLayer.attr('transform', event.transform.toString())
+        zoomLayer.style('--graph-label-px', String(LABEL_PX / event.transform.k))
+        scheduleLabelPlacement()
         // Pan/zoom by the user (not our programmatic fit) ends the automatic framing.
         if (event.sourceEvent) initialFitDoneRef.current = true
       })
@@ -123,6 +130,72 @@ export function GraphView() {
     zoomBehaviorRef.current = zoomBehavior
 
     const nodeById = new Map(simNodes.map((node) => [node.id, node]))
+
+    // Measured once at the default label size, before any zoom scales the font.
+    nodeElsRef.current.forEach((el, id) => {
+      const text = el.querySelector('text')
+      const measured = text?.getComputedTextLength?.() ?? 0
+      labelWidthsRef.current.set(id, measured > 0 ? measured : (nodeById.get(id)?.name.length ?? 0) * 6.5)
+    })
+
+    const svgEl = svgRef.current
+    placeLabelsRef.current = () => {
+      const t = zoomTransform(svgEl)
+      const items: LabelItem[] = []
+      nodeElsRef.current.forEach((_, id) => {
+        const pos = nodePositionsRef.current.get(id)
+        const node = nodeById.get(id)
+        if (!pos || !node) return
+        const priority = labelPriorityRef.current.get(id) ?? (node.kind === 'theme' ? 3 : 0)
+        items.push({
+          id,
+          x: t.applyX(pos.x),
+          y: t.applyY(pos.y),
+          radius: nodeRadius(node) * t.k,
+          width: labelWidthsRef.current.get(id) ?? 0,
+          height: LABEL_HEIGHT,
+          priority,
+          // Hubs, matches and the selection may cover other nodes' dots (never another label).
+          overNodes: priority >= 3,
+        })
+      })
+      const svgRect = svgEl.getBoundingClientRect()
+      const panelRect = svgEl.parentElement?.querySelector('.node-detail-panel')?.getBoundingClientRect()
+      const obstacles = panelRect
+        ? [{ x0: panelRect.left - svgRect.left, y0: panelRect.top - svgRect.top, x1: panelRect.right - svgRect.left, y1: panelRect.bottom - svgRect.top }]
+        : []
+      const bounds = { width: svgEl.clientWidth || initialSizeRef.current.width, height: svgEl.clientHeight || initialSizeRef.current.height }
+      const sides = placeLabels(items, bounds, obstacles)
+      nodeElsRef.current.forEach((el, id) => {
+        const text = el.querySelector('text')
+        const node = nodeById.get(id)
+        if (!text || !node) return
+        // Positions are in world units (the zoom layer scales them), so screen gaps divide by k.
+        const side = sides.get(id) ?? null
+        const r = nodeRadius(node)
+        const gap = LABEL_GAP / t.k
+        const [x, y, anchor] =
+          side === 'left'
+            ? [-(r + gap), 4 / t.k, 'end']
+            : side === 'below'
+              ? [0, r + gap + 11 / t.k, 'middle']
+              : side === 'above'
+                ? [0, -(r + gap + 3 / t.k), 'middle']
+                : [r + gap, 4 / t.k, 'start']
+        text.setAttribute('x', String(x))
+        text.setAttribute('y', String(y))
+        text.setAttribute('text-anchor', anchor)
+        text.classList.toggle('graph-label-hidden', side === null)
+      })
+    }
+    let placementFrame = 0
+    function scheduleLabelPlacement() {
+      if (placementFrame || typeof requestAnimationFrame === 'undefined') return
+      placementFrame = requestAnimationFrame(() => {
+        placementFrame = 0
+        placeLabelsRef.current()
+      })
+    }
 
     const dragBehavior = d3drag<SVGGElement, unknown>()
       .on('start', function onStart(event) {
@@ -183,19 +256,24 @@ export function GraphView() {
         nodePositionsRef.current.set(id, { x, y })
       })
       positionPathEdges(zoomLayerRef.current, nodePositionsRef.current)
-      // Keep the view framed while the layout is still spreading out.
-      if (++ticks % AUTOFIT_TICK_INTERVAL === 0 && !initialFitDoneRef.current && highlightKeyRef.current === '') {
-        fitAllRef.current()
+      if (++ticks % AUTOFIT_TICK_INTERVAL === 0) {
+        // Keep the view framed while the layout is still spreading out.
+        if (!initialFitDoneRef.current && highlightKeyRef.current === '') fitAllRef.current()
+        scheduleLabelPlacement()
       }
     })
 
     // Positions settle after ~100+ ticks, so a selection made before this effect ran (e.g. a
     // globe click while the Inspector tab was active) needs one more pan attempt once real
     // positions exist (#45).
-    simulation.on('end', () => applyHighlightPanRef.current(true))
+    simulation.on('end', () => {
+      applyHighlightPanRef.current(true)
+      placeLabelsRef.current()
+    })
 
     return () => {
       simulation.stop()
+      if (placementFrame) cancelAnimationFrame(placementFrame)
     }
     // Created once: a resize only re-frames the view (effect below). Re-seeding the layout on
     // every size change made nodes jump while the user resized the panes.
@@ -222,8 +300,7 @@ export function GraphView() {
       ids.map((id) => nodePositionsRef.current.get(id)).filter((p): p is { x: number; y: number } => p !== undefined)
 
     const fitAll = () => {
-      const positions = [...nodePositionsRef.current.values()].flatMap((p) => [p, { x: p.x + LABEL_ALLOWANCE, y: p.y }])
-      applyTransform(positions, FIT_ALL_PADDING, 1)
+      applyTransform([...nodePositionsRef.current.values()], FIT_ALL_PADDING, 1)
     }
     fitAllRef.current = fitAll
 
@@ -242,9 +319,29 @@ export function GraphView() {
     }
     applyHighlightPanRef.current = applyHighlightPan
     applyHighlightPan()
+    placeLabelsRef.current()
     // Keyed on the joined ids, not the array: highlightedIds is a fresh array every render, so
     // depending on it would reset the user's pan/zoom on each keystroke in the search box.
   }, [selection, size, highlightKey])
+
+  // Label priority (#138): what the user asked for wins space first (the selection, task path or
+  // globe point, then search matches), then theme hubs, then a single selected node's
+  // neighbours. Separate from the pan effect above so typing in the search box re-places labels
+  // without resetting the user's pan/zoom.
+  useEffect(() => {
+    const ids = highlightKey ? highlightKey.split('|') : []
+    const priorities = new Map<string, number>()
+    if (ids.length === 1) {
+      getNeighbors(graph, ids[0] as string).forEach((group) => group.neighbors.forEach((n) => priorities.set(n.node.id, 1)))
+    }
+    graph.nodes.forEach((node) => {
+      if (node.kind === 'theme') priorities.set(node.id, 3)
+    })
+    matchedIds?.forEach((id) => priorities.set(id, 4))
+    ids.forEach((id) => priorities.set(id, 5))
+    labelPriorityRef.current = priorities
+    placeLabelsRef.current()
+  }, [highlightKey, matchedIds])
 
   return (
     <section className="graph-view" aria-label="Graph">
@@ -302,6 +399,7 @@ export function GraphView() {
                     else nodeElsRef.current.delete(node.id)
                   }}
                 >
+                  <title>{node.name}</title>
                   <circle r={nodeRadius(node)} style={{ fill: THEME_COLORS[node.theme] }} />
                   <text x={nodeRadius(node) + 4} y={4}>
                     {node.name}
