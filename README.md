@@ -60,8 +60,10 @@ Selecting a theme hub opens the same panel with a one-line description of the th
 
 A network log of every live `api.weather.gov` request the app makes (alerts, point lookups, forecasts, observations), newest first, capped at the last 50.
 
-- Each row shows the status (`200 OK`, `403 Error`, `Parse error`, `Network error`), the request path and the time.
-- Selecting a row shows the full URL, request headers and response body (or the error message).
+- The tab shows how many requests are logged, and a toolbar above the list has the count and a **Clear** button.
+- Each row shows the status (`200 OK`, `403 Error`, `Parse error`, `Network error`), the request path and the time. Rows start collapsed.
+- Clicking a row expands it in place (click again to collapse; one row is open at a time) to show the full URL, the request headers (folded) and the response.
+- The response is a foldable tree: the top-level keys are shown, nested objects and arrays are folded to a summary such as `[…] 467 items`, and long arrays show 20 items at a time behind a **Show more** button. A failed call shows its error message instead.
 - **Copy as curl** and **Copy as fetch** reproduce the request outside the app.
 
 ## Globe
