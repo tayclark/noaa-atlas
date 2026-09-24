@@ -13,6 +13,12 @@ interface LabelBox {
   fontSize: number
 }
 
+// The simulation runs for several seconds and labels are only re-placed every few ticks, so a
+// snapshot taken mid-layout can catch two labels drifting together. Wait for the final placement.
+async function waitForSettledLayout(page: Page) {
+  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
+}
+
 async function visibleLabels(page: Page): Promise<{ labels: LabelBox[]; canvas: DOMRect }> {
   return page.evaluate(() => {
     const canvas = document.querySelector('.graph-canvas')!.getBoundingClientRect()
@@ -30,10 +36,7 @@ async function visibleLabels(page: Page): Promise<{ labels: LabelBox[]; canvas: 
 test('visible labels do not overlap, stay legible and fit inside the canvas', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await page.goto('/')
-  await page.locator('.graph-node').first().waitFor()
-  // The layout settles and places labels once the simulation ends.
-  await expect(page.locator('.graph-label-hidden').first()).toBeAttached()
-  await page.waitForTimeout(3000)
+  await waitForSettledLayout(page)
 
   const { labels, canvas } = await visibleLabels(page)
   expect(labels.filter((l) => l.id.startsWith('theme-'))).toHaveLength(10)
@@ -56,9 +59,7 @@ test('visible labels do not overlap, stay legible and fit inside the canvas', as
 test('hovering a node reveals its hidden label', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await page.goto('/')
-  const hidden = page.locator('.graph-label-hidden').first()
-  await expect(hidden).toBeAttached()
-  await page.waitForTimeout(3000)
+  await waitForSettledLayout(page)
 
   const node = page.locator('.graph-node', { has: page.locator('.graph-label-hidden') }).first()
   const label = node.locator('text')
@@ -77,8 +78,7 @@ async function selectByKeyboard(page: Page, nodeId: string) {
 test('a selected node and its neighbours are framed clear of the detail panel, labels visible', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await page.goto('/')
-  await expect(page.locator('.graph-label-hidden').first()).toBeAttached()
-  await page.waitForTimeout(3000)
+  await waitForSettledLayout(page)
 
   await selectByKeyboard(page, 'coops-data-api')
   const panel = page.getByLabel('Node detail')

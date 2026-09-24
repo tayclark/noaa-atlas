@@ -223,7 +223,10 @@ export function GraphView() {
       .on('start', function onStart(event) {
         const node = nodeById.get(this.dataset.nodeId ?? '')
         if (!node) return
-        if (!event.active) simulation.alphaTarget(0.3).restart()
+        if (!event.active) {
+          simulation.alphaTarget(0.3).restart()
+          delete svgEl.dataset.layoutSettled
+        }
         node.fx = node.x
         node.fy = node.y
       })
@@ -291,6 +294,8 @@ export function GraphView() {
     simulation.on('end', () => {
       applyHighlightPanRef.current(true)
       placeLabelsRef.current()
+      // Lets e2e wait for the final layout rather than guess how long the simulation runs.
+      svgEl.dataset.layoutSettled = 'true'
     })
 
     return () => {
