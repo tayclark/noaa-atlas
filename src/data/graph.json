@@ -2328,6 +2328,276 @@
       ],
       "kind": "service",
       "lastVerified": "2026-09-23"
+    },
+    {
+      "id": "foss-landings-api",
+      "kind": "service",
+      "name": "NOAA Fisheries FOSS landings API",
+      "summary": "Fisheries One Stop Shop (FOSS) REST API for annual U.S. commercial landings (pounds and dollars) and recreational catch counts by species, state, region and year, with filtering through a JSON q parameter and offset paging.",
+      "owner": {
+        "office": "NMFS",
+        "program": "Office of Science and Technology, FOSS"
+      },
+      "theme": "fisheries",
+      "baseUrl": "https://apps-st.fisheries.noaa.gov/ods/foss/landings/",
+      "formats": [
+        "json"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "No key needed. Responses carry no CORS headers, and requests that send an Origin header get a 403 (checked 2026-09-23), so it cannot be called from a browser page."
+      },
+      "coverage": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-133, 22],
+              [-63, 22],
+              [-63, 50],
+              [-133, 50],
+              [-133, 22]
+            ]
+          ],
+          [
+            [
+              [-180, 48],
+              [-125, 48],
+              [-125, 74],
+              [-180, 74],
+              [-180, 48]
+            ]
+          ],
+          [
+            [
+              [170, 48],
+              [180, 48],
+              [180, 58],
+              [170, 58],
+              [170, 48]
+            ]
+          ],
+          [
+            [
+              [-165, 15],
+              [-150, 15],
+              [-150, 25],
+              [-165, 25],
+              [-165, 15]
+            ]
+          ],
+          [
+            [
+              [-69, 16],
+              [-63, 16],
+              [-63, 20],
+              [-69, 20],
+              [-69, 16]
+            ]
+          ],
+          [
+            [
+              [144, 12],
+              [147, 12],
+              [147, 21],
+              [144, 21],
+              [144, 12]
+            ]
+          ],
+          [
+            [
+              [-171.5, -15],
+              [-168, -15],
+              [-168, -13],
+              [-171.5, -13],
+              [-171.5, -15]
+            ]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "periodic",
+        "note": "Annual statistics, updated as each year is finalized."
+      },
+      "docUrl": "https://apps-st.fisheries.noaa.gov/ods/foss/metadata-catalog/landings/",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://apps-st.fisheries.noaa.gov/ods/foss/landings/?q=%7B%22state_name%22:%22ALASKA%22,%22year%22:2022%7D&limit=2",
+        "responseExcerpt": "{\"items\":[{\"tsn\":\"164711\",\"ts_afs_name\":\"COD, PACIFIC\",\"ts_scientific_name\":\"Gadus macrocephalus\",\"region_name\":\"Alaska\",\"state_name\":\"ALASKA\",\"year\":2022,\"pounds\":402864560.29894,\"dollars\":183052044.63417,\"tot_count\":null,\"source\":\"AKFIN\",\"collection\":\"Commercial\", ...}, ...],\"hasMore\":true,\"limit\":2,\"offset\":0,\"count\":2}"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: annual statistics rather than a map layer, and no CORS support, so a page in the browser cannot call it.",
+      "tags": [
+        "fisheries",
+        "landings",
+        "commercial",
+        "recreational",
+        "foss",
+        "statistics",
+        "api"
+      ]
+    },
+    {
+      "id": "nmfs-arcgis-services",
+      "kind": "service",
+      "name": "NOAA Fisheries ArcGIS REST services",
+      "summary": "ArcGIS REST server for NOAA Fisheries spatial data, including the All_NMFS_Critical_Habitat MapServer with ESA critical habitat polygons for listed species (96 layers) and folders of regional and science-center services.",
+      "owner": {
+        "office": "NMFS",
+        "program": "Protected Resources GIS"
+      },
+      "theme": "fisheries",
+      "baseUrl": "https://maps.fisheries.noaa.gov/server/rest/services",
+      "formats": [
+        "arcgis-rest",
+        "json"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Responses echo the request Origin in access-control-allow-origin (checked 2026-09-23)."
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "static",
+        "note": "Layers change when a species designation is published or revised."
+      },
+      "docUrl": "https://www.fisheries.noaa.gov/resource/map/national-esa-critical-habitat-mapper",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://maps.fisheries.noaa.gov/server/rest/services/All_NMFS_Critical_Habitat/MapServer/180/query?where=1%3D1&outFields=*&resultRecordCount=1&returnGeometry=false&f=json",
+        "responseExcerpt": "{\"displayFieldName\":\"SCIENAME\",\"fieldAliases\":{\"OBJECTID\":\"OBJECTID\",\"ID\":\"ID\",\"SCIENAME\":\"Scientific Name\",\"COMNAME\":\"Common Name\",\"LISTENTITY\":\"Listed Entity\",\"LISTSTATUS\":\"Listing Status\",\"CHSTATUS\":\"Critical Habitat Status\", ...},\"fields\":[...], ...}"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Deferred: outside the v1 live layers. CORS works and the critical habitat MapServer is a plausible later map layer.",
+      "tags": [
+        "arcgis",
+        "critical-habitat",
+        "esa",
+        "protected-species",
+        "fisheries",
+        "gis"
+      ]
+    },
+    {
+      "id": "nefsc-erddap",
+      "kind": "service",
+      "name": "NEFSC ERDDAP (Northeast Fisheries Science Center)",
+      "summary": "ERDDAP server run by the Northeast Fisheries Science Center: tabular and gridded datasets such as eMOLT bottom temperatures from lobster traps and trawlers, hydrographic monitoring profiles and modeled bottom temperature for the Northeast U.S. shelf, plus some satellite products. Subset by variable, time and area and download as CSV, JSON or NetCDF.",
+      "owner": {
+        "office": "NMFS",
+        "program": "Northeast Fisheries Science Center"
+      },
+      "theme": "fisheries",
+      "baseUrl": "https://comet.nefsc.noaa.gov/erddap/",
+      "formats": [
+        "json",
+        "csv",
+        "netcdf",
+        "other"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "No key needed. No access-control-allow-origin header was returned (checked 2026-09-23)."
+      },
+      "coverage": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-133, 22],
+              [-63, 22],
+              [-63, 50],
+              [-133, 50],
+              [-133, 22]
+            ]
+          ],
+          [
+            [
+              [-180, 48],
+              [-125, 48],
+              [-125, 74],
+              [-180, 74],
+              [-180, 48]
+            ]
+          ],
+          [
+            [
+              [170, 48],
+              [180, 48],
+              [180, 58],
+              [170, 58],
+              [170, 48]
+            ]
+          ],
+          [
+            [
+              [-165, 15],
+              [-150, 15],
+              [-150, 25],
+              [-165, 25],
+              [-165, 15]
+            ]
+          ],
+          [
+            [
+              [-69, 16],
+              [-63, 16],
+              [-63, 20],
+              [-69, 20],
+              [-69, 16]
+            ]
+          ],
+          [
+            [
+              [144, 12],
+              [147, 12],
+              [147, 21],
+              [144, 21],
+              [144, 12]
+            ]
+          ],
+          [
+            [
+              [-171.5, -15],
+              [-168, -15],
+              [-168, -13],
+              [-171.5, -13],
+              [-171.5, -15]
+            ]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "periodic",
+        "note": "Varies by dataset from near real-time eMOLT records to fixed historical series."
+      },
+      "docUrl": "https://comet.nefsc.noaa.gov/erddap/information.html",
+      "lastVerified": "2026-09-23",
+      "sample": {
+        "url": "https://comet.nefsc.noaa.gov/erddap/search/index.json?page=1&itemsPerPage=1&searchFor=emolt",
+        "responseExcerpt": "{\"table\":{\"columnNames\":[\"griddap\",\"Subset\",\"tabledap\",\"Make A Graph\",\"wms\",\"files\",\"Title\",\"Summary\",...,\"Institution\",\"Dataset ID\"],\"rows\":[[\"\",\"https://comet.nefsc.noaa.gov/erddap/tabledap/eMOLT_realtime_bottom_temps_and_profiles.subset\",\"https://comet.nefsc.noaa.gov/erddap/tabledap/eMOLT_realtime_bottom_temps_and_profiles\", ...]]}}"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: dataset-by-dataset API that needs a chosen dataset, variable and time range, and it sends no CORS headers.",
+      "tags": [
+        "fisheries",
+        "erddap",
+        "northeast",
+        "bottom-temperature",
+        "emolt",
+        "api"
+      ]
     }
   ],
   "edges": [
