@@ -26,6 +26,7 @@ import {
   describeAlertsFetchOutcome,
   splitAlertsByGeometry,
   visibleZoneOnlyAlerts,
+  zoneOnlyAlertsTitle,
 } from './nwsAlertsLayer'
 import {
   describePointError,
@@ -94,8 +95,9 @@ export function MapLibreGlobe() {
   const [alertsStatus, setAlertsStatus] = useState<'loading' | 'ok' | 'empty' | 'error'>('loading')
   const [alertsErrorMessage, setAlertsErrorMessage] = useState<string | null>(null)
   const [zoneAlertsExpanded, setZoneAlertsExpanded] = useState(false)
-  // Collapsed to its title bar so it covers less of the globe.
-  const [zoneAlertsCollapsed, setZoneAlertsCollapsed] = useState(false)
+  // Starts collapsed to its title bar (#151): a busy day lists hundreds of alerts, which covered
+  // half the globe before the user had done anything.
+  const [zoneAlertsCollapsed, setZoneAlertsCollapsed] = useState(true)
   const [geolocationError, setGeolocationError] = useState<string | null>(null)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const selectedNode = selection.selectedNodeId
@@ -282,7 +284,7 @@ export function MapLibreGlobe() {
         return (
           <div className="zone-only-alerts" aria-label="Alerts without a mapped area">
             <div className="zone-only-alerts-header">
-              <strong>Zone alerts (no map location): {zoneOnlyAlerts.length}</strong>
+              <strong>{zoneOnlyAlertsTitle(zoneOnlyAlerts.length)}</strong>
               <button
                 type="button"
                 className="zone-only-alerts-collapse"
