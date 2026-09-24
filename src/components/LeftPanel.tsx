@@ -3,7 +3,8 @@
 // task highlights its path in the graph without switching tabs) and the request Inspector (#40).
 // Explore is the default tab (the app's primary entry point per #25's framing).
 
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
+import { getRequestLogSnapshot, subscribeRequestLog } from '../data/requestLog'
 import { FinderPanel } from './finder/FinderPanel'
 import { GraphView } from './graph/GraphView'
 import { InspectorPanel } from './inspector/InspectorPanel'
@@ -19,6 +20,8 @@ const TABS: { id: LeftTab; label: string }[] = [
 
 export function LeftPanel() {
   const [activeTab, setActiveTab] = useState<LeftTab>('explore')
+  // Shown on the Inspector tab (#150), so live calls are discoverable from the Explore tab.
+  const requestCount = useSyncExternalStore(subscribeRequestLog, getRequestLogSnapshot).length
 
   return (
     <div className="left-panel">
@@ -33,6 +36,11 @@ export function LeftPanel() {
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.label}
+            {tab.id === 'inspector' && requestCount > 0 && (
+              <span className="left-panel-tab-count" aria-label={`${requestCount} ${requestCount === 1 ? 'request' : 'requests'}`}>
+                {requestCount}
+              </span>
+            )}
           </button>
         ))}
       </div>
