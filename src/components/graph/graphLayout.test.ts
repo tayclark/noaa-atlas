@@ -8,6 +8,7 @@ import {
   EDGE_CLASS,
   EDGE_TYPE_LABELS,
   nodeRadius,
+  RING_ORDER,
   themeAnchors,
   type SimEdge,
   type SimNode,
@@ -25,6 +26,10 @@ describe('themeAnchors', () => {
       expect(y).toBeGreaterThan(0)
       expect(y).toBeLessThan(470)
     }
+  })
+
+  it('places every theme on the ring exactly once', () => {
+    expect([...RING_ORDER].sort()).toEqual([...THEMES].sort())
   })
 })
 

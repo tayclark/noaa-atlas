@@ -1,5 +1,5 @@
 import { forceCenter, forceCollide, forceX, forceY, forceLink, forceManyBody, forceSimulation, type Simulation, type SimulationLinkDatum, type SimulationNodeDatum } from 'd3-force'
-import { THEMES, type GraphEdge, type GraphNode, type Theme } from '../../data/graphSchema'
+import { type GraphEdge, type GraphNode, type Theme } from '../../data/graphSchema'
 
 export type SimNode = GraphNode & SimulationNodeDatum
 export interface SimEdge extends SimulationLinkDatum<SimNode> {
@@ -30,6 +30,22 @@ const LINK_STRENGTH: Record<GraphEdge['type'], number> = {
   'shared-id': 0.8,
   'data-flow': 0.8,
 }
+
+// Order of the theme anchors around the ring: THEMES order, except that space weather sits
+// between the two smallest themes (hazards, fisheries) instead of between satellite and models,
+// the two largest, so its labels have room (#18).
+export const RING_ORDER: readonly Theme[] = [
+  'weather',
+  'climate',
+  'ocean',
+  'satellite',
+  'models',
+  'hazards',
+  'space-weather',
+  'fisheries',
+  'geospatial',
+  'catalogs',
+]
 
 /** CSS class per edge type (#29) — a fixed 3-value enum, so className rather than inline style. */
 export const EDGE_CLASS: Record<GraphEdge['type'], string> = {
@@ -119,7 +135,7 @@ export function createGraphSimulation(
   width: number,
   height: number,
 ): Simulation<SimNode, SimEdge> {
-  const anchors = themeAnchors(THEMES, width, height)
+  const anchors = themeAnchors(RING_ORDER, width, height)
   const center = { x: width / 2, y: height / 2 }
   // The root sits at the centre of the ring of theme anchors.
   const anchorOf = (node: SimNode) => (node.kind === 'root' ? center : (anchors.get(node.theme) ?? center))
