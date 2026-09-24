@@ -33,7 +33,7 @@ import { computeFitTransform, createGraphSimulation, EDGE_CLASS, NO_INSET, nodeR
 import { GraphLegend } from './GraphLegend'
 import { GraphSearch } from './GraphSearch'
 import { buildSearchIndex, matchNodeIds } from './searchMatch'
-import { LABEL_GAP, placeLabels, type Box, type LabelItem } from './labelPlacement'
+import { DIAGONAL_OFFSET, LABEL_GAP, placeLabels, type Box, type LabelItem } from './labelPlacement'
 import { NodeDetailPanel } from './NodeDetailPanel'
 
 const graph = buildGraph(parseGraphFile(graphJson))
@@ -196,6 +196,9 @@ export function GraphView() {
         const side = sides.get(id) ?? null
         const r = nodeRadius(node)
         const gap = LABEL_GAP / t.k
+        // Diagonal labels (#145) hang off a corner (r + gap) * DIAGONAL_OFFSET from the centre;
+        // the baseline offsets match the box placeLabels reserved for them.
+        const d = (r + gap) * DIAGONAL_OFFSET
         const [x, y, anchor] =
           side === 'left'
             ? [-(r + gap), 4 / t.k, 'end']
@@ -203,7 +206,11 @@ export function GraphView() {
               ? [0, r + gap + 11 / t.k, 'middle']
               : side === 'above'
                 ? [0, -(r + gap + 3 / t.k), 'middle']
-                : [r + gap, 4 / t.k, 'start']
+                : side === 'upper-right' || side === 'upper-left'
+                  ? [side === 'upper-right' ? d : -d, -(d + 3 / t.k), side === 'upper-right' ? 'start' : 'end']
+                  : side === 'lower-right' || side === 'lower-left'
+                    ? [side === 'lower-right' ? d : -d, d + 11 / t.k, side === 'lower-right' ? 'start' : 'end']
+                    : [r + gap, 4 / t.k, 'start']
         text.setAttribute('x', String(x))
         text.setAttribute('y', String(y))
         text.setAttribute('text-anchor', anchor)

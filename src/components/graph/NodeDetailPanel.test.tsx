@@ -3,8 +3,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import graphJson from '../../data/graph.json'
 import type { ServiceNode } from '../../data/graphSchema'
-import { parseGraphFile } from '../../data/graphSchema'
-import { clearSelection, selectNode } from '../../data/selectionStore'
+import { parseGraphFile, THEME_DESCRIPTIONS, THEME_LABELS } from '../../data/graphSchema'
+import { clearSelection, getSelectionSnapshot, selectNode } from '../../data/selectionStore'
 import { NodeDetailPanel } from './NodeDetailPanel'
 
 const nodes = parseGraphFile(graphJson).nodes as ServiceNode[]
@@ -60,6 +60,23 @@ describe('NodeDetailPanel', () => {
     selectNode(second.id)
     render(panel)
     expect(screen.getByText(second.name)).toBeTruthy()
+  })
+
+  it('summarizes a selected theme hub and links to its services (#145)', () => {
+    const services = nodes.filter((n) => n.theme === 'ocean')
+    selectNode('theme-ocean')
+    render(panel)
+
+    expect(screen.getByRole('heading', { name: THEME_LABELS.ocean })).toBeTruthy()
+    expect(screen.getByText(THEME_DESCRIPTIONS.ocean)).toBeTruthy()
+    const live = services.filter((n) => n.liveLayer).length
+    expect(screen.getByRole('heading', { name: `${services.length} services · ${live} live` })).toBeTruthy()
+    expect(screen.queryByText('Base URL')).toBeNull()
+
+    const first = services[0]
+    if (!first) throw new Error('expected an ocean fixture node')
+    fireEvent.click(screen.getByRole('button', { name: first.name }))
+    expect(getSelectionSnapshot().selectedNodeId).toBe(first.id)
   })
 
   it('shows only the title bar when collapsed, with a toggle that reports its state (#141)', () => {

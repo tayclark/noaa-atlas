@@ -1,9 +1,10 @@
 // Greedy label decluttering for the graph (#138). Pure: screen-space boxes in, a side per label
 // (or null to hide it) out, so it's unit-testable without a DOM.
 
-export type LabelSide = 'right' | 'left' | 'below' | 'above'
+export type LabelSide = 'right' | 'left' | 'below' | 'above' | 'upper-right' | 'lower-right' | 'upper-left' | 'lower-left'
 
-const SIDES: readonly LabelSide[] = ['right', 'left', 'below', 'above']
+// The diagonals come last, so they only take labels that fit nowhere else (#145).
+const SIDES: readonly LabelSide[] = ['right', 'left', 'below', 'above', 'upper-right', 'lower-right', 'upper-left', 'lower-left']
 
 export interface LabelItem {
   id: string
@@ -27,6 +28,8 @@ export interface Bounds {
 
 /** Gap between the node edge and its label, in screen pixels. */
 export const LABEL_GAP = 4
+/** A diagonal label's corner sits this fraction of (radius + gap) off the node centre on each axis. */
+export const DIAGONAL_OFFSET = 0.7
 /** Clearance kept around every placed label, so real text bounds (which vary a pixel or two from the estimate) never touch. */
 const LABEL_MARGIN = 2
 
@@ -41,6 +44,12 @@ const intersects = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1
 
 function labelBox(item: LabelItem, side: LabelSide): Box {
   const offset = item.radius + LABEL_GAP
+  if (side.includes('-')) {
+    const d = offset * DIAGONAL_OFFSET
+    const x0 = side.endsWith('right') ? item.x + d : item.x - d - item.width
+    const y0 = side.startsWith('lower') ? item.y + d : item.y - d - item.height
+    return { x0, y0, x1: x0 + item.width, y1: y0 + item.height }
+  }
   if (side === 'right' || side === 'left') {
     const x0 = side === 'right' ? item.x + offset : item.x - offset - item.width
     return { x0, y0: item.y - item.height / 2, x1: x0 + item.width, y1: item.y + item.height / 2 }
@@ -52,7 +61,7 @@ function labelBox(item: LabelItem, side: LabelSide): Box {
 
 /**
  * Places labels highest priority first (ties broken by id, so the result is stable), trying
- * right of the node, then left, below and above. A label that fits in none of them without leaving
+ * right of the node, then left, below, above and the four diagonals. A label that fits in none of them without leaving
  * the bounds or overlapping an already placed label or (unless overNodes) any node gets null.
  */
 export function placeLabels(

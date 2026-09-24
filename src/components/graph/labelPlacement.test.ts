@@ -38,6 +38,18 @@ describe('placeLabels', () => {
     expect(placeLabels([item('none', 50, 50)], { width: 100, height: 20 }).get('none')).toBeNull()
   })
 
+  it('falls back to a diagonal only when all four sides are blocked (#145)', () => {
+    // Small obstacles clip each side's label box but leave the diagonals clear.
+    const sides = [
+      { x0: 209, y0: 145, x1: 212, y1: 155 }, // right
+      { x0: 188, y0: 145, x1: 191, y1: 155 }, // left
+      { x0: 195, y0: 160, x1: 205, y1: 165 }, // below
+      { x0: 195, y0: 135, x1: 205, y1: 140 }, // above
+    ]
+    expect(placeLabels([item('a', 200, 150)], bounds, sides).get('a')).toBe('upper-right')
+    expect(placeLabels([item('a', 200, 150)], bounds, sides.slice(1)).get('a')).toBe('right')
+  })
+
   it('never places a label over another node', () => {
     // A node sits right where "a"'s right-hand label would go.
     const result = placeLabels([item('a', 100, 50, 1), item('blocker', 130, 50, 0, 10)], bounds)

@@ -155,7 +155,8 @@
 }
 
 .node-neighbors h4,
-.node-neighbors h5 {
+.node-neighbors h5,
+.node-detail-theme-services h4 {
   margin: 0 0 2px;
   color: var(--color-text-muted);
   font-size: 0.65rem;
@@ -166,18 +167,21 @@
   margin-top: var(--space-1);
 }
 
-.node-neighbors ul {
+.node-neighbors ul,
+.node-detail-theme-services ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.node-neighbors li {
+.node-neighbors li,
+.node-detail-theme-services li {
   margin-bottom: var(--space-1);
   overflow-wrap: anywhere;
 }
 
-.node-neighbors button {
+.node-neighbors button,
+.node-detail-theme-services button {
   padding: 0;
   border: 0;
   background: none;
@@ -206,4 +210,43 @@
   display: inline-block;
   margin-top: var(--space-1);
   color: var(--color-accent);
+}
+
+/* Theme hub body (#145). */
+.node-detail-theme-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.node-detail-theme-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.node-detail-theme-description {
+  margin: 0 0 var(--space-2);
+}
+
+.node-detail-theme-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.node-detail-theme-live {
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  background: var(--color-success);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
 }
