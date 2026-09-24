@@ -100,6 +100,34 @@ test('a selected node and its neighbours are framed clear of the detail panel, l
     .toEqual([])
 })
 
+// #145: a theme hub gets a panel too, and its services are framed clear of it.
+test('a selected theme hub opens its panel, with its services framed clear of it', async ({ page }) => {
+  await mockAlerts(page, emptyAlertsFixture())
+  await page.goto('/')
+  await waitForSettledLayout(page)
+
+  await selectByKeyboard(page, 'theme-ocean')
+  const panel = page.getByLabel('Node detail')
+  await expect(panel.getByRole('heading', { name: 'Ocean & coastal' })).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'CO-OPS Data API' })).toBeVisible()
+  const framed = ['theme-ocean', 'coops-data-api', 'coops-metadata-api']
+  await expect
+    .poll(() =>
+      page.evaluate((ids) => {
+        const p = document.querySelector('.node-detail-panel')!.getBoundingClientRect()
+        return ids.filter((id) => {
+          const c = document.querySelector(`.graph-node[data-node-id="${id}"] circle`)!.getBoundingClientRect()
+          const [cx, cy] = [c.x + c.width / 2, c.y + c.height / 2]
+          return cx > p.left && cx < p.right && cy > p.top && cy < p.bottom
+        })
+      }, framed),
+    )
+    .toEqual([])
+
+  await panel.getByRole('button', { name: 'CO-OPS Data API' }).click()
+  await expect(panel.getByText('Base URL')).toBeVisible()
+})
+
 test('the detail panel collapses to its title bar and stays collapsed across selections', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await page.goto('/')

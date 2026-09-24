@@ -28,6 +28,20 @@ export const THEME_LABELS: Record<Theme, string> = {
   catalogs: 'Catalogs & meta',
 }
 
+/** One sentence per theme, shown in the detail panel when its hub is selected (#145). */
+export const THEME_DESCRIPTIONS: Record<Theme, string> = {
+  weather: 'Forecasts, observations, alerts and forecast-office map products from the National Weather Service.',
+  climate: 'Historical weather and climate records from NCEI, for looking back rather than ahead.',
+  ocean: 'Tides, water levels, currents and buoy observations along the coast and at sea.',
+  satellite: 'GOES and JPSS satellite imagery, NEXRAD and MRMS radar, and satellite-derived ocean data.',
+  'space-weather': 'Solar wind, geomagnetic storm and aurora data from the Space Weather Prediction Center.',
+  models: 'Gridded numerical weather model output (GFS, HRRR, GEFS, the National Blend) for bulk download.',
+  hazards: 'Warnings and tracks for tropical cyclones and tsunamis.',
+  fisheries: 'Commercial landings, fisheries surveys and ecosystem data from NOAA Fisheries.',
+  geospatial: 'Map services, nautical charts, geodetic reference stations and the magnetic model.',
+  catalogs: 'Search indexes and registries for finding NOAA datasets that have no dedicated node here.',
+}
+
 export const THEME_ID_PREFIX = 'theme-'
 
 const OFFICES = ['NWS', 'NOS', 'NESDIS', 'OAR', 'NMFS', 'OMAO', 'other'] as const

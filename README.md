@@ -54,6 +54,8 @@ Selecting a node opens a panel over the graph:
 - for services that are not on the map yet, the reason why;
 - a link to the official docs.
 
+Selecting a theme hub opens the same panel with a one-line description of the theme, how many of its services are live, and a list of its services. Click a service to jump to it.
+
 ## Inspector tab
 
 A network log of every live `api.weather.gov` request the app makes (alerts, point lookups, forecasts, observations), newest first, capped at the last 50.

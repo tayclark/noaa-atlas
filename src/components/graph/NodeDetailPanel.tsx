@@ -1,9 +1,11 @@
-// Node detail panel (#30): shows the full reference info for the currently selected graph node.
+// Node detail panel (#30): shows the full reference info for the currently selected graph node,
+// or a theme summary when a theme hub is selected (#145).
 // Reads the shared selectionStore via useSyncExternalStore (#43's convention, same as
 // InspectorPanel.tsx) rather than taking a prop, so it works regardless of what selects a node.
 
 import { useSyncExternalStore } from 'react'
 import graphJson from '../../data/graph.json'
+import { buildGraph } from '../../data/buildGraph'
 import { summarizeCoverage } from '../../data/coverageSummary'
 import type { ServiceNode } from '../../data/graphSchema'
 import { parseGraphFile } from '../../data/graphSchema'
@@ -11,9 +13,10 @@ import { getSelectionSnapshot, subscribeSelection } from '../../data/selectionSt
 import { formatAuth, formatFormats, formatFreshness, formatOwner, formatRateLimits, liveStatusLabel } from './nodeDetailFormat'
 import { NodeNeighborsSection } from './NodeNeighborsSection'
 import { NodeSampleSection } from './NodeSampleSection'
+import { ThemeDetailBody } from './ThemeDetailBody'
 import './NodeDetailPanel.css'
 
-const graphNodes: ServiceNode[] = parseGraphFile(graphJson).nodes as ServiceNode[]
+const graphNodes = buildGraph(parseGraphFile(graphJson)).nodes
 
 interface NodeDetailPanelProps {
   /** Collapsed to its title bar so it covers less of the graph (#141). Owned by GraphView, which re-frames on change. */
@@ -41,7 +44,7 @@ export function NodeDetailPanel({ collapsed, onToggleCollapsed }: NodeDetailPane
           {collapsed ? '▸' : '▾'}
         </button>
       </div>
-      {!collapsed && <NodeDetailBody node={node} />}
+      {!collapsed && (node.kind === 'theme' ? <ThemeDetailBody node={node} /> : <NodeDetailBody node={node} />)}
     </div>
   )
 }

@@ -31,7 +31,7 @@ CI (`.github/workflows/ci.yml`) runs on every PR and on pushes to `main`. The `c
   - The simulation is created once. The ResizeObserver on `.graph-canvas` only re-frames the view and does not restart the layout.
   - Label placement runs imperatively through `placeLabelsRef`: on zoom (rAF-throttled), every 20 ticks, on simulation end, and in the label-priority effect keyed on `[highlightKey, matchedIds]`.
   - Never add `matchedIds` to the pan effect, because every search keystroke would then reset the user's pan and zoom.
-  - The detail panel renders only for service nodes (theme hubs have none). Its box is an obstacle for labels, and it sets the inset passed to `computeFitTransform(..., inset)`, so a selection is framed beside the panel.
+  - The detail panel renders for service nodes and theme hubs (`ThemeDetailBody`, whose descriptions are `THEME_DESCRIPTIONS` in `graphSchema.ts`). Its box is an obstacle for labels, and it sets the inset passed to `computeFitTransform(..., inset)`, so a selection is framed beside the panel.
 
 ## Curating services
 
