@@ -27,6 +27,14 @@ describe('GraphView', () => {
     expect(container.querySelectorAll('.graph-node')).toHaveLength(expectedGraph.nodes.length)
   })
 
+  it('labels a node with its shortName but keeps the full name accessible (#141)', () => {
+    const { container } = render(<GraphView />)
+    const node = container.querySelector<SVGGElement>('.graph-node[data-node-id="mrms-aws-open-data"]')!
+    expect(node.querySelector('text')?.textContent).toBe('MRMS (AWS)')
+    expect(node.getAttribute('aria-label')).toMatch(/^MRMS multi-radar/)
+    expect(node.querySelector('title')?.textContent).toMatch(/^MRMS multi-radar/)
+  })
+
   it('colors each node circle by its theme', () => {
     const { container } = render(<GraphView />)
     for (const node of expectedGraph.nodes) {

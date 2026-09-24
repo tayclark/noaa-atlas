@@ -67,6 +67,8 @@ export const serviceNodeSchema = z
     id: slug,
     kind: z.literal('service'),
     name: nonEmpty,
+    /** Graph label when the full name is too long to place (#141); the name is still shown elsewhere. */
+    shortName: nonEmpty.max(24).optional(),
     summary: nonEmpty,
     owner: z.strictObject({ office: z.enum(OFFICES), program: nonEmpty }),
     theme: z.enum(THEMES),

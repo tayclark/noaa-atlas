@@ -18,7 +18,7 @@ import './GraphView.css'
 import graphJson from '../../data/graph.json'
 import tasksJson from '../../data/tasks.json'
 import { buildGraph } from '../../data/buildGraph'
-import { parseGraphFile } from '../../data/graphSchema'
+import { parseGraphFile, type GraphNode } from '../../data/graphSchema'
 import { getNeighbors } from '../../data/neighbors'
 import { parseTasksFile } from '../../data/taskSchema'
 import {
@@ -46,6 +46,9 @@ const LABEL_HEIGHT = 15
 const AUTOFIT_TICK_INTERVAL = 20
 
 const searchIndex = buildSearchIndex(graph.nodes, parseTasksFile(tasksJson).tasks)
+
+// The on-graph label; the full name stays in the tooltip, aria-label and detail panel (#141).
+const labelText = (node: GraphNode) => (node.kind === 'service' ? (node.shortName ?? node.name) : node.name)
 
 // Positions the synthetic task-path connectors (#34) from the live node positions. The lines are
 // React-rendered (they come and go with the selection) but positioned imperatively, like every
@@ -135,7 +138,8 @@ export function GraphView() {
     nodeElsRef.current.forEach((el, id) => {
       const text = el.querySelector('text')
       const measured = text?.getComputedTextLength?.() ?? 0
-      labelWidthsRef.current.set(id, measured > 0 ? measured : (nodeById.get(id)?.name.length ?? 0) * 6.5)
+      const node = nodeById.get(id)
+      labelWidthsRef.current.set(id, measured > 0 ? measured : (node ? labelText(node).length : 0) * 6.5)
     })
 
     const svgEl = svgRef.current
@@ -402,7 +406,7 @@ export function GraphView() {
                   <title>{node.name}</title>
                   <circle r={nodeRadius(node)} style={{ fill: THEME_COLORS[node.theme] }} />
                   <text x={nodeRadius(node) + 4} y={4}>
-                    {node.name}
+                    {labelText(node)}
                   </text>
                 </g>
               ))}

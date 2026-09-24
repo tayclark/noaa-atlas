@@ -118,6 +118,7 @@
       "id": "nws-gis-portal",
       "kind": "service",
       "name": "NWS GIS Portal (ArcGIS REST)",
+      "shortName": "NWS GIS Portal",
       "summary": "ArcGIS REST MapServer and FeatureServer layers for SPC, WPC and CPC outlooks, precipitation and hazards, storm reports and surface observations.",
       "owner": {
         "office": "NWS",
@@ -1195,6 +1196,7 @@
       "id": "cdo-web-api",
       "kind": "service",
       "name": "Climate Data Online (CDO) Web Services v2",
+      "shortName": "CDO Web Services",
       "summary": "Token-gated REST API over NCEI's Climate Data Online holdings: browse datasets, data categories, data types, locations and stations, then pull daily, monthly and annual climate observations such as GHCN-Daily and Global Summary of the Month.",
       "owner": {
         "office": "NESDIS",
@@ -1303,6 +1305,7 @@
       "id": "ncei-storm-events-bulk",
       "kind": "service",
       "name": "NCEI Storm Events Database (bulk CSV)",
+      "shortName": "Storm Events (bulk)",
       "summary": "Bulk gzipped CSV files of US storm and weather events since 1950 (details, locations and fatalities tables), one file per year. Files are downloads, not a query API.",
       "owner": {
         "office": "NESDIS",
@@ -1435,6 +1438,7 @@
       "id": "tsunami-warning-feeds",
       "kind": "service",
       "name": "Tsunami Warning Center Message Feeds",
+      "shortName": "Tsunami warning feeds",
       "summary": "Atom and CAP 1.2 XML feeds of tsunami warning, watch, advisory and information messages from the National and Pacific Tsunami Warning Centers.",
       "owner": {
         "office": "NWS",
@@ -1504,6 +1508,7 @@
     {
       "id": "goes-aws-open-data",
       "name": "GOES-R ABI imagery and products (AWS Open Data)",
+      "shortName": "GOES-R (AWS)",
       "summary": "Full GOES-East and GOES-West ABI imagery and derived products (cloud and moisture imagery, sea surface temperature, fire and lightning) as NetCDF files in public S3 buckets, organised by product, year, day-of-year and hour. Files are downloads listed through the S3 API, not a query API.",
       "owner": {
         "office": "NESDIS",
@@ -1605,6 +1610,7 @@
     {
       "id": "nexrad-level2-aws",
       "name": "NEXRAD Level II radar archive (AWS Open Data)",
+      "shortName": "NEXRAD Level II (AWS)",
       "summary": "Raw Level II base data (reflectivity, velocity, spectrum width) from the national network of WSR-88D weather radars, as one file per volume scan under radar/date/site keys in a public S3 bucket. Files are downloads listed through the S3 API.",
       "owner": {
         "office": "NWS",
@@ -1685,6 +1691,7 @@
     {
       "id": "mrms-aws-open-data",
       "name": "MRMS multi-radar precipitation and severe-weather products (AWS Open Data)",
+      "shortName": "MRMS (AWS)",
       "summary": "Multi-Radar Multi-Sensor (MRMS) gridded products for the contiguous US and other domains, blending radar, satellite, lightning and model data (radar mosaics, precipitation rate and accumulations, echo tops, hail size), as GRIB2 files in a public S3 bucket, one prefix per product.",
       "owner": {
         "office": "NWS",
@@ -1736,6 +1743,7 @@
     {
       "id": "jpss-aws-open-data",
       "name": "JPSS (NOAA-20 / VIIRS) satellite data (AWS Open Data)",
+      "shortName": "JPSS (AWS)",
       "summary": "Polar-orbiting JPSS instrument data (VIIRS imagery, ATMS, CrIS) and derived products from NOAA-20, plus sibling buckets for other JPSS satellites, as files in public S3 buckets organised by product.",
       "owner": {
         "office": "NESDIS",
@@ -1843,6 +1851,7 @@
     {
       "id": "nomads",
       "name": "NOMADS model data server (NCEP)",
+      "shortName": "NOMADS",
       "summary": "NOAA Operational Model Archive and Distribution System: NCEP model output (GFS, GDAS, GEFS and others) as GRIB2 files, with a GRIB filter that returns only the chosen variables, levels and sub-region. The OpenDAP service has been retired.",
       "owner": {
         "office": "NWS",
@@ -1894,6 +1903,7 @@
     {
       "id": "gfs-aws-open-data",
       "name": "GFS global forecast model (AWS Open Data)",
+      "shortName": "GFS (AWS)",
       "summary": "Global Forecast System output from NCEP as GRIB2 files in a public S3 bucket, one prefix per date and cycle (gfs.YYYYMMDD/HH/), with the GDAS analysis and ensemble Kalman filter (enkfgdas) products alongside.",
       "owner": {
         "office": "NWS",
@@ -1945,6 +1955,7 @@
     {
       "id": "hrrr-aws-open-data",
       "name": "HRRR hourly rapid-refresh model (AWS Open Data)",
+      "shortName": "HRRR (AWS)",
       "summary": "High-Resolution Rapid Refresh 3 km forecasts for the contiguous US as GRIB2 files in a public S3 bucket (hrrr.YYYYMMDD/conus/hrrr.tHHz.wrfsfcfNN.grib2), each with a .idx sidecar for byte-range reads of single variables.",
       "owner": {
         "office": "NWS",
@@ -2112,6 +2123,7 @@
     {
       "id": "gefs-aws-open-data",
       "name": "GEFS global ensemble forecast (AWS Open Data)",
+      "shortName": "GEFS (AWS)",
       "summary": "Global Ensemble Forecast System output from NCEP as GRIB2 files in a public S3 bucket, one prefix per date and cycle (gefs.YYYYMMDD/HH/) with atmos, chem and wave sub-folders.",
       "owner": {
         "office": "NWS",
@@ -2164,6 +2176,7 @@
     {
       "id": "nbm-aws-open-data",
       "name": "National Blend of Models (AWS Open Data)",
+      "shortName": "NBM (AWS)",
       "summary": "National Blend of Models guidance, a statistically post-processed blend of many models, as GRIB2 files in a public S3 bucket, one prefix per date and hour (blend.YYYYMMDD/HH/) with core, qmd and text sub-folders.",
       "owner": {
         "office": "NWS",
@@ -2333,6 +2346,7 @@
       "id": "foss-landings-api",
       "kind": "service",
       "name": "NOAA Fisheries FOSS landings API",
+      "shortName": "FOSS landings API",
       "summary": "Fisheries One Stop Shop (FOSS) REST API for annual U.S. commercial landings (pounds and dollars) and recreational catch counts by species, state, region and year, with filtering through a JSON q parameter and offset paging.",
       "owner": {
         "office": "NMFS",
@@ -2441,6 +2455,7 @@
       "id": "nmfs-arcgis-services",
       "kind": "service",
       "name": "NOAA Fisheries ArcGIS REST services",
+      "shortName": "NOAA Fisheries ArcGIS",
       "summary": "ArcGIS REST server for NOAA Fisheries spatial data, including the All_NMFS_Critical_Habitat MapServer with ESA critical habitat polygons for listed species (96 layers) and folders of regional and science-center services.",
       "owner": {
         "office": "NMFS",
@@ -2493,6 +2508,7 @@
       "id": "nefsc-erddap",
       "kind": "service",
       "name": "NEFSC ERDDAP (Northeast Fisheries Science Center)",
+      "shortName": "NEFSC ERDDAP",
       "summary": "ERDDAP server run by the Northeast Fisheries Science Center: tabular and gridded datasets such as eMOLT bottom temperatures from lobster traps and trawlers, hydrographic monitoring profiles and modeled bottom temperature for the Northeast U.S. shelf, plus some satellite products. Subset by variable, time and area and download as CSV, JSON or NetCDF.",
       "owner": {
         "office": "NMFS",
@@ -2712,6 +2728,7 @@
       "id": "nws-raster-map-services",
       "kind": "service",
       "name": "NWS raster map services (ArcGIS REST)",
+      "shortName": "NWS raster maps",
       "summary": "ArcGIS REST server for NWS raster weather and climate products, organised in folders such as air_quality, climate, hazards, NDFD, obs, outlooks, precip and snow. The vector layers live under the separate NWS GIS portal node.",
       "owner": {
         "office": "NWS",
@@ -2931,6 +2948,7 @@
       "id": "ncei-wmm-declination-api",
       "kind": "service",
       "name": "NCEI magnetic declination API (World Magnetic Model)",
+      "shortName": "Magnetic declination API",
       "summary": "NCEI geomagnetic calculator web service returning magnetic declination and related field values for a latitude and longitude, computed from the World Magnetic Model.",
       "owner": {
         "office": "NESDIS",
@@ -2981,6 +2999,7 @@
       "id": "noaa-cors-s3",
       "kind": "service",
       "name": "NOAA CORS Network data (AWS S3)",
+      "shortName": "CORS (AWS S3)",
       "summary": "Public S3 bucket noaa-cors-pds with NOAA CORS Network GNSS data from the National Geodetic Survey, including daily RINEX observation files organised as rinex/<year>/<day-of-year>/<station>/, alongside coordinate and plot folders.",
       "owner": {
         "office": "NOS",
@@ -3140,6 +3159,7 @@
       "id": "aws-open-data-noaa",
       "kind": "service",
       "name": "NOAA datasets on the AWS Registry of Open Data",
+      "shortName": "NOAA on AWS Open Data",
       "summary": "The registry's NOAA collection page lists NOAA Open Data Dissemination (NODD) datasets hosted in public AWS S3 buckets, such as NEXRAD, GOES, GFS and HRRR, Integrated Surface Database and World Ocean Database. Each entry links to its bucket name, region and access notes. It is a browsable directory; the registry exposes no documented search API, so use the bucket listings themselves for data.",
       "owner": {
         "office": "other",

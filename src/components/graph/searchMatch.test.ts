@@ -26,6 +26,11 @@ describe('matchNodeIds', () => {
     expect(matchNodeIds(index, 'tornado alerts')?.has('spc-gis-data')).toBe(false)
   })
 
+  it('matches a graph label shortName (#141)', () => {
+    // "maps" appears only in the shortName "NWS raster maps", not the full name.
+    expect(matchNodeIds(index, 'raster maps')?.has('nws-raster-map-services')).toBe(true)
+  })
+
   it('matches names, formats and owner program', () => {
     expect(matchNodeIds(index, 'nws api')?.has('nws-api')).toBe(true)
     expect(matchNodeIds(index, 'geojson')?.has('nws-api')).toBe(true)
