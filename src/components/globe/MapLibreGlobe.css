@@ -79,6 +79,88 @@
   cursor: pointer;
 }
 
+/* "Locate me": MapLibre's geolocate control drawn as a navigation arrow instead of its crosshair. */
+.maplibregl-ctrl button.maplibregl-ctrl-geolocate .maplibregl-ctrl-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23333' stroke='%23333' stroke-width='2' stroke-linejoin='round'%3E%3Cpolygon points='3 11 22 2 13 21 11 13 3 11'/%3E%3C/svg%3E");
+  background-size: 16px;
+}
+
+.maplibregl-ctrl button.maplibregl-ctrl-geolocate:disabled .maplibregl-ctrl-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23aaa' stroke='%23aaa' stroke-width='2' stroke-linejoin='round'%3E%3Cpolygon points='3 11 22 2 13 21 11 13 3 11'/%3E%3C/svg%3E");
+}
+
+/* A spinning arrow reads as broken, so waiting for a fix pulses instead. */
+.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-waiting .maplibregl-ctrl-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2333b5e5' stroke='%2333b5e5' stroke-width='2' stroke-linejoin='round'%3E%3Cpolygon points='3 11 22 2 13 21 11 13 3 11'/%3E%3C/svg%3E");
+  animation: geolocate-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes geolocate-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* The user's position: a steady dot in the app's accent colour, ringed in the page background so it
+   stands out on the dark basemap, instead of MapLibre's pulsing blue dot with a white border. */
+.maplibregl-user-location-dot {
+  width: 14px;
+  height: 14px;
+  background-color: var(--color-accent);
+  box-shadow:
+    0 0 0 3px var(--color-bg),
+    0 0 0 4px var(--color-accent),
+    0 0 14px 4px rgb(62 166 255 / 0.45);
+}
+
+.maplibregl-user-location-dot::before,
+.maplibregl-user-location-dot::after {
+  display: none;
+}
+
+.maplibregl-user-location-dot-stale {
+  background-color: var(--color-text-muted);
+  box-shadow:
+    0 0 0 3px var(--color-bg),
+    0 0 0 4px var(--color-text-muted);
+}
+
+.maplibregl-user-location-accuracy-circle {
+  background-color: rgb(62 166 255 / 0.1);
+  border: 1px solid rgb(62 166 255 / 0.4);
+}
+
+.geolocation-status {
+  position: absolute;
+  top: 50px;
+  right: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  max-width: 260px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.geolocation-status p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.geolocation-status button {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .maplibregl-popup-content {
   background: var(--color-surface-raised);
   color: var(--color-text);
