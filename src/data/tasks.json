@@ -143,6 +143,44 @@
       ]
     },
     {
+      "id": "aurora-forecast",
+      "label": "See where the aurora may be visible tonight",
+      "nodes": [
+        { "nodeId": "swpc-ovation-aurora", "why": "A 30 to 90 minute global grid of aurora intensity from the OVATION model." },
+        { "nodeId": "swpc-geomagnetic-indices", "why": "Observed and 3-day forecast Kp; higher Kp pushes the aurora toward lower latitudes." }
+      ]
+    },
+    {
+      "id": "geomagnetic-storm-alerts",
+      "label": "Check for geomagnetic storm or space weather alerts",
+      "nodes": [
+        { "nodeId": "swpc-alerts-scales", "why": "Current and forecast NOAA G, S and R scale levels plus the issued alerts, watches and warnings." },
+        { "nodeId": "swpc-geomagnetic-indices", "why": "The Kp index behind the G scale, observed and forecast." }
+      ]
+    },
+    {
+      "id": "solar-flares-radiation",
+      "label": "Monitor solar flares and radiation storms",
+      "nodes": [
+        { "nodeId": "swpc-goes-space-environment", "why": "Real-time GOES X-ray flux, flare events and proton flux." },
+        { "nodeId": "swpc-alerts-scales", "why": "R (radio blackout) and S (radiation storm) scale levels and the alerts SWPC issues for them." }
+      ]
+    },
+    {
+      "id": "solar-wind-conditions",
+      "label": "Get real-time solar wind conditions",
+      "nodes": [
+        { "nodeId": "swpc-rtsw-solar-wind", "why": "One-minute solar wind speed, density and magnetic field from the spacecraft at L1." }
+      ]
+    },
+    {
+      "id": "historical-space-weather",
+      "label": "Download historical GOES space weather data",
+      "nodes": [
+        { "nodeId": "ncei-goes-r-space-weather", "why": "Daily science-quality NetCDF files for the GOES-R X-ray, particle, magnetometer and solar imager instruments." }
+      ]
+    },
+    {
       "id": "commercial-fishing-landings",
       "label": "Look up commercial and recreational fishing landings",
       "nodes": [

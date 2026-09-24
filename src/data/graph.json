@@ -3206,6 +3206,339 @@
         "open-data",
         "cloud"
       ]
+    },
+    {
+      "id": "swpc-alerts-scales",
+      "kind": "service",
+      "name": "SWPC alerts, watches and NOAA space weather scales",
+      "shortName": "SWPC alerts & scales",
+      "summary": "Current and forecast NOAA space weather scale levels (R radio blackouts, S solar radiation storms, G geomagnetic storms), the issued alerts, watches and warnings, and the 3-day forecast text, as JSON and plain-text files.",
+      "owner": {
+        "office": "NWS",
+        "program": "Space Weather Prediction Center (SWPC)"
+      },
+      "theme": "space-weather",
+      "baseUrl": "https://services.swpc.noaa.gov/products/",
+      "formats": [
+        "json",
+        "text"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public files; no key or token. Responses send access-control-allow-origin: * (checked 2026-09-24)."
+      },
+      "rateLimits": {
+        "text": "Not published. The files are static JSON regenerated on a schedule, so polling faster than they update gains nothing.",
+        "sourceUrl": "https://www.spaceweather.gov/content/data-access"
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "minutes",
+        "note": "noaa-scales.json is refreshed every few minutes; alerts.json lists messages from the past few days as they are issued; the 3-day forecast is issued twice daily."
+      },
+      "docUrl": "https://www.spaceweather.gov/products/alerts-watches-and-warnings",
+      "lastVerified": "2026-09-24",
+      "sample": {
+        "url": "https://services.swpc.noaa.gov/products/noaa-scales.json",
+        "responseExcerpt": "{\n  \"0\": {\n    \"DateStamp\": \"2026-09-24\", \"TimeStamp\": \"23:42:00\",\n    \"R\": { \"Scale\": \"0\", \"Text\": \"none\", \"MinorProb\": null, \"MajorProb\": null },\n    \"S\": { \"Scale\": \"0\", \"Text\": \"none\", \"Prob\": null },\n    \"G\": { \"Scale\": \"0\", \"Text\": \"none\" }\n  },\n  \"1\": {\n    \"DateStamp\": \"2026-09-24\", \"TimeStamp\": \"23:42:00\",\n    \"R\": { \"Scale\": null, \"Text\": null, \"MinorProb\": \"20\", \"MajorProb\": \"1\" },\n    \"S\": { \"Scale\": null, \"Text\": null, \"Prob\": \"1\" },\n    \"G\": { \"Scale\": \"1\", \"Text\": \"minor\" }\n  },\n  ...\n}\n(trimmed: \"0\" is now and \"-1\" the past 24 hours; \"1\" to \"3\" are the next three days)"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not a map layer: planet-wide scale levels and free-text messages with no geometry to draw.",
+      "tags": [
+        "alerts",
+        "noaa-scales",
+        "geomagnetic-storm",
+        "radio-blackout",
+        "radiation-storm",
+        "forecast"
+      ]
+    },
+    {
+      "id": "swpc-geomagnetic-indices",
+      "kind": "service",
+      "name": "SWPC planetary K-index and geomagnetic indices",
+      "shortName": "Planetary K-index",
+      "summary": "The estimated 3-hour planetary Kp index observed over the past week and forecast for the next three days, plus the Boulder K index and Kyoto Dst, as JSON. Kp is derived from a network of ground-based magnetometers and maps directly onto the NOAA G scale.",
+      "owner": {
+        "office": "NWS",
+        "program": "Space Weather Prediction Center (SWPC)"
+      },
+      "theme": "space-weather",
+      "baseUrl": "https://services.swpc.noaa.gov/products/",
+      "formats": [
+        "json",
+        "text"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public files; no key or token. Responses send access-control-allow-origin: * (checked 2026-09-24)."
+      },
+      "rateLimits": {
+        "text": "Not published. The files are static JSON regenerated on a schedule, so polling faster than they update gains nothing.",
+        "sourceUrl": "https://www.spaceweather.gov/content/data-access"
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "periodic",
+        "note": "Kp is issued for each 3-hour interval; planetary_k_index_1m.json gives a running one-minute estimate."
+      },
+      "docUrl": "https://www.spaceweather.gov/products/planetary-k-index",
+      "lastVerified": "2026-09-24",
+      "sample": {
+        "url": "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
+        "responseExcerpt": "[\n  { \"time_tag\": \"2026-09-17T00:00:00\", \"Kp\": 3.00, \"a_running\": 15, \"station_count\": 8 },\n  { \"time_tag\": \"2026-09-17T03:00:00\", \"Kp\": 1.67, \"a_running\": 6, \"station_count\": 8 },\n  { \"time_tag\": \"2026-09-17T06:00:00\", \"Kp\": 1.67, \"a_running\": 6, \"station_count\": 8 },\n  ...\n]\n(trimmed: one row per 3-hour interval over the past 7 days)"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not a map layer: a single planet-wide index time series with no geometry to draw.",
+      "tags": [
+        "kp-index",
+        "geomagnetic-storm",
+        "dst",
+        "magnetometer",
+        "forecast"
+      ]
+    },
+    {
+      "id": "swpc-ovation-aurora",
+      "kind": "service",
+      "name": "SWPC OVATION aurora forecast",
+      "shortName": "Aurora forecast",
+      "summary": "A 30 to 90 minute forecast of aurora location and intensity from the OVATION model, as a global 1-degree grid of [longitude, latitude, aurora] values in one JSON file.",
+      "owner": {
+        "office": "NWS",
+        "program": "Space Weather Prediction Center (SWPC)"
+      },
+      "theme": "space-weather",
+      "baseUrl": "https://services.swpc.noaa.gov/json/ovation_aurora_latest.json",
+      "formats": [
+        "json",
+        "text"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public files; no key or token. Responses send access-control-allow-origin: * (checked 2026-09-24)."
+      },
+      "rateLimits": {
+        "text": "Not published. The files are static JSON regenerated on a schedule, so polling faster than they update gains nothing.",
+        "sourceUrl": "https://www.spaceweather.gov/content/data-access"
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "minutes",
+        "note": "Regenerated every few minutes; the forecast lead time is the solar wind travel time from L1 to Earth (falls back to a Kp-driven estimate with no lead time when solar wind data is unavailable)."
+      },
+      "docUrl": "https://www.spaceweather.gov/products/aurora-30-minute-forecast",
+      "lastVerified": "2026-09-24",
+      "sample": {
+        "url": "https://services.swpc.noaa.gov/json/ovation_aurora_latest.json",
+        "responseExcerpt": "{\n  \"Observation Time\": \"2026-09-24T23:34:00Z\",\n  \"Forecast Time\": \"2026-09-25T00:38:00Z\",\n  \"Data Format\": \"[Longitude, Latitude, Aurora]\",\n  \"coordinates\": [[0, -90, 4], [0, -89, 0], [0, -88, 6], [0, -87, 8], ...]\n}\n(trimmed: about 65,000 grid points, roughly 1 MB)"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not wired into the v1 map: a ~1 MB global intensity grid that would need its own heatmap layer. A candidate for a future live layer.",
+      "tags": [
+        "aurora",
+        "ovation",
+        "forecast",
+        "grid"
+      ]
+    },
+    {
+      "id": "swpc-rtsw-solar-wind",
+      "kind": "service",
+      "name": "SWPC real-time solar wind (L1)",
+      "shortName": "Real-time solar wind",
+      "summary": "One-minute solar wind plasma (speed, density, temperature) and interplanetary magnetic field (Bt, Bx/By/Bz in GSE and GSM) from whichever spacecraft at the L1 point is active, as JSON.",
+      "owner": {
+        "office": "NWS",
+        "program": "Space Weather Prediction Center (SWPC)"
+      },
+      "theme": "space-weather",
+      "baseUrl": "https://services.swpc.noaa.gov/json/rtsw/",
+      "formats": [
+        "json",
+        "text"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public files; no key or token. Responses send access-control-allow-origin: * (checked 2026-09-24)."
+      },
+      "rateLimits": {
+        "text": "Not published. The files are static JSON regenerated on a schedule, so polling faster than they update gains nothing.",
+        "sourceUrl": "https://www.spaceweather.gov/content/data-access"
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "minutes",
+        "note": "One-minute data, roughly the past week per file (rtsw_wind_1m.json, rtsw_mag_1m.json). The source field names the active spacecraft (SOLAR1 at the time of checking)."
+      },
+      "docUrl": "https://www.spaceweather.gov/products/solar-wind",
+      "lastVerified": "2026-09-24",
+      "sample": {
+        "url": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+        "responseExcerpt": "[\n  {\n    \"time_tag\": \"2026-09-24T23:40:00\",\n    \"active\": true,\n    \"source\": \"SOLAR1\",\n    \"proton_speed\": 432.8,\n    \"proton_temperature\": 129322,\n    \"proton_density\": 7.92,\n    \"proton_vx_gse\": -432.0,\n    ...\n  },\n  ...\n]\n(trimmed: each row also has GSM components, alpha-particle fields and quality flags)"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not a map layer: measured 1.5 million km upstream of Earth, so there is no location on the globe to draw.",
+      "tags": [
+        "solar-wind",
+        "imf",
+        "l1",
+        "dscovr",
+        "swfo-l1"
+      ]
+    },
+    {
+      "id": "swpc-goes-space-environment",
+      "kind": "service",
+      "name": "SWPC GOES X-ray, particle and magnetometer data",
+      "shortName": "GOES space environment",
+      "summary": "Real-time GOES X-ray flux and flare events, proton and electron flux, magnetometer and EUV data from the primary and secondary GOES satellites, as JSON files covering the past 6 hours to 7 days.",
+      "owner": {
+        "office": "NWS",
+        "program": "Space Weather Prediction Center (SWPC)"
+      },
+      "theme": "space-weather",
+      "baseUrl": "https://services.swpc.noaa.gov/json/goes/",
+      "formats": [
+        "json"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public files; no key or token. Responses send access-control-allow-origin: * (checked 2026-09-24)."
+      },
+      "rateLimits": {
+        "text": "Not published. The files are static JSON regenerated on a schedule, so polling faster than they update gains nothing.",
+        "sourceUrl": "https://www.spaceweather.gov/content/data-access"
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "minutes",
+        "note": "One-minute data; files are grouped by satellite (primary, secondary) and window (6-hour, 1-day, 3-day, 7-day)."
+      },
+      "docUrl": "https://www.spaceweather.gov/products/goes-x-ray-flux",
+      "lastVerified": "2026-09-24",
+      "sample": {
+        "url": "https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json",
+        "responseExcerpt": "[\n  {\n    \"time_tag\": \"2026-09-24T17:44:00Z\",\n    \"satellite\": 18,\n    \"flux\": 4.546471359390125e-07,\n    \"observed_flux\": 4.6932447617109574e-07,\n    \"electron_correction\": 1.4677340232083225e-08,\n    \"electron_contaminaton\": false,\n    \"energy\": \"0.1-0.8nm\"\n  },\n  ...\n]\n(trimmed: one row per minute for each of the two X-ray bands)"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not a map layer: time series measured at geostationary orbit, not values for places on the globe.",
+      "tags": [
+        "goes",
+        "x-ray",
+        "solar-flare",
+        "protons",
+        "electrons",
+        "magnetometer"
+      ]
+    },
+    {
+      "id": "ncei-goes-r-space-weather",
+      "kind": "service",
+      "name": "NCEI GOES-R space weather archive",
+      "shortName": "GOES-R SWx archive",
+      "summary": "The long-term archive of GOES-R space weather instrument data (EXIS X-ray and EUV, SEISS particles, MAG magnetometer, SUVI solar imagery) as daily Level 2 NetCDF files in a browsable HTTPS directory tree, by satellite, product, year and month.",
+      "owner": {
+        "office": "NESDIS",
+        "program": "National Centers for Environmental Information (NCEI)"
+      },
+      "theme": "space-weather",
+      "baseUrl": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/",
+      "formats": [
+        "netcdf"
+      ],
+      "auth": {
+        "type": "none",
+        "note": "Public directory listings and file downloads; no account needed. access-control-allow-origin: * (checked 2026-09-24)."
+      },
+      "coverage": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ]
+        ]
+      },
+      "freshness": {
+        "cadence": "daily",
+        "note": "Daily science-quality files arrive about a day after the data date."
+      },
+      "docUrl": "https://www.ncei.noaa.gov/products/satellite/goes-r",
+      "lastVerified": "2026-09-24",
+      "sample": {
+        "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/xrsf-l2-avg1m_science/2026/09/",
+        "responseExcerpt": "(HTML directory listing)\nsci_xrsf-l2-avg1m_g19_d20260922_v2-2-1.nc  2026-09-23 04:20  282K\nsci_xrsf-l2-avg1m_g19_d20260923_v2-2-1.nc  2026-09-24 04:22  285K\n(trimmed: one file per day)"
+      },
+      "liveLayer": false,
+      "notLiveReason": "Not a map layer: archived NetCDF time series from geostationary orbit, downloaded as files rather than queried.",
+      "tags": [
+        "goes",
+        "archive",
+        "netcdf",
+        "x-ray",
+        "particles",
+        "suvi",
+        "historical"
+      ]
     }
   ],
   "edges": [
@@ -3257,6 +3590,27 @@
       "type": "data-flow",
       "label": "DART bottom-pressure data is used in the Tsunami Warning Centers' real-time forecasts and warnings",
       "sourceUrl": "https://www.ndbc.noaa.gov/dart/dart.shtml"
+    },
+    {
+      "source": "swpc-rtsw-solar-wind",
+      "target": "swpc-ovation-aurora",
+      "type": "data-flow",
+      "label": "OVATION takes the solar wind speed and magnetic field measured at L1 as its input",
+      "sourceUrl": "https://www.spaceweather.gov/products/aurora-30-minute-forecast"
+    },
+    {
+      "source": "swpc-geomagnetic-indices",
+      "target": "swpc-alerts-scales",
+      "type": "data-flow",
+      "label": "K-index watches and warnings are issued from the forecast Kp and reported on the NOAA G scale",
+      "sourceUrl": "https://www.spaceweather.gov/products/planetary-k-index"
+    },
+    {
+      "source": "swpc-goes-space-environment",
+      "target": "ncei-goes-r-space-weather",
+      "type": "data-flow",
+      "label": "NCEI is the official long-term archive for SWPC data, including the GOES-R space weather instruments",
+      "sourceUrl": "https://www.spaceweather.gov/content/data-access"
     }
   ]
 }
