@@ -22,10 +22,21 @@ describe('FinderPanel', () => {
     }
   })
 
-  it('shows the first task\'s ranked nodes by default', () => {
+  it('starts with no task picked and explains the app instead (#148)', () => {
     render(<FinderPanel />)
+    expect(screen.getByRole('region', { name: 'How to read NOAA Atlas' })).toBeTruthy()
+    expect(screen.queryByRole('list', { name: 'Recommended nodes' })).toBeNull()
+    for (const task of tasks) {
+      expect(screen.getByText(task.label).getAttribute('aria-pressed')).toBe('false')
+    }
+  })
+
+  it('replaces the intro with the picked task\'s ranked nodes', () => {
     const first = tasks[0]
     if (!first) throw new Error('expected at least one authored task')
+    render(<FinderPanel />)
+    fireEvent.click(screen.getByText(first.label))
+    expect(screen.queryByRole('region', { name: 'How to read NOAA Atlas' })).toBeNull()
     for (const { why } of first.nodes) {
       expect(screen.getByText(why)).toBeTruthy()
     }
@@ -48,6 +59,7 @@ describe('FinderPanel', () => {
     const firstNode = task?.nodes[0]
     if (!task || !firstNode) throw new Error('expected at least one authored task with a node')
     render(<FinderPanel />)
+    fireEvent.click(screen.getByText(task.label))
 
     fireEvent.click(screen.getByText(firstNode.why))
 
@@ -72,6 +84,7 @@ describe('FinderPanel', () => {
 
   it('numbers the path steps in order', () => {
     render(<FinderPanel />)
+    fireEvent.click(screen.getByText(tasks[0]?.label ?? ''))
     const steps = screen.getAllByText(/^\d+\. (Primary|Also)$/)
     expect(steps.map((el) => el.textContent)).toEqual(
       (tasks[0]?.nodes ?? []).map((_, i) => `${i + 1}. ${i === 0 ? 'Primary' : 'Also'}`),

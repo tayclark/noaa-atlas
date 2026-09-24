@@ -11,13 +11,32 @@
 }
 
 .node-selection-status p {
-  margin: var(--space-2) 0 0;
+  margin: var(--space-1) 0 0;
   color: var(--color-text-muted);
 }
 
 /* The list scrolls, not the overlay (#151): with the overlay itself as the scroller, Chromium drew
    its scroll layer as a blank box at the top of the globe canvas. The header and toggles stay put.
    It sits above MapLibre's attribution bar, which spans the bottom of a narrow globe pane. */
+
+.node-selection-status-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* One swatch per theme drawn, matching the footprint's outline colour (#149). */
+.node-selection-status-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.node-selection-status-title strong {
+  margin-left: 2px;
+}
+
 .zone-only-alerts {
   position: absolute;
   bottom: calc(var(--space-4) + 24px);

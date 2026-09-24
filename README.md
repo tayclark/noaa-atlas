@@ -27,7 +27,7 @@ Explore stacks the task finder above the graph, with a draggable divider between
 
 ### "I need..." task finder
 
-A list of common tasks ("Get today's local forecast", "Get deep-ocean tsunami buoy readings", "Look up historical daily temperature or rainfall for a station", and so on). Picking a task:
+A list of common tasks under **I need to…** ("Get today's local forecast", "Get deep-ocean tsunami buoy readings", "Look up historical daily temperature or rainfall for a station", and so on). Until you pick one, the space below the list explains how to read the app. Picking a task:
 
 - shows the recommended nodes as numbered steps, the first marked **Primary** and the rest **Also**, each with a one-line reason;
 - highlights the whole path in the graph and draws connector lines between the steps;
@@ -37,8 +37,8 @@ A list of common tasks ("Get today's local forecast", "Get deep-ocean tsunami bu
 
 A force-directed graph of the curated services.
 
-- **Nodes** are services, coloured by theme. Larger nodes are theme hubs, and every service is linked to its theme hub.
-- **Edges** come in three types (see the **Legend** button): *Theme link* (derived automatically), *Shared ID* (services that use the same identifiers) and *Data flow* (one service republishes or feeds another). Non-theme edges only exist where a source documents the relationship.
+- **Nodes** form one tree: **NOAA** sits at the centre, each theme hub links to it, and every service links to its theme hub. Services are coloured by theme; the root is neutral and the largest, and theme hubs are larger than services.
+- **Links** come in four types (see the **Legend** button): *NOAA → theme* and *Theme → service* (both derived automatically), *Shared identifiers* (services that use the same identifiers) and *Data flows into* (one service republishes or feeds another). The last two only exist where a source documents the relationship.
 - **Navigate** by dragging the background to pan, scrolling or pinching to zoom (0.25x to 4x), and dragging a node to rearrange it. **Fit** re-frames the whole graph. The graph frames itself automatically until you pan or zoom.
 - **Search** filters as you type. Every word must match somewhere in a node's name, summary, tags, formats, owner office or program, theme label, or the label of a task that uses it. Non-matches are dimmed and the match count is announced. `Esc` clears the box.
 - **Select** a node by clicking it, or by focusing it with `Tab` and pressing `Enter` or `Space`. The view frames the node with its neighbours.
@@ -56,6 +56,8 @@ Selecting a node opens a panel over the graph:
 
 Selecting a theme hub opens the same panel with a one-line description of the theme, how many of its services are live, and a list of its services. Click a service to jump to it.
 
+Selecting the **NOAA** root opens an overview: how many services there are and how many are live, and every theme with its service count. Click a theme to jump to its hub.
+
 ## Inspector tab
 
 A network log of every live `api.weather.gov` request the app makes (alerts, point lookups, forecasts, observations), newest first, capped at the last 50.
@@ -71,7 +73,12 @@ A 3D globe (MapLibre GL, OpenFreeMap dark basemap) that opens on the continental
 - **Active alerts layer.** Current NWS alerts are drawn as polygons coloured by severity (Extreme, Severe, Moderate, Minor, Unknown). Click a polygon for the event, affected area and effective/expiry times. Alerts that have no geometry (zone-only) cannot be drawn, so they are counted in an overlay instead ("468 alerts without a map area"). The overlay starts collapsed to that title bar; expand it to list them five at a time with a "N more" toggle. The list scrolls while the title stays in place. If the fetch fails or nothing is active, the overlay says so.
 - **Click anywhere for a point lookup.** A popup shows the current forecast period and the nearest station's latest observation (temperature normalised to Fahrenheit, wind, conditions and observation time), followed by **APIs covering this point**: every service in the graph whose coverage contains the spot, each marked live or "available, not live yet". Errors (rate limiting, 403s, unexpected responses) are reported in the popup rather than failing silently.
 - **Locate me.** The navigation-arrow button (top right) asks the browser for your precise location (GPS where the device has it), flies there, marks the spot with an accuracy circle and runs the same point lookup. If location access is blocked or times out, a note says why.
-- **Linked selection.** Selecting a graph node flies the globe to that service's coverage and shows a status card: "Live layer highlighted below." (and the alerts layer is emphasised) for live nodes, otherwise the reason it is not on the map yet. Going the other way, clicking the globe (or an alert polygon) selects that point and highlights every graph node that covers it.
+- **Linked selection.** Selecting something in the graph or finder outlines its coverage on the globe in its theme colour and flies there:
+  - a service draws its own coverage; a status card says so, and either that its live layer is highlighted (the alerts layer is emphasised) or why it isn't on the map yet;
+  - a theme hub draws the coverage of all its services, and a task draws every API on its path;
+  - coverage that spans the antimeridian (Alaska's Aleutians, Guam) is framed across the dateline, and worldwide coverage tints the whole globe while the view stays on the US.
+
+  Going the other way, clicking the globe (or an alert polygon) selects that point, highlights every graph node that covers it, and the card says how many there are.
 
 Selection is a single shared state (a node, a globe point, or a task at any one time), so the finder, graph, detail panel and globe always agree.
 
@@ -84,6 +91,8 @@ The graph is authored as JSON and validated with [zod](https://zod.dev) at load 
 | `src/data/graph.json` | Service nodes and the authored edges (`shared-id`, `data-flow`). Theme hubs and theme edges are derived in `buildGraph.ts`. |
 | `src/data/tasks.json` | "I need..." tasks, each an ordered list of node ids with a one-line reason. |
 | `src/data/graphSchema.ts`, `taskSchema.ts` | The schemas and the list of themes. |
+
+The NOAA root, the theme hubs and the edges linking them are derived in `buildGraph.ts`, never authored; the id `noaa` and the `theme-` prefix are reserved.
 
 Themes: Weather & forecast, Climate & historical, Ocean & coastal, Satellite & radar, Space weather, Models & gridded data, Hazards, Fisheries & ecosystem, Geospatial services, Catalogs & meta. A theme with no services yet still appears in the legend.
 

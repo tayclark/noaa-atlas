@@ -12,7 +12,7 @@ export interface NeighborGroup {
   neighbors: Neighbor[]
 }
 
-const TYPE_ORDER: GraphEdge['type'][] = ['data-flow', 'shared-id', 'theme']
+const TYPE_ORDER: GraphEdge['type'][] = ['data-flow', 'shared-id', 'theme', 'root']
 
 export function getNeighbors(graph: Graph, nodeId: string): NeighborGroup[] {
   const byId = new Map(graph.nodes.map((n) => [n.id, n]))
