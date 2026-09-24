@@ -8,6 +8,9 @@ export default defineConfig({
   // runtime; Vite's dep pre-bundling doesn't discover that chunk, so the
   // worker 404s unless maplibre-gl is excluded from pre-bundling. (#82 spike)
   optimizeDeps: { exclude: ['maplibre-gl'] },
+  // Allows sharing the local dev server over an ngrok tunnel — free-tier ngrok assigns a new
+  // random subdomain per session, so this is a suffix match rather than one fixed hostname.
+  server: { allowedHosts: ['.ngrok-free.app'] },
   test: {
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
