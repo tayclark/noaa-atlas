@@ -1,5 +1,5 @@
 // Node detail panel (#30): shows the full reference info for the currently selected graph node,
-// or a theme summary when a theme hub is selected (#145).
+// a theme summary when a theme hub is selected (#145), or the atlas overview for the NOAA root (#148).
 // Reads the shared selectionStore via useSyncExternalStore (#43's convention, same as
 // InspectorPanel.tsx) rather than taking a prop, so it works regardless of what selects a node.
 
@@ -13,6 +13,7 @@ import { getSelectionSnapshot, subscribeSelection } from '../../data/selectionSt
 import { formatAuth, formatFormats, formatFreshness, formatOwner, formatRateLimits, liveStatusLabel } from './nodeDetailFormat'
 import { NodeNeighborsSection } from './NodeNeighborsSection'
 import { NodeSampleSection } from './NodeSampleSection'
+import { RootDetailBody } from './RootDetailBody'
 import { ThemeDetailBody } from './ThemeDetailBody'
 import './NodeDetailPanel.css'
 
@@ -44,7 +45,9 @@ export function NodeDetailPanel({ collapsed, onToggleCollapsed }: NodeDetailPane
           {collapsed ? '▸' : '▾'}
         </button>
       </div>
-      {!collapsed && (node.kind === 'theme' ? <ThemeDetailBody node={node} /> : <NodeDetailBody node={node} />)}
+      {!collapsed && node.kind === 'root' && <RootDetailBody />}
+      {!collapsed && node.kind === 'theme' && <ThemeDetailBody node={node} />}
+      {!collapsed && node.kind === 'service' && <NodeDetailBody node={node} />}
     </div>
   )
 }

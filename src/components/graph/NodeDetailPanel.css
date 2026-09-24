@@ -250,3 +250,14 @@
   font-weight: 600;
   text-transform: uppercase;
 }
+
+/* NOAA root body (#148): one row per theme with its swatch and service count. */
+.node-detail-theme-services li .node-detail-theme-swatch {
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.node-detail-root-count {
+  margin-left: 6px;
+  color: var(--color-text-muted);
+}

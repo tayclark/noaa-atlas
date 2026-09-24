@@ -48,6 +48,13 @@
   stroke-width: 1;
 }
 
+/* Root edges (theme hub -> NOAA, #148): the spine every cluster hangs off, so solid but quiet. */
+.graph-edge-root {
+  stroke: var(--color-text-muted);
+  stroke-width: 1.5;
+  opacity: 0.45;
+}
+
 /* Theme edges (service -> theme hub) are a loose structural ring, not a direct relationship —
    dashed and muted to read as background scaffolding behind the more meaningful edges below. */
 .graph-edge-theme {

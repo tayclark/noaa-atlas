@@ -1,11 +1,13 @@
 import graphJson from '../../data/graph.json'
 import { buildGraph } from '../../data/buildGraph'
-import { parseGraphFile } from '../../data/graphSchema'
+import { parseGraphFile, type GraphEdge } from '../../data/graphSchema'
 import { getNeighbors } from '../../data/neighbors'
 import { selectNode } from '../../data/selectionStore'
 import { EDGE_TYPE_LABELS } from './graphLayout'
 
 const graph = buildGraph(parseGraphFile(graphJson))
+// Derived hierarchy edges: their label just repeats the neighbour's name, so it isn't shown.
+const STRUCTURAL = new Set<GraphEdge['type']>(['root', 'theme'])
 
 export function NodeNeighborsSection({ nodeId }: { nodeId: string }) {
   const groups = getNeighbors(graph, nodeId)
@@ -20,17 +22,13 @@ export function NodeNeighborsSection({ nodeId }: { nodeId: string }) {
           <ul>
             {group.neighbors.map((n) => (
               <li key={`${n.direction}-${n.node.id}`}>
-                {n.node.kind === 'theme' ? (
-                  <span className="node-neighbors-name">{n.node.name}</span>
-                ) : (
-                  <button type="button" onClick={() => selectNode(n.node.id)}>
-                    {n.node.name}
-                  </button>
-                )}
-                {group.type !== 'theme' && (
+                <button type="button" onClick={() => selectNode(n.node.id)}>
+                  {n.node.name}
+                </button>
+                {!STRUCTURAL.has(group.type) && (
                   <span className="node-neighbors-direction">{n.direction === 'out' ? ' →' : ' ←'}</span>
                 )}
-                {group.type !== 'theme' && <span className="node-neighbors-reason">{n.label}</span>}
+                {!STRUCTURAL.has(group.type) && <span className="node-neighbors-reason">{n.label}</span>}
                 {n.sourceUrl && (
                   <a href={n.sourceUrl} target="_blank" rel="noreferrer">
                     source ↗

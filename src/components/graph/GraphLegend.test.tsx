@@ -19,9 +19,17 @@ describe('GraphLegend', () => {
     }
   })
 
+  it('explains the three node sizes, root first', () => {
+    render(<GraphLegend />)
+    const radii = ['NOAA, the root everything stems from', 'Theme hub', 'API or data service'].map((label) =>
+      Number(screen.getByText(label).closest('li')?.querySelector('circle')?.getAttribute('r')),
+    )
+    expect(radii).toEqual([...radii].sort((a, b) => b - a))
+  })
+
   it('renders a labeled key for every edge type', () => {
     render(<GraphLegend />)
-    for (const type of ['theme', 'shared-id', 'data-flow'] as const) {
+    for (const type of ['root', 'theme', 'shared-id', 'data-flow'] as const) {
       const label = screen.getByText(EDGE_TYPE_LABELS[type])
       const row = label.closest('li')
       const line = row?.querySelector('line')
