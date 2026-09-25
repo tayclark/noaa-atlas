@@ -3,7 +3,7 @@
 // selectionStore (#43) so the graph highlights the whole path; clicking a step selects that
 // single node, reusing the highlight/fly-to wiring already built for #44/#45.
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import graphJson from '../../data/graph.json'
 import { parseGraphFile, type ServiceNode } from '../../data/graphSchema'
 import { selectNode, selectTask } from '../../data/selectionStore'
@@ -20,6 +20,7 @@ export function FinderPanel() {
   // the panel never shows a task as picked when nothing is selected (#148).
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const selectedTask = tasks.find((task) => task.id === selectedTaskId)
+  const bodyRef = useRef<HTMLDivElement>(null)
 
   return (
     <div className="finder-panel">
@@ -33,9 +34,12 @@ export function FinderPanel() {
               type="button"
               className={`finder-task-item ${task.id === selectedTaskId ? 'finder-task-item-selected' : ''}`}
               aria-pressed={task.id === selectedTaskId}
-              onClick={() => {
+              onClick={(event) => {
                 setSelectedTaskId(task.id)
                 selectTask(task.id)
+                // Show the new steps from the top, next to the task the user just picked (#161).
+                bodyRef.current?.scrollTo?.({ top: 0 })
+                event.currentTarget.scrollIntoView?.({ block: 'nearest' })
               }}
             >
               {task.label}
@@ -43,26 +47,28 @@ export function FinderPanel() {
           </li>
         ))}
       </ul>
-      {!selectedTask && <FinderIntro />}
-      {selectedTask && (
-        <ol className="finder-node-list" aria-label="Recommended nodes">
-          {selectedTask.nodes.map(({ nodeId, why }, i) => {
-            const node = nodesById.get(nodeId)
-            if (!node) return null
-            return (
-              <li key={nodeId} className="finder-node-item">
-                <button type="button" className="finder-node-button" onClick={() => selectNode(nodeId)}>
-                  <span className="finder-node-rank">
-                    {i + 1}. {i === 0 ? 'Primary' : 'Also'}
-                  </span>
-                  <span className="finder-node-name">{node.name}</span>
-                  <span className="finder-node-why">{why}</span>
-                </button>
-              </li>
-            )
-          })}
-        </ol>
-      )}
+      <div className="finder-body" ref={bodyRef}>
+        {!selectedTask && <FinderIntro />}
+        {selectedTask && (
+          <ol className="finder-node-list" aria-label="Recommended nodes">
+            {selectedTask.nodes.map(({ nodeId, why }, i) => {
+              const node = nodesById.get(nodeId)
+              if (!node) return null
+              return (
+                <li key={nodeId} className="finder-node-item">
+                  <button type="button" className="finder-node-button" onClick={() => selectNode(nodeId)}>
+                    <span className="finder-node-rank">
+                      {i + 1}. {i === 0 ? 'Primary' : 'Also'}
+                    </span>
+                    <span className="finder-node-name">{node.name}</span>
+                    <span className="finder-node-why">{why}</span>
+                  </button>
+                </li>
+              )
+            })}
+          </ol>
+        )}
+      </div>
     </div>
   )
 }
