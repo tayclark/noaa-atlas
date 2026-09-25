@@ -29,7 +29,18 @@ import {
   subscribeSelection,
 } from '../../data/selectionStore'
 import { nodeColor } from '../../data/themeColors'
-import { computeFitTransform, createGraphSimulation, EDGE_CLASS, NO_INSET, nodeRadius, type Inset, type SimEdge, type SimNode } from './graphLayout'
+import {
+  computeFitTransform,
+  computeLabelledFitTransform,
+  createGraphSimulation,
+  EDGE_CLASS,
+  NO_INSET,
+  nodeRadius,
+  type FitTransform,
+  type Inset,
+  type SimEdge,
+  type SimNode,
+} from './graphLayout'
 import { GraphLegend } from './GraphLegend'
 import { GraphSearch } from './GraphSearch'
 import { buildSearchIndex, matchNodeIds } from './searchMatch'
@@ -37,6 +48,7 @@ import { DIAGONAL_OFFSET, LABEL_GAP, placeLabels, type Box, type LabelItem } fro
 import { NodeDetailPanel } from './NodeDetailPanel'
 
 const graph = buildGraph(parseGraphFile(graphJson))
+const graphNodeById = new Map(graph.nodes.map((node) => [node.id, node]))
 // A selected node is framed together with its neighbors, at a scale capped so labels stay legible.
 const SELECTION_MAX_SCALE = 1.25
 const FIT_ALL_PADDING = 40
@@ -319,25 +331,22 @@ export function GraphView() {
   useEffect(() => {
     highlightKeyRef.current = highlightKey
     const highlightedIds = highlightKey ? highlightKey.split('|') : []
-    const applyTransform = (positions: { x: number; y: number }[], padding: number, maxScale: number) => {
+    const applyTransform = (fitInto: (inset: Inset) => FitTransform | null) => {
       const svgEl = svgRef.current
       const zoomBehavior = zoomBehaviorRef.current
       if (!svgEl || !zoomBehavior) return false
       // Frames into the part of the canvas the detail panel doesn't cover, so the selection's
       // neighbours (and their labels) aren't hidden under it (#141).
-      const inset = panelInset(detailPanelBox(svgEl), size.width, size.height)
-      const fit = computeFitTransform(positions, size.width, size.height, padding, maxScale, inset)
+      const fit = fitInto(panelInset(detailPanelBox(svgEl), size.width, size.height))
       if (!fit) return false
       // d3-transition isn't a dependency here, so the pan/zoom is applied immediately rather
       // than animated (unlike MapLibre's flyTo in the reverse direction, #44).
       select(svgEl).call(zoomBehavior.transform, zoomIdentity.translate(fit.x, fit.y).scale(fit.k))
       return true
     }
-    const positionsOf = (ids: readonly string[]) =>
-      ids.map((id) => nodePositionsRef.current.get(id)).filter((p): p is { x: number; y: number } => p !== undefined)
 
     const fitAll = () => {
-      applyTransform([...nodePositionsRef.current.values()], FIT_ALL_PADDING, 1)
+      applyTransform((inset) => computeFitTransform([...nodePositionsRef.current.values()], size.width, size.height, FIT_ALL_PADDING, 1, inset))
     }
     fitAllRef.current = fitAll
 
@@ -352,7 +361,12 @@ export function GraphView() {
       const ids = onlyId
         ? [onlyId, ...getNeighbors(graph, onlyId).flatMap((group) => group.neighbors.map((n) => n.node.id))]
         : highlightedIds
-      applyTransform(positionsOf(ids), 60, SELECTION_MAX_SCALE)
+      const framed = ids.flatMap((id) => {
+        const pos = nodePositionsRef.current.get(id)
+        const node = graphNodeById.get(id)
+        return pos && node ? [{ ...pos, radius: nodeRadius(node), labelWidth: labelWidthsRef.current.get(id) ?? 0 }] : []
+      })
+      applyTransform((inset) => computeLabelledFitTransform(framed, size.width, size.height, 60, SELECTION_MAX_SCALE, inset, LABEL_GAP))
     }
     applyHighlightPanRef.current = applyHighlightPan
     applyHighlightPan()

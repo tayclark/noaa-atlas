@@ -125,6 +125,35 @@ export function computeFitTransform(
   }
 }
 
+/** A node to frame: its layout position and radius, and the on-screen width of its label. */
+export interface LabelledPosition {
+  x: number
+  y: number
+  radius: number
+  labelWidth: number
+}
+
+/**
+ * computeFitTransform, but with room for each node's label on its right, the first side label
+ * placement tries. Framing node centres alone could leave a neighbour's label past the canvas edge
+ * (#18). Labels keep a constant screen size, so their extent in layout units depends on the scale:
+ * fit the nodes, then refit with each label's end at that scale.
+ */
+export function computeLabelledFitTransform(
+  items: readonly LabelledPosition[],
+  viewportWidth: number,
+  viewportHeight: number,
+  padding: number,
+  maxScale: number,
+  inset: Inset,
+  labelGap: number,
+): FitTransform | null {
+  const nodesOnly = computeFitTransform(items, viewportWidth, viewportHeight, padding, maxScale, inset)
+  if (!nodesOnly) return null
+  const labelEnds = items.map(({ x, y, radius, labelWidth }) => ({ x: x + radius + (labelGap + labelWidth) / nodesOnly.k, y }))
+  return computeFitTransform([...items, ...labelEnds], viewportWidth, viewportHeight, padding, maxScale, inset)
+}
+
 /**
  * Builds a configured d3-force simulation for the given nodes/edges. Does not start or stop it —
  * the caller owns the simulation's lifecycle (ticking, stopping on unmount).
