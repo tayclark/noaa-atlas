@@ -80,7 +80,7 @@ A 3D globe (MapLibre GL, OpenFreeMap dark basemap) that opens on the continental
 - **Linked selection.** Selecting something in the graph or finder outlines its coverage on the globe in its theme colour and flies there:
   - a service draws its own coverage; a status card says so, and either that its live layer is highlighted (the alerts layer, the aurora glow or the Kp readout is emphasised) or why it isn't on the map yet;
   - a theme hub draws the coverage of all its services, and a task draws every API on its path;
-  - coverage that spans the antimeridian (Alaska's Aleutians, Guam) is framed across the dateline, and worldwide coverage tints the whole globe while the view stays on the US.
+  - coverage that spans the antimeridian (the GOES-West view) is framed across the dateline; small outlying areas such as Guam's waters are drawn but don't pull the view out to the Pacific; and worldwide coverage tints the whole globe while the view stays on the US.
 
   Going the other way, clicking the globe (or an alert polygon) selects that point, highlights every graph node that covers it, and the card says how many there are.
 
@@ -107,9 +107,16 @@ A service node records: `id`, `name`, `summary`, `owner` (office and program), `
 1. Verify against the official docs and with real requests: check the response, the CORS headers (`curl -D - -o /dev/null -H "Origin: http://localhost:5173" '<url>'`) and copy a genuine excerpt into `sample.responseExcerpt`.
 2. Generate coverage geometry rather than hand-writing it:
    ```sh
-   npm run coverage-geometry -- --preset us-coastal-waters --out coverage.json
+   npm run coverage-geometry -- --preset us-land-and-waters --out coverage.json
    ```
-   Presets are `us-coastal-waters`, `contiguous-us`, `alaska`, `hawaii` and `worldwide`; `--input <file.geojson>` merges your own polygons. Output is size-limited and schema-valid.
+   Presets (`--help` lists them all):
+   - `us-land-and-waters`: US states, inhabited territories and their EEZ, for services that cover both;
+   - `us-waters`: the US EEZ and the US part of the Great Lakes, for water-only services;
+   - `northeast-us-shelf`: the US EEZ from Cape Hatteras to the Gulf of Maine;
+   - `goes-east-west`: where GOES-East or GOES-West is at least 10° above the horizon;
+   - `contiguous-us`, `alaska`, `hawaii` and `worldwide`, plus the older hand-drawn `us-coastal-waters` boxes.
+
+   `--input <file.geojson>` merges your own polygons. Output is size-limited and schema-valid. Source data is downloaded on first use to `scripts/.cache/`: Natural Earth countries and lakes (public domain) and the Marine Regions EEZ, version 12 (Flanders Marine Institute, 2023, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), https://doi.org/10.14284/632).
 3. Add the node to `graph.json`, then add or extend a task in `tasks.json` (its node ids must exist).
 4. Run `npm test`: the schema and task tests fail on unknown fields, missing `notLiveReason`, duplicate ids or dangling references.
 

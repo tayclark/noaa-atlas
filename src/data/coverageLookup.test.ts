@@ -76,4 +76,36 @@ describe('nodesCoveringPoint against real graph.json fixtures', () => {
     // cpc-gis-data is authored as a full-world polygon, so it legitimately still matches.
     expect(covering).toContain('cpc-gis-data')
   })
+
+  // Real outlines rather than boxes (#163): land plus the EEZ, the waters alone, one region, two satellite views.
+  it('covers US coastal waters and the territories with nws-api, but not Mexico or Canada', () => {
+    const nws = byId('nws-api').coverage
+    for (const [name, point] of Object.entries({ offNewJersey: [-73.4, 39.6], guam: [144.79, 13.47], pagoPago: [-170.7, -14.28], sanJuan: [-66.1, 18.45] })) {
+      expect(isPointInCoverage(nws, point as [number, number]), name).toBe(true)
+    }
+    expect(isPointInCoverage(nws, [-99.1, 19.4])).toBe(false) // Mexico City
+    expect(isPointInCoverage(nws, [-79.4, 43.7])).toBe(false) // Toronto
+  })
+
+  it('covers the water, not inland, for the CO-OPS tide APIs', () => {
+    const coops = byId('coops-data-api').coverage
+    expect(isPointInCoverage(coops, [-68.5, 43])).toBe(true) // Gulf of Maine
+    expect(isPointInCoverage(coops, [-87, 43.5])).toBe(true) // Lake Michigan
+    expect(isPointInCoverage(coops, [-98, 38.5])).toBe(false) // Kansas
+    expect(isPointInCoverage(coops, [-87, 48.3])).toBe(false) // the Canadian side of Lake Superior
+  })
+
+  it('limits the Northeast Fisheries Science Center to the Northeast shelf', () => {
+    const nefsc = byId('nefsc-erddap').coverage
+    expect(isPointInCoverage(nefsc, [-68.5, 43])).toBe(true) // Gulf of Maine
+    expect(isPointInCoverage(nefsc, [-86, 27])).toBe(false) // Gulf of Mexico
+  })
+
+  it('covers the GOES-East and GOES-West views, including Alaska, but not Europe or Japan', () => {
+    const goes = byId('goes-aws-open-data').coverage
+    expect(isPointInCoverage(goes, [-149.9, 61.2])).toBe(true) // Anchorage
+    expect(isPointInCoverage(goes, [-46.6, -23.5])).toBe(true) // São Paulo
+    expect(isPointInCoverage(goes, [-0.1, 51.5])).toBe(false) // London
+    expect(isPointInCoverage(goes, [139.7, 35.7])).toBe(false) // Tokyo
+  })
 })
