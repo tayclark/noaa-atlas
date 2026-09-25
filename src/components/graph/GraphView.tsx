@@ -32,6 +32,7 @@ import { nodeColor } from '../../data/themeColors'
 import {
   computeFitTransform,
   computeLabelledFitTransform,
+  computePathFitTransform,
   createGraphSimulation,
   EDGE_CLASS,
   NO_INSET,
@@ -51,6 +52,10 @@ const graph = buildGraph(parseGraphFile(graphJson))
 const graphNodeById = new Map(graph.nodes.map((node) => [node.id, node]))
 // A selected node is framed together with its neighbors, at a scale capped so labels stay legible.
 const SELECTION_MAX_SCALE = 1.25
+// Below this a task's path is too spread out to read, so its largest group of steps (nodes within
+// PATH_LINK_DISTANCE layout units of each other) is framed instead (#162).
+const PATH_MIN_SCALE = 0.8
+const PATH_LINK_DISTANCE = 150
 const FIT_ALL_PADDING = 40
 // Labels render at this size on screen at every zoom level (#138); overlaps are hidden instead.
 const LABEL_PX = 12
@@ -366,7 +371,11 @@ export function GraphView() {
         const node = graphNodeById.get(id)
         return pos && node ? [{ ...pos, radius: nodeRadius(node), labelWidth: labelWidthsRef.current.get(id) ?? 0 }] : []
       })
-      applyTransform((inset) => computeLabelledFitTransform(framed, size.width, size.height, 60, SELECTION_MAX_SCALE, inset, LABEL_GAP))
+      applyTransform((inset) =>
+        !onlyId && selection.selectedTaskId
+          ? computePathFitTransform(framed, size.width, size.height, 60, SELECTION_MAX_SCALE, inset, LABEL_GAP, PATH_MIN_SCALE, PATH_LINK_DISTANCE)
+          : computeLabelledFitTransform(framed, size.width, size.height, 60, SELECTION_MAX_SCALE, inset, LABEL_GAP),
+      )
     }
     applyHighlightPanRef.current = applyHighlightPan
     applyHighlightPan()
