@@ -53,7 +53,7 @@ const HEATMAP_COLOR: ExpressionSpecification = [
   0.8,
   'rgb(231, 76, 60)',
 ]
-const HEATMAP_INTENSITY = 0.35
+const HEATMAP_INTENSITY = 0.55
 
 /**
  * Heatmap paint. The radius is in screen pixels, so it grows with zoom (base 2, like the map's
