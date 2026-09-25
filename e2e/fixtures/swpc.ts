@@ -25,8 +25,8 @@ export function ovationFixture() {
   }
 }
 
-/** How many cells the globe should draw: every non-zero one. */
-export const AURORA_FIXTURE_POINTS = (BAND_LONS.to - BAND_LONS.from + 1) * (BAND_LATS.to - BAND_LATS.from + 1)
+/** How many cells the globe should count as drawn: every non-zero one. */
+export const AURORA_FIXTURE_CELLS = (BAND_LONS.to - BAND_LONS.from + 1) * (BAND_LATS.to - BAND_LATS.from + 1)
 
 export function kpFixture() {
   return [

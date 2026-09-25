@@ -15,9 +15,9 @@ import type { NwsAlertCollection } from '../../data/nwsSchema'
 import { getOvationAurora, getPlanetaryKp } from '../../data/swpcClient'
 import type { SwpcOvation } from '../../data/swpcSchema'
 import {
+  AURORA_RASTER_COORDINATES,
   auroraAt,
-  auroraHeatmapPaint,
-  auroraToGeoJson,
+  auroraRaster,
   describeSwpcFetchOutcome,
   formatAuroraPopupHtml,
 } from './auroraLayer'
@@ -68,9 +68,9 @@ const ALERTS_LINE_WIDTH_SELECTED = 3
 const COVERAGE_SOURCE_ID = 'selected-coverage'
 const COVERAGE_FILL_LAYER_ID = 'selected-coverage-fill'
 const COVERAGE_LINE_LAYER_ID = 'selected-coverage-line'
-// The SWPC aurora forecast (#54), a heatmap drawn under the alerts and brightened when selected.
+// The SWPC aurora forecast (#54, #158), a raster drawn under the alerts and brightened when selected.
 const AURORA_SOURCE_ID = 'swpc-aurora'
-const AURORA_LAYER_ID = 'swpc-aurora-heatmap'
+const AURORA_LAYER_ID = 'swpc-aurora-raster'
 const AURORA_OPACITY = 0.75
 const AURORA_OPACITY_SELECTED = 1
 
@@ -132,10 +132,10 @@ export function MapLibreGlobe() {
   // half the globe before the user had done anything.
   const [zoneAlertsCollapsed, setZoneAlertsCollapsed] = useState(true)
   const [geolocationError, setGeolocationError] = useState<string | null>(null)
-  // Space weather (#54). The grid is kept for click lookups; the point count also tells the
+  // Space weather (#54). The grid is kept for click lookups; the cell count also tells the
   // selection effect the aurora layer now exists.
   const ovationRef = useRef<SwpcOvation | null>(null)
-  const [auroraPoints, setAuroraPoints] = useState<number | null>(null)
+  const [auroraCells, setAuroraCells] = useState<number | null>(null)
   const [auroraError, setAuroraError] = useState<string | null>(null)
   const [kp, setKp] = useState<{ status: 'loading' } | { status: 'ok'; readout: KpReadout } | { status: 'error'; message: string }>({
     status: 'loading',
@@ -201,14 +201,23 @@ export function MapLibreGlobe() {
       getOvationAurora()
         .then((ovation) => {
           ovationRef.current = ovation
-          const points = auroraToGeoJson(ovation)
-          map.addSource(AURORA_SOURCE_ID, { type: 'geojson', data: points })
+          const raster = auroraRaster(ovation)
+          const canvas = document.createElement('canvas')
+          canvas.width = raster.width
+          canvas.height = raster.height
+          canvas.getContext('2d')?.putImageData(new ImageData(raster.data, raster.width, raster.height), 0, 0)
+          map.addSource(AURORA_SOURCE_ID, { type: 'canvas', canvas, coordinates: AURORA_RASTER_COORDINATES, animate: false })
           // Under the alerts if they're already drawn; if they arrive later they're added on top anyway.
           map.addLayer(
-            { id: AURORA_LAYER_ID, type: 'heatmap', source: AURORA_SOURCE_ID, paint: auroraHeatmapPaint(AURORA_OPACITY) },
+            {
+              id: AURORA_LAYER_ID,
+              type: 'raster',
+              source: AURORA_SOURCE_ID,
+              paint: { 'raster-opacity': AURORA_OPACITY, 'raster-resampling': 'linear', 'raster-fade-duration': 0 },
+            },
             map.getLayer(ALERTS_FILL_LAYER_ID) ? ALERTS_FILL_LAYER_ID : undefined,
           )
-          setAuroraPoints(points.features.length)
+          setAuroraCells(raster.cells)
         })
         .catch((err: unknown) => setAuroraError(describeSwpcFetchOutcome(err)))
 
@@ -317,13 +326,13 @@ export function MapLibreGlobe() {
   }, [view, mapLoaded])
 
   // The aurora's emphasis (#54) lives apart from the effect above so that the layer arriving
-  // (auroraPoints) re-applies it without re-framing the globe.
+  // (auroraCells) re-applies it without re-framing the globe.
   const auroraHighlighted = view.liveLayers.includes('aurora')
   useEffect(() => {
     const map = mapRef.current
-    if (!map || auroraPoints === null || !map.getLayer(AURORA_LAYER_ID)) return
-    map.setPaintProperty(AURORA_LAYER_ID, 'heatmap-opacity', auroraHighlighted ? AURORA_OPACITY_SELECTED : AURORA_OPACITY)
-  }, [auroraHighlighted, auroraPoints])
+    if (!map || auroraCells === null || !map.getLayer(AURORA_LAYER_ID)) return
+    map.setPaintProperty(AURORA_LAYER_ID, 'raster-opacity', auroraHighlighted ? AURORA_OPACITY_SELECTED : AURORA_OPACITY)
+  }, [auroraHighlighted, auroraCells])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -332,7 +341,7 @@ export function MapLibreGlobe() {
         role="img"
         aria-label="Globe view of NOAA API coverage"
         data-coverage-features={view.footprint.features.length}
-        data-aurora-points={auroraPoints ?? undefined}
+        data-aurora-cells={auroraCells ?? undefined}
         style={{ width: '100%', height: '100%' }}
       />
       {view.card && (
