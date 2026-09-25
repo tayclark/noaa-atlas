@@ -1,16 +1,19 @@
-// Inspector accordion and foldable response body (#150), against a mocked alerts response.
+// Inspector accordion and foldable response body (#150), against mocked alerts and SWPC responses.
 
 import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
+import { mockSwpc } from './fixtures/swpc'
 
 test('logs the alerts request collapsed, and expands and folds it on demand', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
+  await mockSwpc(page)
   const alertsResponse = page.waitForResponse((res) => res.url().includes('/alerts/active'))
   await page.goto('/')
   await alertsResponse
 
+  // The alerts call plus the two SWPC files the globe loads (#54).
   const tab = page.getByRole('tab', { name: /Inspector/ })
-  await expect(tab).toContainText('1')
+  await expect(tab).toContainText('3')
   await tab.click()
 
   const row = page.getByRole('button', { name: /\/alerts\/active/ })
