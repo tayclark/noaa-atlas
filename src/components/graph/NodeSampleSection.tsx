@@ -5,10 +5,13 @@ import { useState } from 'react'
 import { toCurlCommand, toFetchSnippet } from '../../data/copyAsCode'
 import type { ServiceNode } from '../../data/graphSchema'
 import { getPoint } from '../../data/nwsClient'
+import { getPlanetaryKp } from '../../data/swpcClient'
 
 // Must match the `sample.url` authored in graph.json for the same node.
 const RUNNABLE_SAMPLES: Partial<Record<string, () => Promise<unknown>>> = {
   'nws-api': () => getPoint(39.7456, -97.0892),
+  // OVATION isn't runnable here: its ~1 MB grid is no use as a pretty-printed body.
+  'swpc-geomagnetic-indices': () => getPlanetaryKp(),
 }
 
 type RunState = { status: 'idle' } | { status: 'loading' } | { status: 'done'; body: string } | { status: 'error'; message: string }
