@@ -1,5 +1,5 @@
 import { forceCenter, forceCollide, forceX, forceY, forceLink, forceManyBody, forceSimulation, type Simulation, type SimulationLinkDatum, type SimulationNodeDatum } from 'd3-force'
-import { THEMES, type GraphEdge, type GraphNode, type Theme } from '../../data/graphSchema'
+import { type GraphEdge, type GraphNode, type Theme } from '../../data/graphSchema'
 
 export type SimNode = GraphNode & SimulationNodeDatum
 export interface SimEdge extends SimulationLinkDatum<SimNode> {
@@ -30,6 +30,22 @@ const LINK_STRENGTH: Record<GraphEdge['type'], number> = {
   'shared-id': 0.8,
   'data-flow': 0.8,
 }
+
+// Order of the theme anchors around the ring: THEMES order, except that space weather sits
+// between the two smallest themes (hazards, fisheries) instead of between satellite and models,
+// the two largest, so its labels have room (#18).
+export const RING_ORDER: readonly Theme[] = [
+  'weather',
+  'climate',
+  'ocean',
+  'satellite',
+  'models',
+  'hazards',
+  'space-weather',
+  'fisheries',
+  'geospatial',
+  'catalogs',
+]
 
 /** CSS class per edge type (#29) — a fixed 3-value enum, so className rather than inline style. */
 export const EDGE_CLASS: Record<GraphEdge['type'], string> = {
@@ -109,6 +125,35 @@ export function computeFitTransform(
   }
 }
 
+/** A node to frame: its layout position and radius, and the on-screen width of its label. */
+export interface LabelledPosition {
+  x: number
+  y: number
+  radius: number
+  labelWidth: number
+}
+
+/**
+ * computeFitTransform, but with room for each node's label on its right, the first side label
+ * placement tries. Framing node centres alone could leave a neighbour's label past the canvas edge
+ * (#18). Labels keep a constant screen size, so their extent in layout units depends on the scale:
+ * fit the nodes, then refit with each label's end at that scale.
+ */
+export function computeLabelledFitTransform(
+  items: readonly LabelledPosition[],
+  viewportWidth: number,
+  viewportHeight: number,
+  padding: number,
+  maxScale: number,
+  inset: Inset,
+  labelGap: number,
+): FitTransform | null {
+  const nodesOnly = computeFitTransform(items, viewportWidth, viewportHeight, padding, maxScale, inset)
+  if (!nodesOnly) return null
+  const labelEnds = items.map(({ x, y, radius, labelWidth }) => ({ x: x + radius + (labelGap + labelWidth) / nodesOnly.k, y }))
+  return computeFitTransform([...items, ...labelEnds], viewportWidth, viewportHeight, padding, maxScale, inset)
+}
+
 /**
  * Builds a configured d3-force simulation for the given nodes/edges. Does not start or stop it —
  * the caller owns the simulation's lifecycle (ticking, stopping on unmount).
@@ -119,7 +164,7 @@ export function createGraphSimulation(
   width: number,
   height: number,
 ): Simulation<SimNode, SimEdge> {
-  const anchors = themeAnchors(THEMES, width, height)
+  const anchors = themeAnchors(RING_ORDER, width, height)
   const center = { x: width / 2, y: height / 2 }
   // The root sits at the centre of the ring of theme anchors.
   const anchorOf = (node: SimNode) => (node.kind === 'root' ? center : (anchors.get(node.theme) ?? center))

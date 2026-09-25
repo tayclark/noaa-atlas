@@ -4,10 +4,12 @@ import { buildGraph } from '../../data/buildGraph'
 import { parseGraphFile, THEMES, type GraphEdge, type ServiceNode, type ThemeNode } from '../../data/graphSchema'
 import {
   computeFitTransform,
+  computeLabelledFitTransform,
   createGraphSimulation,
   EDGE_CLASS,
   EDGE_TYPE_LABELS,
   nodeRadius,
+  RING_ORDER,
   themeAnchors,
   type SimEdge,
   type SimNode,
@@ -25,6 +27,10 @@ describe('themeAnchors', () => {
       expect(y).toBeGreaterThan(0)
       expect(y).toBeLessThan(470)
     }
+  })
+
+  it('places every theme on the ring exactly once', () => {
+    expect([...RING_ORDER].sort()).toEqual([...THEMES].sort())
   })
 })
 
@@ -188,5 +194,30 @@ describe('computeFitTransform', () => {
     expect(k).toBeCloseTo(680 / 400)
     expect((fit?.y ?? 0) + k * 50).toBeCloseTo(400, 0)
     expect(fit?.y ?? 0).toBeGreaterThanOrEqual(200) // the box's top edge (y = 0) lands below the inset
+  })
+})
+
+describe('computeLabelledFitTransform', () => {
+  const inset = { left: 0, top: 0, right: 0, bottom: 0 }
+
+  it('returns null for no positions', () => {
+    expect(computeLabelledFitTransform([], 800, 600, 60, 1.25, inset, 4)).toBeNull()
+  })
+
+  it('keeps every label end inside the viewport, where framing node centres alone would not (#18)', () => {
+    const items = [
+      { x: 0, y: 0, radius: 8, labelWidth: 20 },
+      { x: 200, y: 0, radius: 8, labelWidth: 150 },
+    ]
+    const labelRight = (fit: { x: number; k: number }) => fit.x + fit.k * (200 + 8) + 4 + 150
+
+    const centresOnly = computeFitTransform(items, 400, 300, 60, 1.25, inset)
+    if (!centresOnly) throw new Error('expected a fit')
+    expect(labelRight(centresOnly)).toBeGreaterThan(400)
+
+    const fit = computeLabelledFitTransform(items, 400, 300, 60, 1.25, inset, 4)
+    if (!fit) throw new Error('expected a fit')
+    expect(labelRight(fit)).toBeLessThanOrEqual(400)
+    expect(fit.x).toBeGreaterThanOrEqual(0) // the leftmost node is still in view
   })
 })
