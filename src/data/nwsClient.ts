@@ -19,11 +19,7 @@ import {
   type NwsPoint,
   type NwsStationCollection,
 } from './nwsSchema'
-import { pushLogEntry, type RequestLogStatus } from './requestLog'
-
-const NWS_BASE_URL = 'https://api.weather.gov'
-const CACHE_TTL_MS = 60_000
-const REQUEST_HEADERS = { Accept: 'application/geo+json' }
+import { createLiveClient } from './liveRequest'
 
 export class NwsHttpError extends Error {
   readonly status: number
@@ -47,18 +43,6 @@ export class NwsParseError extends Error {
   }
 }
 
-interface CacheEntry {
-  value: unknown
-  expiresAt: number
-}
-
-const cache = new Map<string, CacheEntry>()
-
-/** Clears the in-memory response cache. Intended for test isolation between cases. */
-export function clearNwsCache(): void {
-  cache.clear()
-}
-
 function classifyError(res: Response): NwsHttpError {
   if (res.status === 403) {
     return new NwsHttpError(403, 'forbidden', 'NWS rejected this request (403) — it may be rate-limited or blocked; try again shortly.')
@@ -72,64 +56,15 @@ function classifyError(res: Response): NwsHttpError {
   return new NwsHttpError(res.status, 'unknown', `NWS request failed (${res.status}).`)
 }
 
-function logRequest(
-  url: string,
-  path: string,
-  startedAt: number,
-  startedAtPerf: number,
-  status: RequestLogStatus,
-  extra: { httpStatus?: number; responseBody?: unknown; errorMessage?: string } = {},
-): void {
-  pushLogEntry({
-    id: crypto.randomUUID(),
-    method: 'GET',
-    url,
-    path,
-    requestHeaders: REQUEST_HEADERS,
-    startedAt,
-    durationMs: performance.now() - startedAtPerf,
-    status,
-    ...extra,
-  })
-}
+const { request, clearCache } = createLiveClient({
+  baseUrl: 'https://api.weather.gov',
+  headers: { Accept: 'application/geo+json' },
+  httpError: classifyError,
+  parseError: (path, cause) => new NwsParseError(`NWS response for ${path} did not match the expected shape`, cause),
+})
 
-async function request<T>(path: string, parse: (raw: unknown) => T): Promise<T> {
-  const url = `${NWS_BASE_URL}${path}`
-  const cached = cache.get(url)
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.value as T
-  }
-
-  const startedAt = Date.now()
-  const startedAtPerf = performance.now()
-  let res: Response
-  try {
-    res = await fetch(url, { headers: REQUEST_HEADERS })
-  } catch (err) {
-    logRequest(url, path, startedAt, startedAtPerf, 'network-error', {
-      errorMessage: err instanceof Error ? err.message : 'Network request failed',
-    })
-    throw err
-  }
-
-  if (!res.ok) {
-    logRequest(url, path, startedAt, startedAtPerf, 'http-error', { httpStatus: res.status })
-    throw classifyError(res)
-  }
-
-  const raw: unknown = await res.json()
-  let value: T
-  try {
-    value = parse(raw)
-  } catch (err) {
-    logRequest(url, path, startedAt, startedAtPerf, 'parse-error', { httpStatus: res.status, responseBody: raw })
-    throw new NwsParseError(`NWS response for ${path} did not match the expected shape`, err)
-  }
-
-  logRequest(url, path, startedAt, startedAtPerf, 'success', { httpStatus: res.status, responseBody: raw })
-  cache.set(url, { value, expiresAt: Date.now() + CACHE_TTL_MS })
-  return value
-}
+/** Clears the in-memory response cache. Intended for test isolation between cases. */
+export const clearNwsCache = clearCache
 
 export function getActiveAlerts(): Promise<NwsAlertCollection> {
   return request('/alerts/active', parseAlertCollection)

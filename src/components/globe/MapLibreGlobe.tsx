@@ -12,6 +12,16 @@ import {
 import graphJson from '../../data/graph.json'
 import { parseGraphFile, type ServiceNode } from '../../data/graphSchema'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
+import { getOvationAurora, getPlanetaryKp } from '../../data/swpcClient'
+import type { SwpcOvation } from '../../data/swpcSchema'
+import {
+  auroraAt,
+  auroraHeatmapPaint,
+  auroraToGeoJson,
+  describeSwpcFetchOutcome,
+  formatAuroraPopupHtml,
+} from './auroraLayer'
+import { describeKp, type KpReadout } from './kpReadout'
 import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePopup'
 import { describeGeolocationError, GEOLOCATE_MAX_ZOOM, GEOLOCATE_POSITION_OPTIONS } from './geolocation'
 import {
@@ -58,6 +68,12 @@ const ALERTS_LINE_WIDTH_SELECTED = 3
 const COVERAGE_SOURCE_ID = 'selected-coverage'
 const COVERAGE_FILL_LAYER_ID = 'selected-coverage-fill'
 const COVERAGE_LINE_LAYER_ID = 'selected-coverage-line'
+// The SWPC aurora forecast (#54), a heatmap drawn under the alerts and brightened when selected.
+const AURORA_SOURCE_ID = 'swpc-aurora'
+const AURORA_LAYER_ID = 'swpc-aurora-heatmap'
+const AURORA_OPACITY = 0.75
+const AURORA_OPACITY_SELECTED = 1
+
 // Worldwide coverage tints the whole globe, so the default view is kept rather than framing the world.
 const GLOBAL_VIEW_ZOOM = 1.5
 
@@ -75,9 +91,12 @@ const globeViewContext: GlobeViewContext = {
  * is purely local (no network call), so it's computed up front and shown whether or not the NWS
  * lookup succeeds (#41).
  */
-function showPointLookup(map: MapLibreMap, lng: number, lat: number) {
+function showPointLookup(map: MapLibreMap, lng: number, lat: number, ovation: SwpcOvation | null) {
   const popup = new Popup().setLngLat([lng, lat]).setHTML(formatPointLoadingHtml()).addTo(map)
-  const coverageHtml = formatCoveragePopupHtml(describeCoverageForPopup(nodesCoveringPoint(graphNodes, [lng, lat])))
+  // The aurora chance here (#54), when the forecast has loaded and this cell has any.
+  const aurora = ovation ? auroraAt(ovation, [lng, lat]) : null
+  const auroraHtml = ovation && aurora !== null ? `${formatAuroraPopupHtml(aurora, ovation.forecastTime)}<hr/>` : ''
+  const coverageHtml = auroraHtml + formatCoveragePopupHtml(describeCoverageForPopup(nodesCoveringPoint(graphNodes, [lng, lat])))
   // Highlights the covering graph node(s) if/when the Graph tab is open (#45).
   selectPoint([lng, lat])
 
@@ -113,6 +132,14 @@ export function MapLibreGlobe() {
   // half the globe before the user had done anything.
   const [zoneAlertsCollapsed, setZoneAlertsCollapsed] = useState(true)
   const [geolocationError, setGeolocationError] = useState<string | null>(null)
+  // Space weather (#54). The grid is kept for click lookups; the point count also tells the
+  // selection effect the aurora layer now exists.
+  const ovationRef = useRef<SwpcOvation | null>(null)
+  const [auroraPoints, setAuroraPoints] = useState<number | null>(null)
+  const [auroraError, setAuroraError] = useState<string | null>(null)
+  const [kp, setKp] = useState<{ status: 'loading' } | { status: 'ok'; readout: KpReadout } | { status: 'error'; message: string }>({
+    status: 'loading',
+  })
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const view = useMemo(() => describeSelectionForGlobe(selection, globeViewContext), [selection])
 
@@ -135,7 +162,7 @@ export function MapLibreGlobe() {
     // "Locate me" (the navigation-arrow button): the same lookup as a click, at the user's position.
     geolocate.on('geolocate', (e) => {
       setGeolocationError(null)
-      showPointLookup(map, e.coords.longitude, e.coords.latitude)
+      showPointLookup(map, e.coords.longitude, e.coords.latitude, ovationRef.current)
     })
     geolocate.on('error', (e) => setGeolocationError(describeGeolocationError(e.code)))
 
@@ -168,8 +195,26 @@ export function MapLibreGlobe() {
           ? map.queryRenderedFeatures(e.point, { layers: [ALERTS_FILL_LAYER_ID] })
           : []
         if (alertFeatures.length > 0) return
-        showPointLookup(map, e.lngLat.lng, e.lngLat.lat)
+        showPointLookup(map, e.lngLat.lng, e.lngLat.lat, ovationRef.current)
       })
+
+      getOvationAurora()
+        .then((ovation) => {
+          ovationRef.current = ovation
+          const points = auroraToGeoJson(ovation)
+          map.addSource(AURORA_SOURCE_ID, { type: 'geojson', data: points })
+          // Under the alerts if they're already drawn; if they arrive later they're added on top anyway.
+          map.addLayer(
+            { id: AURORA_LAYER_ID, type: 'heatmap', source: AURORA_SOURCE_ID, paint: auroraHeatmapPaint(AURORA_OPACITY) },
+            map.getLayer(ALERTS_FILL_LAYER_ID) ? ALERTS_FILL_LAYER_ID : undefined,
+          )
+          setAuroraPoints(points.features.length)
+        })
+        .catch((err: unknown) => setAuroraError(describeSwpcFetchOutcome(err)))
+
+      getPlanetaryKp()
+        .then((rows) => setKp({ status: 'ok', readout: describeKp(rows) }))
+        .catch((err: unknown) => setKp({ status: 'error', message: describeSwpcFetchOutcome(err) }))
 
       getActiveAlerts()
         .then((alerts) => {
@@ -234,24 +279,25 @@ export function MapLibreGlobe() {
   }, [])
 
   // Reacts to the selection (#44, #149): draws its coverage footprint, flies to it, and
-  // emphasises the alerts layer when a selected service's live layer is the one shown. Gated on
-  // mapLoaded since the source, fitBounds and setPaintProperty all require a loaded style.
+  // emphasises the live layers its services drive (#54). Gated on mapLoaded since the source,
+  // fitBounds and setPaintProperty all require a loaded style.
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded) return
 
     map.getSource<GeoJSONSource>(COVERAGE_SOURCE_ID)?.setData(view.footprint)
 
+    const alertsHighlighted = view.liveLayers.includes('nws-alerts')
     if (map.getLayer(ALERTS_FILL_LAYER_ID)) {
       map.setPaintProperty(
         ALERTS_FILL_LAYER_ID,
         'fill-opacity',
-        view.liveHighlighted ? ALERTS_FILL_OPACITY_SELECTED : ALERTS_FILL_OPACITY,
+        alertsHighlighted ? ALERTS_FILL_OPACITY_SELECTED : ALERTS_FILL_OPACITY,
       )
       map.setPaintProperty(
         ALERTS_LINE_LAYER_ID,
         'line-width',
-        view.liveHighlighted ? ALERTS_LINE_WIDTH_SELECTED : ALERTS_LINE_WIDTH,
+        alertsHighlighted ? ALERTS_LINE_WIDTH_SELECTED : ALERTS_LINE_WIDTH,
       )
     }
 
@@ -270,6 +316,15 @@ export function MapLibreGlobe() {
     }
   }, [view, mapLoaded])
 
+  // The aurora's emphasis (#54) lives apart from the effect above so that the layer arriving
+  // (auroraPoints) re-applies it without re-framing the globe.
+  const auroraHighlighted = view.liveLayers.includes('aurora')
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || auroraPoints === null || !map.getLayer(AURORA_LAYER_ID)) return
+    map.setPaintProperty(AURORA_LAYER_ID, 'heatmap-opacity', auroraHighlighted ? AURORA_OPACITY_SELECTED : AURORA_OPACITY)
+  }, [auroraHighlighted, auroraPoints])
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div
@@ -277,6 +332,7 @@ export function MapLibreGlobe() {
         role="img"
         aria-label="Globe view of NOAA API coverage"
         data-coverage-features={view.footprint.features.length}
+        data-aurora-points={auroraPoints ?? undefined}
         style={{ width: '100%', height: '100%' }}
       />
       {view.card && (
@@ -290,6 +346,22 @@ export function MapLibreGlobe() {
           {view.card.lines.map((line) => (
             <p key={line}>{line}</p>
           ))}
+        </div>
+      )}
+      {(kp.status !== 'loading' || auroraError) && (
+        <div
+          className={`space-weather-readout${view.liveLayers.includes('kp') ? ' space-weather-readout-highlighted' : ''}`}
+          role="status"
+          aria-label="Geomagnetic activity"
+        >
+          {kp.status === 'ok' && (
+            <p>
+              <strong>Kp {kp.readout.kp}</strong> · {kp.readout.gScale} {kp.readout.label}{' '}
+              <span className="space-weather-readout-time">{kp.readout.time}</span>
+            </p>
+          )}
+          {kp.status === 'error' && <p className="space-weather-readout-error">{kp.message}</p>}
+          {auroraError && <p className="space-weather-readout-error">Aurora forecast: {auroraError}</p>}
         </div>
       )}
       {geolocationError && (

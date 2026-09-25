@@ -3,10 +3,10 @@
 A linked globe and graph that answers "which NOAA API do I use for X?".
 
 - The **graph** is the NOAA API ecosystem: a curated set of services (owner, base URL, formats, auth, coverage, freshness, sample call) grouped by theme and connected where a documented relationship exists.
-- The **globe** shows NOAA APIs in action: a live layer of active National Weather Service alerts, click-anywhere point lookups, and the geographic coverage of whichever service you select.
+- The **globe** shows NOAA APIs in action: live layers of active National Weather Service alerts and the Space Weather Prediction Center's aurora forecast, the current Kp index, click-anywhere point lookups, and the geographic coverage of whichever service you select.
 - The two are linked. Select something on one side and the other reacts.
 
-It is a client-only single-page app. There is no backend, no accounts and no API keys; live data comes straight from `api.weather.gov` in the browser.
+It is a client-only single-page app. There is no backend, no accounts and no API keys; live data comes straight from `api.weather.gov` and `services.swpc.noaa.gov` in the browser.
 
 ```sh
 npm install
@@ -49,7 +49,7 @@ Selecting a node opens a panel over the graph:
 
 - name and a **Live** or **Available, not live yet** tag;
 - owner (NOAA office and program), base URL, formats, auth requirement, rate limits, coverage summary, freshness, and the date the entry was last verified;
-- **Sample call**: the request URL, **Copy as curl** and **Copy as fetch** buttons, and a static response excerpt. Nodes with a live client (currently the NWS API) also get **Run sample**, which makes the real call and shows the parsed response;
+- **Sample call**: the request URL, **Copy as curl** and **Copy as fetch** buttons, and a static response excerpt. Nodes with a live client (the NWS API and the SWPC planetary K-index) also get **Run sample**, which makes the real call and shows the parsed response;
 - **Relationships**: neighbours grouped by edge type, with direction, the reason for the link and a link to the source that documents it. Click a neighbour to jump to it;
 - for services that are not on the map yet, the reason why;
 - a link to the official docs.
@@ -60,7 +60,7 @@ Selecting the **NOAA** root opens an overview: how many services there are and h
 
 ## Inspector tab
 
-A network log of every live `api.weather.gov` request the app makes (alerts, point lookups, forecasts, observations), newest first, capped at the last 50.
+A network log of every live request the app makes, to `api.weather.gov` (alerts, point lookups, forecasts, observations) and `services.swpc.noaa.gov` (the aurora forecast and Kp), newest first, capped at the last 50.
 
 - The tab shows how many requests are logged, and a toolbar above the list has the count and a **Clear** button.
 - Each row shows the status (`200 OK`, `403 Error`, `Parse error`, `Network error`), the request path and the time. Rows start collapsed.
@@ -73,10 +73,12 @@ A network log of every live `api.weather.gov` request the app makes (alerts, poi
 A 3D globe (MapLibre GL, OpenFreeMap dark basemap) that opens on the continental US.
 
 - **Active alerts layer.** Current NWS alerts are drawn as polygons coloured by severity (Extreme, Severe, Moderate, Minor, Unknown). Click a polygon for the event, affected area and effective/expiry times. Alerts that have no geometry (zone-only) cannot be drawn, so they are counted in an overlay instead ("468 alerts without a map area"). The overlay starts collapsed to that title bar; expand it to list them five at a time with a "N more" toggle. The list scrolls while the title stays in place. If the fetch fails or nothing is active, the overlay says so.
-- **Click anywhere for a point lookup.** A popup shows the current forecast period and the nearest station's latest observation (temperature normalised to Fahrenheit, wind, conditions and observation time), followed by **APIs covering this point**: every service in the graph whose coverage contains the spot, each marked live or "available, not live yet". Errors (rate limiting, 403s, unexpected responses) are reported in the popup rather than failing silently.
+- **Aurora forecast layer.** SWPC's OVATION forecast (a global 1° grid of the chance of seeing the aurora 30 to 90 minutes from now) is drawn as a glowing heatmap under the alerts: green for a low chance, through yellow, to red above about 80%. It is fetched once when the globe loads.
+- **Kp readout.** The bottom-right corner shows the latest one-minute planetary Kp estimate, its NOAA G-scale level (G0 Quiet up to G5 Extreme storm) and the time it was issued. If SWPC can't be reached, the corner says so instead.
+- **Click anywhere for a point lookup.** A popup shows the current forecast period and the nearest station's latest observation (temperature normalised to Fahrenheit, wind, conditions and observation time), then the aurora chance at that spot when there is one ("Aurora: 22% chance here", with the forecast time), followed by **APIs covering this point**: every service in the graph whose coverage contains the spot, each marked live or "available, not live yet". Errors (rate limiting, 403s, unexpected responses) are reported in the popup rather than failing silently.
 - **Locate me.** The navigation-arrow button (top right) asks the browser for your precise location (GPS where the device has it), flies there, marks the spot with an accuracy circle and runs the same point lookup. If location access is blocked or times out, a note says why.
 - **Linked selection.** Selecting something in the graph or finder outlines its coverage on the globe in its theme colour and flies there:
-  - a service draws its own coverage; a status card says so, and either that its live layer is highlighted (the alerts layer is emphasised) or why it isn't on the map yet;
+  - a service draws its own coverage; a status card says so, and either that its live layer is highlighted (the alerts layer, the aurora glow or the Kp readout is emphasised) or why it isn't on the map yet;
   - a theme hub draws the coverage of all its services, and a task draws every API on its path;
   - coverage that spans the antimeridian (Alaska's Aleutians, Guam) is framed across the dateline, and worldwide coverage tints the whole globe while the view stays on the US.
 
@@ -113,9 +115,10 @@ A service node records: `id`, `name`, `summary`, `owner` (office and program), `
 
 ## Live data and limits
 
-- The only live integration is `api.weather.gov`, through a typed client (`src/data/nwsClient.ts`) that validates every response with zod and caches successful GETs in memory for 60 seconds.
-- Browsers cannot set the `User-Agent` header NWS asks for, so the client sends the documented `Accept: application/geo+json` header instead.
-- NWS rate limits or 403s surface as readable messages in the alerts overlay, point popup and Inspector.
+- There are two live integrations, each through a typed client that validates every response with zod and caches successful GETs in memory for 60 seconds (both share `src/data/liveRequest.ts`):
+  - `api.weather.gov` (`src/data/nwsClient.ts`). Browsers cannot set the `User-Agent` header NWS asks for, so the client sends the documented `Accept: application/geo+json` header instead. NWS rate limits or 403s surface as readable messages in the alerts overlay, point popup and Inspector.
+  - `services.swpc.noaa.gov` (`src/data/swpcClient.ts`): the OVATION aurora forecast (about 1 MB) and the one-minute planetary Kp. They are static files served with `access-control-allow-origin: *`, so no headers are needed.
+- `src/components/globe/liveLayers.ts` maps each live service to the globe layer it drives; a test keeps it in step with `liveLayer` in `graph.json`.
 - Every other service in the graph is reference data only. Its sample is a static excerpt, and it is marked "not live yet" with the reason.
 
 ## Project layout
@@ -128,8 +131,9 @@ src/
     finder/              "I need..." task finder
     graph/               graph view, search, legend, node detail, sample, relationships
     inspector/           request log viewer
-    globe/               MapLibre globe, alerts layer, point lookup, coverage popup
-  data/                  graph/task JSON + schemas, NWS client, request log,
+    globe/               MapLibre globe, alerts and aurora layers, Kp readout,
+                         point lookup, coverage popup
+  data/                  graph/task JSON + schemas, NWS and SWPC clients, request log,
                          selection store, coverage geometry and lookup
 e2e/                     Playwright specs and fixtures
 scripts/                 coverage-geometry generator
@@ -147,8 +151,8 @@ Stack: React 19, TypeScript, Vite, MapLibre GL (globe), d3-force / d3-zoom / d3-
 | `npm run lint` | oxlint |
 | `npm test` | Unit tests (Vitest) |
 | `npm run test:coverage` | Unit tests with a 75% gate on lines, statements, functions and branches |
-| `npm run test:e2e:mocked` | Playwright against mocked NWS responses |
-| `npm run test:e2e:live` | Playwright tests tagged `@live` that hit the real NWS API |
+| `npm run test:e2e:mocked` | Playwright against mocked NWS and SWPC responses |
+| `npm run test:e2e:live` | Playwright tests tagged `@live` that hit the real NWS and SWPC APIs |
 | `npm run coverage-geometry` | Coverage geometry generator (see above) |
 
 The Playwright config starts the dev server on port 5173 (reusing one if it is already running). If another app holds that port, run `npx vite --port 5199 --strictPort` and point a copy of the config at it.

@@ -1,5 +1,5 @@
-// Live request/response inspector for api.weather.gov calls (#40). Reads the shared
-// requestLog store (fed by nwsClient.ts's request()) via useSyncExternalStore — no state
+// Live request/response inspector for api.weather.gov and SWPC calls (#40, #54). Reads the shared
+// requestLog store (fed by liveRequest.ts) via useSyncExternalStore — no state
 // library in this repo, and the log already lives outside React so multiple mounts share it.
 // Rows are an accordion (#150): each expands its own detail in place and they start collapsed,
 // so the list stays scannable however large a response is.

@@ -1,4 +1,4 @@
-// In-memory log of live api.weather.gov calls, fed by nwsClient.ts's `request()` (#40). Kept as
+// In-memory log of live api.weather.gov and SWPC calls, fed by liveRequest.ts (#40, #54). Kept as
 // a module-level store rather than React context/state, matching the rest of this codebase's
 // no-state-library convention — components read it via `useSyncExternalStore`.
 

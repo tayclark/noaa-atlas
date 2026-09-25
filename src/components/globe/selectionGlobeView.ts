@@ -9,6 +9,7 @@ import type { Selection } from '../../data/selectionStore'
 import type { Task } from '../../data/taskSchema'
 import { THEME_COLORS } from '../../data/themeColors'
 import { coverageFlyTarget, type FlyTarget } from './coverageFlyTarget'
+import { LIVE_LAYERS, type LiveLayerKey } from './liveLayers'
 
 export interface FootprintProperties {
   nodeId: string
@@ -27,8 +28,8 @@ export interface SelectionGlobeView {
   footprint: Footprint
   /** Null when the globe should stay where it is (a point, or nothing to frame). */
   flyTarget: FlyTarget | null
-  /** Whether the live alerts layer should be emphasised. */
-  liveHighlighted: boolean
+  /** The live globe layers the selection's services drive, to be emphasised (#54). */
+  liveLayers: readonly LiveLayerKey[]
   card: { title: string; lines: string[]; colors: string[] } | null
 }
 
@@ -42,7 +43,7 @@ export interface GlobeViewContext {
 const EMPTY: SelectionGlobeView = {
   footprint: { type: 'FeatureCollection', features: [] },
   flyTarget: null,
-  liveHighlighted: false,
+  liveLayers: [],
   card: null,
 }
 
@@ -109,8 +110,13 @@ export function describeSelectionForGlobe(selection: Selection, context: GlobeVi
   if (!node) return EMPTY
   const view = viewOf(node.name, [node], 'Coverage')
   // notLiveReason already reads as a sentence ("Not wired into the v1 map: …"), so it's shown as is.
-  const status = node.liveLayer ? 'Its live layer, active alerts, is highlighted.' : (node.notLiveReason ?? 'Not live on the map yet.')
+  const status = (node.liveLayer && LIVE_LAYERS[node.id]?.status) || (node.notLiveReason ?? 'Not live on the map yet.')
   return { ...view, card: view.card && { ...view.card, lines: [...view.card.lines, status] } }
+}
+
+function liveLayersOf(services: readonly ServiceNode[]): LiveLayerKey[] {
+  const layers = services.flatMap((n) => (n.liveLayer && LIVE_LAYERS[n.id] ? [LIVE_LAYERS[n.id].layer] : []))
+  return [...new Set(layers)]
 }
 
 function viewOf(title: string, services: readonly ServiceNode[], what: string): SelectionGlobeView {
@@ -118,7 +124,7 @@ function viewOf(title: string, services: readonly ServiceNode[], what: string): 
   return {
     footprint: footprintOf(services),
     flyTarget,
-    liveHighlighted: services.some((n) => n.liveLayer),
+    liveLayers: liveLayersOf(services),
     card: {
       title,
       lines: [coverageLine(flyTarget, what)],
