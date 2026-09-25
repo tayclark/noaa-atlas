@@ -45,9 +45,11 @@
   min-height: 0;
 }
 
+/* The finder scrolls its own body (#161), so the pane itself never scrolls. */
 .left-panel-explore-finder {
   height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
+  container: finder / size;
 }
 
 .left-panel-explore-graph {

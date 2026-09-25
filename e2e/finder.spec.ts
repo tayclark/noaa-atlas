@@ -55,3 +55,28 @@ test('switching tasks changes the ranked node list', async ({ page }) => {
 
   expect(secondTaskNodes).not.toEqual(firstTaskNodes)
 })
+
+// #161: at the default viewport the finder pane is ~225px tall. The task list gives up height
+// first, so the intro and a picked task's first step both fit inside the pane.
+test('the intro and the first step fit the finder pane at 1280x720', async ({ page }) => {
+  await mockAlerts(page, emptyAlertsFixture())
+  await page.setViewportSize({ width: 1280, height: 720 })
+  await page.goto('/')
+
+  const pane = page.locator('.left-panel-explore-finder')
+  const inside = async (selector: string) => {
+    const box = await page.locator(selector).first().boundingBox()
+    const paneBox = await pane.boundingBox()
+    if (!box || !paneBox) throw new Error(`no box for ${selector}`)
+    expect(box.y).toBeGreaterThanOrEqual(paneBox.y)
+    expect(box.y + box.height).toBeLessThanOrEqual(paneBox.y + paneBox.height + 0.5)
+  }
+
+  await inside('.finder-intro')
+
+  const task = parseTasksFile(tasksJson).tasks.find((t) => t.nodes.length >= 2)
+  if (!task) throw new Error('expected an authored task with at least two nodes')
+  await page.locator('.finder-task-item', { hasText: task.label }).click()
+  await inside('.finder-node-item')
+  await inside('.finder-task-item-selected')
+})
