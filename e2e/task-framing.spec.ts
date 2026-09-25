@@ -8,6 +8,8 @@ import tasksJson from '../src/data/tasks.json' with { type: 'json' }
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 
 test('every task frames its on-screen steps with placed labels inside the canvas', async ({ page }) => {
+  // One pass over all ~30 tasks: ~20s locally, longer on CI runners.
+  test.setTimeout(120_000)
   await mockAlerts(page, emptyAlertsFixture())
   await page.goto('/')
   await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
