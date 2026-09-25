@@ -34,7 +34,7 @@ describe('describeSelectionForGlobe', () => {
       { type: 'Feature', geometry: node.coverage, properties: { nodeId: node.id, color: THEME_COLORS.weather } },
     ])
     expect(view.flyTarget?.kind).toBe('bounds')
-    expect(view.liveHighlighted).toBe(true)
+    expect(view.liveLayers).toEqual(['nws-alerts'])
     expect(view.card).toEqual({
       title: node.name,
       lines: ['Coverage outlined on the globe.', 'Its live layer, active alerts, is highlighted.'],
@@ -42,10 +42,23 @@ describe('describeSelectionForGlobe', () => {
     })
   })
 
+  it('names the SWPC live layers when their services are selected (#54)', () => {
+    const aurora = describeSelectionForGlobe({ ...none, selectedNodeId: 'swpc-ovation-aurora' }, context)
+    expect(aurora.liveLayers).toEqual(['aurora'])
+    expect(aurora.card?.lines[1]).toBe('Its live layer, the aurora forecast glow, is highlighted.')
+    const kp = describeSelectionForGlobe({ ...none, selectedNodeId: 'swpc-geomagnetic-indices' }, context)
+    expect(kp.liveLayers).toEqual(['kp'])
+  })
+
+  it('highlights every live layer a task draws on', () => {
+    const view = describeSelectionForGlobe({ ...none, selectedTaskId: 'aurora-forecast' }, context)
+    expect(view.liveLayers).toEqual(['aurora', 'kp'])
+  })
+
   it('explains why a not-live service is not on the map', () => {
     const node = findNode('spc-gis-data')
     const view = describeSelectionForGlobe({ ...none, selectedNodeId: node.id }, context)
-    expect(view.liveHighlighted).toBe(false)
+    expect(view.liveLayers).toEqual([])
     expect(view.card?.lines[1]).toBe(node.notLiveReason)
   })
 

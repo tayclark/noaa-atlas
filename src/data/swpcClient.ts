@@ -40,7 +40,7 @@ export function getOvationAurora(): Promise<SwpcOvation> {
   return request('/json/ovation_aurora_latest.json', parseOvation)
 }
 
-/** The running one-minute planetary Kp estimate over roughly the last two hours. */
+/** The running one-minute planetary Kp estimate over about the last six hours. */
 export function getPlanetaryKp(): Promise<SwpcKp1m> {
   return request('/json/planetary_k_index_1m.json', parseKp1m)
 }

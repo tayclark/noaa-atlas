@@ -78,8 +78,8 @@ function FinderIntro() {
           services.
         </li>
         <li>
-          The <strong>globe</strong> shows where a selected service has data, plus live National Weather Service
-          alerts.
+          The <strong>globe</strong> shows where a selected service has data, plus live weather alerts, the aurora
+          forecast and the Kp index.
         </li>
         <li>Click anything, on either side, and the other side follows.</li>
       </ul>
