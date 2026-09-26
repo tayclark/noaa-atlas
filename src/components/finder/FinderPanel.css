@@ -1,10 +1,12 @@
 .finder-panel {
   display: flex;
   flex-direction: column;
+  height: 100%;
   font-size: var(--font-size-sm);
 }
 
 .finder-heading {
+  flex: none;
   margin: 0;
   padding: var(--space-2) var(--space-3) var(--space-1);
   color: var(--color-text-muted);
@@ -18,9 +20,44 @@
   margin: 0;
   padding: 0;
   overflow-y: auto;
-  flex: none;
-  max-height: 8rem;
+  /* Gives up height before the body does (#161), down to about two rows: flex-shrink is weighted
+     by size, so a large factor makes the list absorb nearly all of the shortfall first. */
+  flex: 0 1000 8rem;
+  min-height: 4.75rem;
   border-bottom: 1px solid var(--color-border);
+}
+
+/* The intro or the picked task's steps: scrolls on its own, below the task list (#161). */
+.finder-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* A fade at the bottom while there is more to scroll to. The scroll timeline is inactive when
+   nothing overflows, so the base value (no fade) applies then. */
+@property --finder-fade {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@supports (animation-timeline: scroll()) {
+  .finder-body {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - var(--finder-fade)), transparent);
+    animation: finder-fade-out linear both;
+    animation-timeline: scroll(self);
+  }
+}
+
+@keyframes finder-fade-out {
+  from,
+  90% {
+    --finder-fade: 1.5rem;
+  }
+  to {
+    --finder-fade: 0px;
+  }
 }
 
 .finder-task-item {
@@ -111,4 +148,16 @@
 
 .finder-intro strong {
   color: var(--color-text);
+}
+
+/* A short finder pane (the default split at 1280x720) fits the whole intro once it's tighter (#161). */
+@container finder (max-height: 260px) {
+  .finder-intro {
+    padding-block: var(--space-1);
+    line-height: 1.3;
+  }
+
+  .finder-intro li + li {
+    margin-top: 0;
+  }
 }
