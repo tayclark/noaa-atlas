@@ -61,6 +61,12 @@ describe('coverageFlyTarget', () => {
     expect(coverageFlyTarget([coverageOf('gfs-aws-open-data')])).toEqual({ kind: 'global' })
   })
 
+  it('reports coverage too wide to frame on a globe as global', () => {
+    // The Pacific and North Atlantic basins leave an 83° gap over Africa, but the rest is too wide to fit.
+    expect(coverageFlyTarget([coverageOf('tsunami-warning-feeds')])).toEqual({ kind: 'global' })
+    expect(coverageFlyTarget([box(-100, -60, 150, 60)])).toEqual({ kind: 'global' })
+  })
+
   it('reports coverage that leaves only a narrow gap as global', () => {
     expect(coverageFlyTarget([box(-180, -60, 150, 60)])).toEqual({ kind: 'global' })
   })

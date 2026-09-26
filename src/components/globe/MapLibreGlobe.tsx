@@ -70,8 +70,9 @@ const COVERAGE_FILL_LAYER_ID = 'selected-coverage-fill'
 const COVERAGE_LINE_LAYER_ID = 'selected-coverage-line'
 // Matches the `@container globe (max-width: 480px)` rules in MapLibreGlobe.css (#159).
 const NARROW_GLOBE_WIDTH = 480
-// The US outlines are derived from Natural Earth (public domain) and the Marine Regions EEZ, whose
-// CC BY 4.0 licence asks for credit wherever they're shown (#163).
+// The US outlines are derived from Natural Earth (public domain) and the Marine Regions EEZ, and the
+// ocean basins from Marine Regions' Global Oceans and Seas; their CC BY 4.0 licence asks for credit
+// wherever they're shown (#163, #170).
 const COVERAGE_ATTRIBUTION =
   'Coverage: <a href="https://www.naturalearthdata.com/">Natural Earth</a>, <a href="https://www.marineregions.org/">Marine Regions</a> (CC BY 4.0)'
 // The SWPC aurora forecast (#54, #158), a raster drawn under the alerts and brightened when selected.

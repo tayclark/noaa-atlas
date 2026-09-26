@@ -19,10 +19,14 @@ const NATURAL_EARTH = 'https://raw.githubusercontent.com/nvkelso/natural-earth-v
 // The US EEZ polygons only (iso_sov1 = USA), from the Marine Regions WFS.
 const EEZ_URL =
   "https://geo.vliz.be/geoserver/MarineRegions/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=MarineRegions:eez&outputFormat=application/json&cql_filter=iso_sov1='USA'"
+// Global Oceans and Seas basins, for the ocean-wide presets (#170).
+const GOAS_URL =
+  'https://geo.vliz.be/geoserver/MarineRegions/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=MarineRegions:goas&outputFormat=application/json&propertyName=name,the_geom'
 const SOURCES: Record<keyof PresetSources, { url: string; file: string }> = {
   countries: { url: `${NATURAL_EARTH}/ne_50m_admin_0_countries.geojson`, file: 'ne_50m_admin_0_countries.geojson' },
   lakes: { url: `${NATURAL_EARTH}/ne_50m_lakes.geojson`, file: 'ne_50m_lakes.geojson' },
   eez: { url: EEZ_URL, file: 'marineregions_eez_usa.geojson' },
+  oceans: { url: GOAS_URL, file: 'marineregions_goas.geojson' },
 }
 
 const USAGE = `Generate schema-valid coverage geometry for a graph.json service node.
@@ -54,6 +58,8 @@ Source data, downloaded on first use to scripts/.cache/ (gitignored); pass --ref
 - Natural Earth 1:50m Admin 0 Countries and Lakes (public domain, https://www.naturalearthdata.com/about/terms-of-use/).
 - Marine Regions World EEZ, US polygons (CC BY 4.0: Flanders Marine Institute (2023). Maritime Boundaries
   Geodatabase: Maritime Boundaries and Exclusive Economic Zones (200NM), version 12. https://doi.org/10.14284/632).
+- Marine Regions Global Oceans and Seas (CC BY 4.0: Flanders Marine Institute (2021). Global Oceans and Seas,
+  version 1. https://doi.org/10.14284/542).
 Presets built only from boxes or caps (us-coastal-waters, worldwide, goes-east-west) need no download.
 `
 
