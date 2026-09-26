@@ -2,6 +2,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  /* The visible viewport, so iOS Safari's toolbar doesn't cover the bottom of the app (#78). */
+  height: 100dvh;
 }
 
 .app-header {

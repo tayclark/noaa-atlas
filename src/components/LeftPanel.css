@@ -55,3 +55,19 @@
 .left-panel-explore-graph {
   height: 100%;
 }
+
+/* Phone width (#78): the globe as a tab. `hidden` keeps it mounted but out of the layout. */
+.left-panel-globe {
+  height: 100%;
+}
+
+/* On the Globe tab: the selection changed since the globe was last looked at. */
+.left-panel-tab-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: var(--space-1);
+  border-radius: 50%;
+  background: var(--color-accent);
+  vertical-align: middle;
+}
