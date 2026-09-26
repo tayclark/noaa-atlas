@@ -7,13 +7,17 @@ import {
   closeRing,
   extractPolygons,
   fitGeometry,
+  presetGeometry,
+  presetSources,
   processGeometry,
   roundPosition,
   selectPolygons,
   simplifyRing,
+  sphericalCap,
   type SourceGeometry,
 } from './coverageGeometry'
-import { coverageSchema } from './graphSchema'
+import { isPointInCoverage } from './coverageLookup'
+import { coverageSchema, type Coverage } from './graphSchema'
 
 /** A circle-ish ring with many vertices, closed. */
 function circle(cx: number, cy: number, r: number, n = 200): number[][] {
@@ -145,5 +149,97 @@ describe('presets', () => {
   it('worldwide is the full-world polygon', () => {
     const coverage = processGeometry(boxesGeometry(PRESETS.worldwide.boxes!), 0.005)
     expect(coverage).toEqual({ type: 'Polygon', coordinates: bboxPolygon([-180, -90, 180, 90]) })
+  })
+})
+
+const asCoverage = (geometry: SourceGeometry) => geometry as Coverage
+const rings = (west: number, south: number, east: number, north: number) => bboxPolygon([west, south, east, north])
+const feature = (properties: Record<string, unknown>, coordinates: number[][][]) => ({
+  type: 'Feature',
+  properties,
+  geometry: { type: 'Polygon', coordinates },
+})
+const collection = (...features: unknown[]) => ({ type: 'FeatureCollection', features })
+
+describe('sphericalCap', () => {
+  it('holds points within the radius and none beyond it', () => {
+    const cap = asCoverage(sphericalCap({ lon: -75, lat: 0, radius: 30 }))
+    expect(isPointInCoverage(cap, [-75, 0])).toBe(true)
+    expect(isPointInCoverage(cap, [-75, 29])).toBe(true)
+    expect(isPointInCoverage(cap, [-75, 31])).toBe(false)
+    expect(isPointInCoverage(cap, [-104, 0])).toBe(true)
+    expect(isPointInCoverage(cap, [-106, 0])).toBe(false)
+  })
+
+  it('splits a cap that crosses the antimeridian, keeping every longitude in range', () => {
+    const cap = sphericalCap({ lon: -170, lat: 0, radius: 30 })
+    expect(cap.coordinates).toHaveLength(2)
+    const polygons = cap.type === 'MultiPolygon' ? cap.coordinates : [cap.coordinates]
+    const lons = polygons.flatMap((polygon) => polygon.flatMap((ring) => ring.map((position) => position[0] as number)))
+    expect(Math.min(...lons)).toBeGreaterThanOrEqual(-180)
+    expect(Math.max(...lons)).toBeLessThanOrEqual(180)
+    expect(isPointInCoverage(asCoverage(cap), [170, 0])).toBe(true) // 20° west of the centre, over the dateline
+    expect(isPointInCoverage(asCoverage(cap), [150, 0])).toBe(false)
+  })
+
+  it('refuses a cap that reaches a pole', () => {
+    expect(() => sphericalCap({ lon: 0, lat: 70, radius: 30 })).toThrow(/pole/)
+  })
+})
+
+describe('presetGeometry', () => {
+  const countries = collection(
+    feature({ ADM0_A3: 'AAA' }, rings(0, 0, 10, 10)),
+    feature({ ADM0_A3: 'BBB' }, rings(20, 0, 30, 10)),
+  )
+  const eez = collection(feature({ mrgid: 1 }, rings(10, 0, 15, 10)), feature({ mrgid: 2 }, rings(40, 0, 50, 10)))
+  const lakes = collection(feature({ name: 'Lake X' }, rings(5, 2, 25, 4)))
+
+  it('merges a country with its EEZ into one outline', () => {
+    const merged = presetGeometry({ description: '', countries: ['AAA'], eez: [1] }, { countries, eez })
+    expect(merged.coordinates).toHaveLength(1)
+    expect(isPointInCoverage(asCoverage(merged), [12, 5])).toBe(true)
+    expect(isPointInCoverage(asCoverage(merged), [25, 5])).toBe(false)
+  })
+
+  it('cuts the named countries out of water-only coverage', () => {
+    const water = asCoverage(presetGeometry({ description: '', eez: [1], subtract: ['AAA'] }, { countries, eez: collection(feature({ mrgid: 1 }, rings(5, 0, 15, 10))) }))
+    expect(isPointInCoverage(water, [12, 5])).toBe(true)
+    expect(isPointInCoverage(water, [7, 5])).toBe(false) // on AAA's land
+  })
+
+  it('cuts lakes to the part inside the named country', () => {
+    const cut = asCoverage(presetGeometry({ description: '', lakes: { names: ['Lake X'], within: 'AAA' } }, { countries, lakes }))
+    expect(isPointInCoverage(cut, [7, 3])).toBe(true)
+    expect(isPointInCoverage(cut, [22, 3])).toBe(false) // in the lake, but inside BBB
+  })
+
+  it('clips to a rectangle', () => {
+    const clipped = asCoverage(presetGeometry({ description: '', eez: [1, 2], clip: [0, 0, 20, 5] }, { eez }))
+    expect(isPointInCoverage(clipped, [12, 2])).toBe(true)
+    expect(isPointInCoverage(clipped, [12, 8])).toBe(false)
+    expect(isPointInCoverage(clipped, [45, 2])).toBe(false)
+  })
+
+  it('passes a single part through unchanged', () => {
+    expect(presetGeometry(PRESETS.worldwide!)).toEqual(boxesGeometry(PRESETS.worldwide!.boxes!))
+  })
+
+  it('names what is missing from the source data', () => {
+    expect(() => presetGeometry({ description: '', countries: ['ZZZ'] }, { countries })).toThrow(/ADM0_A3\): ZZZ/)
+  })
+
+  it('lists only the sources a preset needs', () => {
+    expect(presetSources(PRESETS['goes-east-west']!)).toEqual([])
+    expect(presetSources(PRESETS['us-waters']!)).toEqual(['countries', 'eez', 'lakes'])
+    expect(presetSources(PRESETS['us-land-and-waters']!)).toEqual(['countries', 'eez'])
+    expect(presetSources(PRESETS['northeast-us-shelf']!)).toEqual(['countries', 'eez'])
+  })
+
+  it('builds the GOES-East and GOES-West view without downloads, within the size target', () => {
+    const coverage = fitGeometry(presetGeometry(PRESETS['goes-east-west']!), 4096)
+    expect(coverage.withinTarget).toBe(true)
+    expect(isPointInCoverage(coverage.coverage, [-100, 40])).toBe(true)
+    expect(isPointInCoverage(coverage.coverage, [10, 50])).toBe(false)
   })
 })

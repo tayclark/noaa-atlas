@@ -5,17 +5,25 @@ import { parseArgs } from 'node:util'
 import {
   DEFAULT_MAX_BYTES,
   PRESETS,
-  boxesGeometry,
   extractPolygons,
   fitGeometry,
+  presetGeometry,
+  presetSources,
   processGeometry,
-  selectPolygons,
   byteSize,
+  type PresetSources,
   type SourceGeometry,
 } from '../src/data/coverageGeometry.ts'
 
-const SOURCE_URL = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson'
-const CACHE_PATH = join(import.meta.dirname, '.cache', 'ne_50m_admin_0_countries.geojson')
+const NATURAL_EARTH = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson'
+// The US EEZ polygons only (iso_sov1 = USA), from the Marine Regions WFS.
+const EEZ_URL =
+  "https://geo.vliz.be/geoserver/MarineRegions/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=MarineRegions:eez&outputFormat=application/json&cql_filter=iso_sov1='USA'"
+const SOURCES: Record<keyof PresetSources, { url: string; file: string }> = {
+  countries: { url: `${NATURAL_EARTH}/ne_50m_admin_0_countries.geojson`, file: 'ne_50m_admin_0_countries.geojson' },
+  lakes: { url: `${NATURAL_EARTH}/ne_50m_lakes.geojson`, file: 'ne_50m_lakes.geojson' },
+  eez: { url: EEZ_URL, file: 'marineregions_eez_usa.geojson' },
+}
 
 const USAGE = `Generate schema-valid coverage geometry for a graph.json service node.
 
@@ -42,32 +50,33 @@ Output is the "coverage" value for a node (Polygon or MultiPolygon, 3 decimals, 
 validated with coverageSchema from src/data/graphSchema.ts. The byte size, tolerance and vertex
 count are reported on stderr so stdout stays pipeable.
 
-Source data: Natural Earth 1:50m Admin 0 Countries (public domain, https://www.naturalearthdata.com/about/terms-of-use/).
-It is downloaded on first use to scripts/.cache/ (gitignored); pass --refresh to fetch it again.
-Presets without a country (us-coastal-waters, worldwide) are hand-defined boxes and need no download.
+Source data, downloaded on first use to scripts/.cache/ (gitignored); pass --refresh to fetch it again:
+- Natural Earth 1:50m Admin 0 Countries and Lakes (public domain, https://www.naturalearthdata.com/about/terms-of-use/).
+- Marine Regions World EEZ, US polygons (CC BY 4.0: Flanders Marine Institute (2023). Maritime Boundaries
+  Geodatabase: Maritime Boundaries and Exclusive Economic Zones (200NM), version 12. https://doi.org/10.14284/632).
+Presets built only from boxes or caps (us-coastal-waters, worldwide, goes-east-west) need no download.
 `
 
-async function loadNaturalEarth(refresh: boolean): Promise<unknown> {
-  if (refresh || !existsSync(CACHE_PATH)) {
-    console.error(`Downloading ${SOURCE_URL}`)
-    const response = await fetch(SOURCE_URL)
+async function loadSource(name: keyof PresetSources, refresh: boolean): Promise<unknown> {
+  const { url, file } = SOURCES[name]
+  const path = join(import.meta.dirname, '.cache', file)
+  if (refresh || !existsSync(path)) {
+    console.error(`Downloading ${url}`)
+    const response = await fetch(url)
     if (!response.ok) throw new Error(`Download failed: ${response.status} ${response.statusText}`)
-    await mkdir(dirname(CACHE_PATH), { recursive: true })
-    await writeFile(CACHE_PATH, await response.text())
+    await mkdir(dirname(path), { recursive: true })
+    await writeFile(path, await response.text())
   }
-  return JSON.parse(await readFile(CACHE_PATH, 'utf8'))
+  return JSON.parse(await readFile(path, 'utf8'))
 }
 
 async function sourceGeometry(values: { preset?: string; input?: string; refresh?: boolean }): Promise<SourceGeometry> {
   if (values.input) return extractPolygons(JSON.parse(await readFile(values.input, 'utf8')))
   const preset = PRESETS[values.preset!]
   if (!preset) throw new Error(`Unknown preset "${values.preset}". Choose one of: ${Object.keys(PRESETS).join(', ')}`)
-  if (preset.boxes) return boxesGeometry(preset.boxes)
-  const countries = (await loadNaturalEarth(Boolean(values.refresh))) as { features: Array<{ properties: { ADM0_A3: string } }> }
-  const feature = countries.features.find((f) => f.properties.ADM0_A3 === preset.country)
-  if (!feature) throw new Error(`Country ${preset.country} not found in source data`)
-  const all = extractPolygons(feature)
-  return preset.select ? selectPolygons(all, preset.select) : all
+  const sources: PresetSources = {}
+  for (const name of presetSources(preset)) sources[name] = await loadSource(name, Boolean(values.refresh))
+  return presetGeometry(preset, sources)
 }
 
 async function main() {

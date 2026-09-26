@@ -9,8 +9,9 @@ import type { Coverage } from '../../data/graphSchema'
 export type Bounds = [west: number, south: number, east: number, north: number]
 export type FlyTarget = { kind: 'bounds'; bounds: Bounds } | { kind: 'global' }
 
-/** Polygons smaller than this share of the total area only widen the view, so they're left out of framing (still drawn). */
-const MIN_AREA_SHARE = 0.02
+/** Polygons smaller than this share of the total area only widen the view, so they're left out of framing (still drawn).
+ * 5% keeps the US territories' EEZs (Guam's is ~4% of nws-api's coverage) from pulling the camera out to the Pacific (#163). */
+const MIN_AREA_SHARE = 0.05
 /** Coverage leaving a gap narrower than this (degrees of longitude) is treated as global. */
 const MIN_GAP_DEGREES = 60
 

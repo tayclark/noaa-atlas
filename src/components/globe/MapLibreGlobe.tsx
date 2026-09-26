@@ -68,6 +68,10 @@ const ALERTS_LINE_WIDTH_SELECTED = 3
 const COVERAGE_SOURCE_ID = 'selected-coverage'
 const COVERAGE_FILL_LAYER_ID = 'selected-coverage-fill'
 const COVERAGE_LINE_LAYER_ID = 'selected-coverage-line'
+// The US outlines are derived from Natural Earth (public domain) and the Marine Regions EEZ, whose
+// CC BY 4.0 licence asks for credit wherever they're shown (#163).
+const COVERAGE_ATTRIBUTION =
+  'Coverage: <a href="https://www.naturalearthdata.com/">Natural Earth</a>, <a href="https://www.marineregions.org/">Marine Regions</a> (CC BY 4.0)'
 // The SWPC aurora forecast (#54, #158), a raster drawn under the alerts and brightened when selected.
 const AURORA_SOURCE_ID = 'swpc-aurora'
 const AURORA_LAYER_ID = 'swpc-aurora-raster'
@@ -170,7 +174,7 @@ export function MapLibreGlobe() {
     // MapLibre throws "Style is not done loading."
     map.on('load', () => {
       map.setProjection(GLOBE_PROJECTION)
-      map.addSource(COVERAGE_SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      map.addSource(COVERAGE_SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: COVERAGE_ATTRIBUTION })
       map.addLayer({
         id: COVERAGE_FILL_LAYER_ID,
         type: 'fill',

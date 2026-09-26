@@ -29,16 +29,25 @@ describe('coverageFlyTarget', () => {
     expect(coverageFlyTarget([box(-125, 24, -66, 50)])).toEqual({ kind: 'bounds', bounds: [-125, 24, -66, 50] })
   })
 
-  it('frames US coverage across the antimeridian instead of the whole world (nws-api)', () => {
+  it('frames US coverage from the dateline to the east coast, not out to Guam (nws-api, #163)', () => {
     const target = coverageFlyTarget([coverageOf('nws-api')])
     if (target?.kind !== 'bounds') throw new Error('expected bounds')
     const [west, south, east, north] = target.bounds
-    // From the Aleutians west of 180°, eastward over the dateline, to the US east coast.
-    expect(west).toBeGreaterThan(160)
-    expect(east).toBeGreaterThan(280)
-    expect(east - west).toBeLessThan(150)
+    // Alaska's and Hawaii's EEZ reach the dateline; Guam and American Samoa are drawn but too small to frame.
+    expect(west).toBeLessThan(-170)
+    expect(east).toBeGreaterThan(-70)
+    expect(east).toBeLessThan(0)
     expect(south).toBeGreaterThan(10)
     expect(north).toBeGreaterThan(70)
+  })
+
+  it('frames coverage that spans the antimeridian across it (goes-aws-open-data)', () => {
+    const target = coverageFlyTarget([coverageOf('goes-aws-open-data')])
+    if (target?.kind !== 'bounds') throw new Error('expected bounds')
+    const [west, , east] = target.bounds
+    // GOES-West's view reaches past 180° into the western Pacific; the frame runs east from there.
+    expect(west).toBeGreaterThan(140)
+    expect(east).toBeGreaterThan(180)
   })
 
   it('leaves tiny outlying polygons out of the framing', () => {
@@ -57,8 +66,8 @@ describe('coverageFlyTarget', () => {
   })
 
   it('combines several geometries, such as a task path', () => {
-    const target = coverageFlyTarget([box(-125, 24, -66, 50), box(-160, 18, -154, 23)])
-    expect(target).toEqual({ kind: 'bounds', bounds: [-160, 18, -66, 50] })
+    const target = coverageFlyTarget([box(-125, 24, -66, 50), box(-170, 52, -140, 70)])
+    expect(target).toEqual({ kind: 'bounds', bounds: [-170, 24, -66, 70] })
   })
 
   it('returns null when there is nothing to frame', () => {
