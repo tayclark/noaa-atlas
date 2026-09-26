@@ -99,6 +99,15 @@ describe('fitGeometry', () => {
     expect(fit.bytes).toBe(byteSize(fit.coverage))
     expect(fit.tolerance).toBeGreaterThan(0.005)
   })
+  it('bisects back from the first fitting tolerance, so the output is close to the target', () => {
+    // A regular circle simplifies in steps; a wobbly coastline-like ring shrinks gradually.
+    const wobbly = circle(-100, 40, 20, 2000).map(([x, y], i) => [x + Math.sin(i * 0.37) * 0.8, y + Math.sin(i * 0.11) * 0.6])
+    const coast: SourceGeometry = { type: 'Polygon', coordinates: [closeRing(wobbly.slice(0, -1))] }
+    const fit = fitGeometry(coast, 2000)
+    const doubled = 0.005 * 2 ** Math.ceil(Math.log2(fit.tolerance / 0.005))
+    expect(fit.bytes).toBeLessThanOrEqual(2000)
+    expect(fit.bytes).toBeGreaterThan(byteSize(processGeometry(coast, doubled)))
+  })
   it('reports when the target cannot be met', () => {
     expect(fitGeometry(geometry, 10).withinTarget).toBe(false)
   })

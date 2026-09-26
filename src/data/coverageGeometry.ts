@@ -125,7 +125,14 @@ export interface FitResult {
   withinTarget: boolean
 }
 
-/** Doubles the tolerance from `startTolerance` until the output fits in `maxBytes` (or the tolerance passes 10 degrees). */
+// Halvings of the gap between the last tolerance that was too big and the first that fits.
+const BISECT_STEPS = 6
+
+/**
+ * Doubles the tolerance from `startTolerance` until the output fits in `maxBytes` (or the tolerance
+ * passes 10 degrees), then bisects back towards the last misfit, so the result is as detailed as
+ * the target allows rather than up to twice as coarse (#170).
+ */
 export function fitGeometry(geometry: SourceGeometry, maxBytes: number, startTolerance = 0.005): FitResult {
   let tolerance = startTolerance
   let best: FitResult | null = null
@@ -138,11 +145,24 @@ export function fitGeometry(geometry: SourceGeometry, maxBytes: number, startTol
       throw error
     }
     const bytes = byteSize(coverage)
+    const tooBig = best
     best = { coverage, bytes, tolerance, withinTarget: bytes <= maxBytes }
-    if (best.withinTarget) return best
+    if (best.withinTarget) return tooBig ? bisectFit(geometry, maxBytes, tooBig.tolerance, best) : best
     tolerance *= 2
   }
   if (!best) throw new Error('Could not produce a geometry')
+  return best
+}
+
+function bisectFit(geometry: SourceGeometry, maxBytes: number, tooBigTolerance: number, fit: FitResult): FitResult {
+  let [low, best] = [tooBigTolerance, fit]
+  for (let i = 0; i < BISECT_STEPS; i++) {
+    const tolerance = (low + best.tolerance) / 2
+    const coverage = processGeometry(geometry, tolerance)
+    const bytes = byteSize(coverage)
+    if (bytes <= maxBytes) best = { coverage, bytes, tolerance, withinTarget: true }
+    else low = tolerance
+  }
   return best
 }
 
