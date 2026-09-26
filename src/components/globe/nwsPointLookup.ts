@@ -50,21 +50,34 @@ function toFahrenheit(value: number | null, unitCode: string): number | null {
   return Math.round(value)
 }
 
+const MPH_PER_UNIT: Record<string, number> = {
+  'wmoUnit:km_h-1': 0.621371,
+  'wmoUnit:m_s-1': 2.23694,
+  'wmoUnit:kn': 1.15078,
+}
+
+/** Converts an NWS wind speed to mph, or null if the sensor reported no value. */
+function toMph(value: number | null, unitCode: string): number | null {
+  if (value === null) return null
+  return Math.round(value * (MPH_PER_UNIT[unitCode] ?? 1))
+}
+
 /**
  * Formats the nearest station's latest observation plus the first forecast period ("today"/
- * "tonight") for the click popup (#39 AC). Observations report temperature in Celsius while
- * forecast periods report Fahrenheit — both are normalized to Fahrenheit here so the popup
- * doesn't silently mix units.
+ * "tonight") for the click popup (#39 AC). Observations report temperature in Celsius and wind
+ * in km/h while forecast periods report Fahrenheit and mph — both are normalized to Fahrenheit
+ * and mph here so the popup doesn't silently mix units (#168).
  */
 export function describePointForPopup(period: NwsForecastPeriod, observation: NwsObservation): PointPopupContent {
   const { temperature, windSpeed, windDirection, textDescription, timestamp } = observation.properties
   const temperatureF = toFahrenheit(temperature.value, temperature.unitCode)
+  const windMph = toMph(windSpeed.value, windSpeed.unitCode)
   const windSummary =
-    windSpeed.value === null
-      ? 'Calm'
-      : `${Math.round(windSpeed.value)} ${windSpeed.unitCode.replace('wmoUnit:', '')}${
-          windDirection.value === null ? '' : ` at ${Math.round(windDirection.value)}°`
-        }`
+    windMph === null
+      ? '—'
+      : windMph === 0
+        ? 'Calm'
+        : `${windMph} mph${windDirection.value === null ? '' : ` at ${Math.round(windDirection.value)}°`}`
 
   return {
     location: period.name,
