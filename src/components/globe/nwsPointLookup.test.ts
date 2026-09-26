@@ -51,7 +51,20 @@ describe('describePointForPopup', () => {
     expect(content.location).toBe('Tonight')
     expect(content.shortForecast).toBe('Mostly Cloudy')
     expect(content.temperatureF).toBe(60) // 15.6C -> 60F
-    expect(content.windSummary).toBe('8 km_h-1 at 220°')
+    expect(content.windSummary).toBe('5 mph at 220°') // 8.3 km/h -> 5 mph
+  })
+
+  it.each([
+    ['wmoUnit:m_s-1', 4, '9 mph at 220°'],
+    ['wmoUnit:kn', 10, '12 mph at 220°'],
+    ['wmoUnit:mph', 7, '7 mph at 220°'],
+    ['wmoUnit:km_h-1', 0, 'Calm'],
+  ])('converts a %s wind speed of %d to "%s"', (unitCode, value, expected) => {
+    const period = parseGridpointForecast(makeGridpointForecast()).properties.periods[0]
+    if (!period) throw new Error('expected a fixture period')
+    const observation = parseObservation(makeObservation({ windSpeed: { value, unitCode } }))
+
+    expect(describePointForPopup(period, observation).windSummary).toBe(expected)
   })
 
   it('passes through a non-Celsius temperature unchanged', () => {
@@ -80,7 +93,7 @@ describe('describePointForPopup', () => {
     const content = describePointForPopup(period, observation)
 
     expect(content.temperatureF).toBeNull()
-    expect(content.windSummary).toBe('Calm')
+    expect(content.windSummary).toBe('—')
     expect(formatPointPopupHtml(content)).toContain('—')
   })
 })
