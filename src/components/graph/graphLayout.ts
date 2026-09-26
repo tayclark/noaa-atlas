@@ -155,6 +155,56 @@ export function computeLabelledFitTransform(
 }
 
 /**
+ * The largest group of positions that chain together within `linkDistance` of each other (single
+ * linkage). Ties go to the group holding the earliest item, so a task's primary node wins.
+ */
+export function largestLinkedGroup<T extends { x: number; y: number }>(items: readonly T[], linkDistance: number): T[] {
+  const groupOf = items.map(() => -1)
+  const groups: number[][] = []
+  items.forEach((_, start) => {
+    if (groupOf[start] !== -1) return
+    const members = [start]
+    groupOf[start] = groups.length
+    for (let i = 0; i < members.length; i++) {
+      const a = items[members[i] as number] as T
+      items.forEach((b, j) => {
+        if (groupOf[j] === -1 && Math.hypot(a.x - b.x, a.y - b.y) <= linkDistance) {
+          groupOf[j] = groups.length
+          members.push(j)
+        }
+      })
+    }
+    groups.push(members)
+  })
+  const largest = groups.reduce((best, group) => (group.length > best.length ? group : best), [] as number[])
+  return largest.sort((a, b) => a - b).map((i) => items[i] as T)
+}
+
+/**
+ * Frames a task's path (#162). A path whose nodes sit far apart would only fit below
+ * `minScale`, where the labels of a tight group of steps collide. Then the largest group of
+ * steps is framed at a readable scale instead; the outlying steps' connectors still lead off-screen
+ * towards them. A path with no group of two or more steps keeps the whole-path fit.
+ */
+export function computePathFitTransform(
+  items: readonly LabelledPosition[],
+  viewportWidth: number,
+  viewportHeight: number,
+  padding: number,
+  maxScale: number,
+  inset: Inset,
+  labelGap: number,
+  minScale: number,
+  linkDistance: number,
+): FitTransform | null {
+  const whole = computeLabelledFitTransform(items, viewportWidth, viewportHeight, padding, maxScale, inset, labelGap)
+  if (!whole || whole.k >= minScale) return whole
+  const group = largestLinkedGroup(items, linkDistance)
+  if (group.length < 2 || group.length === items.length) return whole
+  return computeLabelledFitTransform(group, viewportWidth, viewportHeight, padding, maxScale, inset, labelGap)
+}
+
+/**
  * Builds a configured d3-force simulation for the given nodes/edges. Does not start or stop it —
  * the caller owns the simulation's lifecycle (ticking, stopping on unmount).
  */

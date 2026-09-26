@@ -5,9 +5,11 @@ import { parseGraphFile, THEMES, type GraphEdge, type ServiceNode, type ThemeNod
 import {
   computeFitTransform,
   computeLabelledFitTransform,
+  computePathFitTransform,
   createGraphSimulation,
   EDGE_CLASS,
   EDGE_TYPE_LABELS,
+  largestLinkedGroup,
   nodeRadius,
   RING_ORDER,
   themeAnchors,
@@ -219,5 +221,57 @@ describe('computeLabelledFitTransform', () => {
     if (!fit) throw new Error('expected a fit')
     expect(labelRight(fit)).toBeLessThanOrEqual(400)
     expect(fit.x).toBeGreaterThanOrEqual(0) // the leftmost node is still in view
+  })
+})
+
+describe('largestLinkedGroup', () => {
+  it('chains positions within the link distance into one group', () => {
+    const items = [
+      { id: 'far', x: 0, y: 0 },
+      { id: 'a', x: 500, y: 0 },
+      { id: 'b', x: 600, y: 0 },
+      { id: 'c', x: 700, y: 0 }, // 200 from a, but linked through b
+    ]
+    expect(largestLinkedGroup(items, 150).map((item) => item.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('breaks a tie in favour of the group holding the earliest item', () => {
+    const items = [
+      { id: 'primary', x: 0, y: 0 },
+      { id: 'other', x: 500, y: 0 },
+      { id: 'primary-2', x: 50, y: 0 },
+      { id: 'other-2', x: 550, y: 0 },
+    ]
+    expect(largestLinkedGroup(items, 100).map((item) => item.id)).toEqual(['primary', 'primary-2'])
+  })
+
+  it('returns nothing for no items', () => {
+    expect(largestLinkedGroup([], 100)).toEqual([])
+  })
+})
+
+describe('computePathFitTransform', () => {
+  const inset = { left: 0, top: 0, right: 0, bottom: 0 }
+  const step = (x: number, y: number) => ({ x, y, radius: 6, labelWidth: 40 })
+  const fit = (items: ReturnType<typeof step>[]) => computePathFitTransform(items, 640, 352, 60, 1.25, inset, 4, 0.8, 150)
+
+  it('fits the whole path when it is readable', () => {
+    const items = [step(0, 0), step(100, 50)]
+    expect(fit(items)).toEqual(computeLabelledFitTransform(items, 640, 352, 60, 1.25, inset, 4))
+  })
+
+  it('frames the largest group of steps when the whole path would be too small to read (#162)', () => {
+    const outlier = step(0, -600)
+    const cluster = [step(0, 0), step(40, 10), step(80, 0), step(40, 40)]
+    const whole = computeLabelledFitTransform([outlier, ...cluster], 640, 352, 60, 1.25, inset, 4)
+    if (!whole) throw new Error('expected a fit')
+    expect(whole.k).toBeLessThan(0.8)
+
+    expect(fit([outlier, ...cluster])).toEqual(computeLabelledFitTransform(cluster, 640, 352, 60, 1.25, inset, 4))
+  })
+
+  it('keeps the whole-path fit when no two steps are close', () => {
+    const items = [step(0, -600), step(0, 600)]
+    expect(fit(items)).toEqual(computeLabelledFitTransform(items, 640, 352, 60, 1.25, inset, 4))
   })
 })
