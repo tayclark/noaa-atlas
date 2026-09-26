@@ -68,6 +68,8 @@ const ALERTS_LINE_WIDTH_SELECTED = 3
 const COVERAGE_SOURCE_ID = 'selected-coverage'
 const COVERAGE_FILL_LAYER_ID = 'selected-coverage-fill'
 const COVERAGE_LINE_LAYER_ID = 'selected-coverage-line'
+// Matches the `@container globe (max-width: 480px)` rules in MapLibreGlobe.css (#159).
+const NARROW_GLOBE_WIDTH = 480
 // The US outlines are derived from Natural Earth (public domain) and the Marine Regions EEZ, whose
 // CC BY 4.0 licence asks for credit wherever they're shown (#163).
 const COVERAGE_ATTRIBUTION =
@@ -174,6 +176,13 @@ export function MapLibreGlobe() {
     // MapLibre throws "Style is not done loading."
     map.on('load', () => {
       map.setProjection(GLOBE_PROJECTION)
+      // In a narrow map MapLibre makes the attribution compact but opens it until the first drag,
+      // covering the bottom of the globe on a phone (#159). There, start it folded to its ⓘ button;
+      // a desktop pane (640px at 1280 wide) keeps it open where there's room for it.
+      const container = containerRef.current
+      if (container && container.clientWidth <= NARROW_GLOBE_WIDTH) {
+        container.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show')
+      }
       map.addSource(COVERAGE_SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: COVERAGE_ATTRIBUTION })
       map.addLayer({
         id: COVERAGE_FILL_LAYER_ID,
@@ -339,7 +348,7 @@ export function MapLibreGlobe() {
   }, [auroraHighlighted, auroraCells])
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div className="globe">
       <div
         ref={containerRef}
         role="img"
@@ -361,22 +370,6 @@ export function MapLibreGlobe() {
           ))}
         </div>
       )}
-      {(kp.status !== 'loading' || auroraError) && (
-        <div
-          className={`space-weather-readout${view.liveLayers.includes('kp') ? ' space-weather-readout-highlighted' : ''}`}
-          role="status"
-          aria-label="Geomagnetic activity"
-        >
-          {kp.status === 'ok' && (
-            <p>
-              <strong>Kp {kp.readout.kp}</strong> · {kp.readout.gScale} {kp.readout.label}{' '}
-              <span className="space-weather-readout-time">{kp.readout.time}</span>
-            </p>
-          )}
-          {kp.status === 'error' && <p className="space-weather-readout-error">{kp.message}</p>}
-          {auroraError && <p className="space-weather-readout-error">Aurora forecast: {auroraError}</p>}
-        </div>
-      )}
       {geolocationError && (
         <div className="geolocation-status" role="status" aria-label="Location status">
           <p>{geolocationError}</p>
@@ -385,66 +378,86 @@ export function MapLibreGlobe() {
           </button>
         </div>
       )}
-      {alertsStatus === 'error' && (
-        <div className="zone-only-alerts" role="status" aria-label="Alerts status">
-          {alertsErrorMessage}
-        </div>
-      )}
-      {alertsStatus === 'empty' && (
-        <div className="zone-only-alerts" role="status" aria-label="Alerts status">
-          No active alerts.
-        </div>
-      )}
-      {alertsStatus === 'ok' && zoneOnlyAlerts.length > 0 && (() => {
-        const { visible, hiddenCount } = visibleZoneOnlyAlerts(
-          zoneOnlyAlerts,
-          ZONE_ONLY_ALERTS_CAP,
-          zoneAlertsExpanded,
-        )
-        return (
-          <div className="zone-only-alerts" aria-label="Alerts without a mapped area">
-            <div className="zone-only-alerts-header">
-              <strong>{zoneOnlyAlertsTitle(zoneOnlyAlerts.length)}</strong>
-              <button
-                type="button"
-                className="zone-only-alerts-collapse"
-                aria-expanded={!zoneAlertsCollapsed}
-                aria-label={zoneAlertsCollapsed ? 'Expand zone alerts' : 'Collapse zone alerts'}
-                onClick={() => setZoneAlertsCollapsed((c) => !c)}
-              >
-                {zoneAlertsCollapsed ? '▸' : '▾'}
-              </button>
-            </div>
-            {!zoneAlertsCollapsed && (
-              <ul>
-                {visible.map((feature) => (
-                  <li key={feature.properties.id}>
-                    {feature.properties.event} — {feature.properties.areaDesc}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {!zoneAlertsCollapsed && hiddenCount > 0 && (
-              <button
-                type="button"
-                className="zone-only-alerts-toggle"
-                onClick={() => setZoneAlertsExpanded(true)}
-              >
-                {hiddenCount} more
-              </button>
-            )}
-            {!zoneAlertsCollapsed && zoneAlertsExpanded && zoneOnlyAlerts.length > ZONE_ONLY_ALERTS_CAP && (
-              <button
-                type="button"
-                className="zone-only-alerts-toggle"
-                onClick={() => setZoneAlertsExpanded(false)}
-              >
-                Show less
-              </button>
-            )}
+      {/* The bottom overlays share one flex box: a row on a wide globe (alerts left, Kp right), a
+          column on a narrow one, so they never overlap (#159). */}
+      <div className="globe-bottom">
+        {alertsStatus === 'error' && (
+          <div className="zone-only-alerts" role="status" aria-label="Alerts status">
+            {alertsErrorMessage}
           </div>
-        )
-      })()}
+        )}
+        {alertsStatus === 'empty' && (
+          <div className="zone-only-alerts" role="status" aria-label="Alerts status">
+            No active alerts.
+          </div>
+        )}
+        {alertsStatus === 'ok' && zoneOnlyAlerts.length > 0 && (() => {
+          const { visible, hiddenCount } = visibleZoneOnlyAlerts(
+            zoneOnlyAlerts,
+            ZONE_ONLY_ALERTS_CAP,
+            zoneAlertsExpanded,
+          )
+          return (
+            <div className="zone-only-alerts" aria-label="Alerts without a mapped area">
+              <div className="zone-only-alerts-header">
+                <strong>{zoneOnlyAlertsTitle(zoneOnlyAlerts.length)}</strong>
+                <button
+                  type="button"
+                  className="zone-only-alerts-collapse"
+                  aria-expanded={!zoneAlertsCollapsed}
+                  aria-label={zoneAlertsCollapsed ? 'Expand zone alerts' : 'Collapse zone alerts'}
+                  onClick={() => setZoneAlertsCollapsed((c) => !c)}
+                >
+                  {zoneAlertsCollapsed ? '▸' : '▾'}
+                </button>
+              </div>
+              {!zoneAlertsCollapsed && (
+                <ul>
+                  {visible.map((feature) => (
+                    <li key={feature.properties.id}>
+                      {feature.properties.event} — {feature.properties.areaDesc}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!zoneAlertsCollapsed && hiddenCount > 0 && (
+                <button
+                  type="button"
+                  className="zone-only-alerts-toggle"
+                  onClick={() => setZoneAlertsExpanded(true)}
+                >
+                  {hiddenCount} more
+                </button>
+              )}
+              {!zoneAlertsCollapsed && zoneAlertsExpanded && zoneOnlyAlerts.length > ZONE_ONLY_ALERTS_CAP && (
+                <button
+                  type="button"
+                  className="zone-only-alerts-toggle"
+                  onClick={() => setZoneAlertsExpanded(false)}
+                >
+                  Show less
+                </button>
+              )}
+            </div>
+          )
+        })()}
+        {(kp.status !== 'loading' || auroraError) && (
+          <div
+            className={`space-weather-readout${view.liveLayers.includes('kp') ? ' space-weather-readout-highlighted' : ''}`}
+            role="status"
+            aria-label="Geomagnetic activity"
+          >
+            {kp.status === 'ok' && (
+              <p>
+                <strong>Kp {kp.readout.kp}</strong> · {kp.readout.gScale} {kp.readout.label}{' '}
+                <span className="space-weather-readout-time">{kp.readout.time}</span>
+              </p>
+            )}
+            {kp.status === 'error' && <p className="space-weather-readout-error">{kp.message}</p>}
+            {auroraError && <p className="space-weather-readout-error">Aurora forecast: {auroraError}</p>}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

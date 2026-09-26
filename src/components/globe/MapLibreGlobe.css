@@ -1,3 +1,29 @@
+/* The globe and its overlays. A size container, so the overlays can rearrange in a narrow globe
+   (a phone's Globe tab, or a narrow desktop pane, #159). */
+.globe {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  container: globe / size;
+}
+
+/* The zone-alerts box (left) and the Kp readout (right), above MapLibre's attribution bar. That
+   bar wraps to two lines in a 640px pane since the coverage credit was added (#163), so clear both. */
+.globe-bottom {
+  position: absolute;
+  left: var(--space-4);
+  right: 10px;
+  bottom: calc(var(--space-4) + 40px);
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+.globe-bottom > * {
+  pointer-events: auto;
+}
+
 .node-selection-status {
   position: absolute;
   top: var(--space-4);
@@ -17,7 +43,7 @@
 
 /* The list scrolls, not the overlay (#151): with the overlay itself as the scroller, Chromium drew
    its scroll layer as a blank box at the top of the globe canvas. The header and toggles stay put.
-   It sits above MapLibre's attribution bar, which spans the bottom of a narrow globe pane. */
+   It sits in .globe-bottom, above MapLibre's attribution bar. */
 
 .node-selection-status-title {
   display: flex;
@@ -38,13 +64,10 @@
 }
 
 .zone-only-alerts {
-  position: absolute;
-  bottom: calc(var(--space-4) + 24px);
-  left: var(--space-4);
   display: flex;
   flex-direction: column;
   max-width: 320px;
-  max-height: 40%;
+  max-height: 40cqh;
   overflow: hidden;
   padding: var(--space-3);
   border-radius: var(--radius-md);
@@ -205,13 +228,10 @@
   color: var(--color-text-muted);
 }
 
-/* Planetary Kp and any SWPC fetch errors (#54), bottom-right above MapLibre's attribution, so it
-   stays clear of the zone-alerts overlay on the left. Outlined in the accent colour while a
+/* Planetary Kp and any SWPC fetch errors (#54), pushed to the right of the zone-alerts box. Outlined in the accent colour while a
    selected service is the Kp feed. */
 .space-weather-readout {
-  position: absolute;
-  bottom: calc(var(--space-4) + 24px);
-  right: 10px;
+  margin-left: auto;
   max-width: 260px;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
@@ -236,4 +256,28 @@
 .space-weather-readout-highlighted {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+/* Narrow globe (#159): the zone-alerts box stacks above the Kp readout, both full width, and the
+   selection card keeps clear of the locate-me button. */
+@container globe (max-width: 480px) {
+  .node-selection-status {
+    top: var(--space-2);
+    left: var(--space-2);
+    max-width: calc(100% - 2 * var(--space-2) - 44px);
+  }
+
+  .globe-bottom {
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: calc(var(--space-2) + 24px);
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .zone-only-alerts,
+  .space-weather-readout {
+    max-width: none;
+    margin-left: 0;
+  }
 }
