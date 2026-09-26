@@ -212,6 +212,8 @@ export interface Preset {
   subtract?: readonly string[]
   /** Natural Earth lakes to add (after `subtract`), cut to the part inside the `within` country (ADM0_A3). */
   lakes?: { names: readonly string[]; within: string }
+  /** Marine Regions Global Oceans and Seas basins (keyed by `name`), each optionally cut to its own rectangle. */
+  oceans?: readonly { name: string; clip?: Bbox }[]
   /** Hand-defined rectangles. */
   boxes?: readonly Bbox[]
   /** Computed spherical caps, such as a geostationary satellite's view. */
@@ -232,6 +234,10 @@ const GREAT_LAKES = { names: ['Lake Superior', 'Lake Michigan', 'Lake Huron', 'L
 // 80°): 71.4° of great-circle distance from the sub-satellite point, which takes in Alaska from
 // GOES-West. Closer to the limb (81.3°) the view is too oblique to be useful.
 const GEO_USEFUL_RADIUS = 71.4
+// Global Oceans and Seas basin names (#170).
+const NORTH_PACIFIC = { name: 'North Pacific Ocean' }
+const SOUTH_PACIFIC = { name: 'South Pacific Ocean' }
+const NORTH_ATLANTIC = { name: 'North Atlantic Ocean' }
 
 export const PRESETS: Record<string, Preset> = {
   'contiguous-us': { description: 'Lower 48 states from Natural Earth', countries: ['USA'], select: [[-125, 24, -66, 50]] },
@@ -256,6 +262,21 @@ export const PRESETS: Record<string, Preset> = {
       { lon: -75.2, lat: 0, radius: GEO_USEFUL_RADIUS },
       { lon: -137.2, lat: 0, radius: GEO_USEFUL_RADIUS },
     ],
+  },
+  // RSMC Miami: the North Atlantic, Gulf and Caribbean, and the eastern North Pacific east of 140°W.
+  'nhc-basins': {
+    description: 'NHC area: the North Atlantic, plus the North Pacific east of 140°W (Marine Regions)',
+    oceans: [NORTH_ATLANTIC, { ...NORTH_PACIFIC, clip: [-140, 0, -60, 90] }],
+  },
+  // The Pacific and National Tsunami Warning Centers' areas.
+  'tsunami-basins': {
+    description: 'Pacific (with the South China and Eastern Archipelagic Seas) and North Atlantic (Marine Regions)',
+    oceans: [NORTH_PACIFIC, SOUTH_PACIFIC, { name: 'South China and Easter Archipelagic Seas' }, NORTH_ATLANTIC],
+  },
+  // The basins that hold an active DART station in NDBC's activestations.xml.
+  'dart-basins': {
+    description: 'Basins with DART buoys: the Pacific, North Atlantic and Indian Ocean (Marine Regions)',
+    oceans: [NORTH_PACIFIC, SOUTH_PACIFIC, NORTH_ATLANTIC, { name: 'Indian Ocean' }],
   },
   'us-coastal-waters': {
     description: 'Approximate 200 nmi boxes around US coasts and territories (hand-defined, not an official boundary)',
@@ -341,6 +362,8 @@ export interface PresetSources {
   eez?: unknown
   /** Natural Earth lakes (keyed by `name`). */
   lakes?: unknown
+  /** Marine Regions Global Oceans and Seas (keyed by `name`). */
+  oceans?: unknown
 }
 
 export function presetSources(preset: Preset): Array<keyof PresetSources> {
@@ -348,6 +371,7 @@ export function presetSources(preset: Preset): Array<keyof PresetSources> {
     ...(preset.countries || preset.subtract || preset.lakes ? (['countries'] as const) : []),
     ...(preset.eez ? (['eez'] as const) : []),
     ...(preset.lakes ? (['lakes'] as const) : []),
+    ...(preset.oceans ? (['oceans'] as const) : []),
   ]
 }
 
@@ -359,6 +383,10 @@ export function presetGeometry(preset: Preset, sources: PresetSources = {}): Sou
     parts.push(preset.select ? selectPolygons(land, preset.select) : land)
   }
   if (preset.eez) parts.push(featuresWhere(sources.eez, 'mrgid', preset.eez))
+  preset.oceans?.forEach(({ name, clip }) => {
+    const basin = featuresWhere(sources.oceans, 'name', [name])
+    parts.push(clip ? fromClip(intersection(toClip(preSimplify(basin)), toClip(boxesGeometry([clip])))) : basin)
+  })
   if (preset.boxes) parts.push(boxesGeometry(preset.boxes))
   preset.caps?.forEach((cap) => parts.push(sphericalCap(cap)))
   if (parts.length === 0 && !preset.lakes) throw new Error('Preset has no source geometry')

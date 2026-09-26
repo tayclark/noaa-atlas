@@ -221,6 +221,15 @@ describe('presetGeometry', () => {
     expect(isPointInCoverage(clipped, [45, 2])).toBe(false)
   })
 
+  it('adds ocean basins by name, each cut to its own rectangle', () => {
+    const oceans = collection(feature({ name: 'East' }, rings(0, 0, 10, 10)), feature({ name: 'West' }, rings(-20, 0, -10, 10)))
+    const basins = asCoverage(presetGeometry({ description: '', oceans: [{ name: 'East' }, { name: 'West', clip: [-20, 0, -15, 10] }] }, { oceans }))
+    expect(isPointInCoverage(basins, [5, 5])).toBe(true)
+    expect(isPointInCoverage(basins, [-17, 5])).toBe(true)
+    expect(isPointInCoverage(basins, [-12, 5])).toBe(false) // in West, outside its clip
+    expect(() => presetGeometry({ description: '', oceans: [{ name: 'Nowhere' }] }, { oceans })).toThrow(/\(name\): Nowhere/)
+  })
+
   it('passes a single part through unchanged', () => {
     expect(presetGeometry(PRESETS.worldwide!)).toEqual(boxesGeometry(PRESETS.worldwide!.boxes!))
   })
@@ -234,6 +243,7 @@ describe('presetGeometry', () => {
     expect(presetSources(PRESETS['us-waters']!)).toEqual(['countries', 'eez', 'lakes'])
     expect(presetSources(PRESETS['us-land-and-waters']!)).toEqual(['countries', 'eez'])
     expect(presetSources(PRESETS['northeast-us-shelf']!)).toEqual(['countries', 'eez'])
+    expect(presetSources(PRESETS['nhc-basins']!)).toEqual(['oceans'])
   })
 
   it('builds the GOES-East and GOES-West view without downloads, within the size target', () => {
