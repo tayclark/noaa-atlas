@@ -101,6 +101,35 @@ describe('nodesCoveringPoint against real graph.json fixtures', () => {
     expect(isPointInCoverage(nefsc, [-86, 27])).toBe(false) // Gulf of Mexico
   })
 
+  // Ocean basins rather than boxes (#170): water only, so continents fall outside.
+  it('covers the NHC area: the Atlantic, Gulf and Caribbean, and the eastern Pacific', () => {
+    const nhc = byId('nhc-active-storms').coverage
+    for (const [name, point] of Object.entries({ gulf: [-90, 25], caribbean: [-75, 15], easternPacific: [-110, 12], offWestAfrica: [-20, 15] })) {
+      expect(isPointInCoverage(nhc, point as [number, number]), name).toBe(true)
+    }
+    expect(isPointInCoverage(nhc, [-160, 15])).toBe(false) // Central Pacific
+    expect(isPointInCoverage(nhc, [-98, 38.5])).toBe(false) // Kansas
+    expect(isPointInCoverage(nhc, [18, 35])).toBe(false) // Mediterranean
+  })
+
+  it('covers the Pacific and the Atlantic for the tsunami feeds, not the Indian Ocean', () => {
+    const tsunami = byId('tsunami-warning-feeds').coverage
+    for (const [name, point] of Object.entries({ offHawaii: [-158, 18], offJapan: [150, 35], caribbean: [-75, 15], samoa: [-172, -15] })) {
+      expect(isPointInCoverage(tsunami, point as [number, number]), name).toBe(true)
+    }
+    expect(isPointInCoverage(tsunami, [80, -10])).toBe(false) // Indian Ocean
+    expect(isPointInCoverage(tsunami, [-98, 38.5])).toBe(false) // Kansas
+  })
+
+  it('covers every basin with a DART buoy, including the Indian Ocean', () => {
+    const dart = byId('ndbc-dart-realtime').coverage
+    for (const [name, point] of Object.entries({ bayOfBengal: [88.5, 10.2], aleutians: [-164.1, 50.9], offChile: [-73.8, -32.1], gulf: [-89.3, 25.8] })) {
+      expect(isPointInCoverage(dart, point as [number, number]), name).toBe(true)
+    }
+    expect(isPointInCoverage(dart, [-98, 38.5])).toBe(false) // Kansas
+    expect(isPointInCoverage(dart, [18, 35])).toBe(false) // Mediterranean
+  })
+
   it('covers the GOES-East and GOES-West views, including Alaska, but not Europe or Japan', () => {
     const goes = byId('goes-aws-open-data').coverage
     expect(isPointInCoverage(goes, [-149.9, 61.2])).toBe(true) // Anchorage
