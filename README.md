@@ -30,7 +30,7 @@ Explore stacks the task finder above the graph, with a draggable divider between
 A list of common tasks under **I need to…** ("Get today's local forecast", "Get deep-ocean tsunami buoy readings", "Look up historical daily temperature or rainfall for a station", and so on). Until you pick one, the space below the list explains how to read the app. Picking a task:
 
 - shows the recommended nodes as numbered steps, the first marked **Primary** and the rest **Also**, each with a one-line reason;
-- highlights the whole path in the graph and draws connector lines between the steps;
+- highlights the whole path in the graph and draws connector lines between the steps, framing the path, or its largest group of steps when the whole path is too spread out to read (the connectors then lead off-screen to the rest);
 - clicking a single step narrows the selection to that one node, which opens its detail panel and flies the globe to it.
 
 ### Graph
