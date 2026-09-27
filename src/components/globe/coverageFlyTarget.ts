@@ -14,6 +14,9 @@ export type FlyTarget = { kind: 'bounds'; bounds: Bounds } | { kind: 'global' }
 const MIN_AREA_SHARE = 0.05
 /** Coverage leaving a gap narrower than this (degrees of longitude) is treated as global. */
 const MIN_GAP_DEGREES = 60
+/** Wider bounds (degrees of longitude) can't be framed on a globe: fitBounds zooms in on their middle instead.
+ * GOES-East and GOES-West's views (~215°) still frame; the Pacific and Atlantic tsunami basins (~277°) don't (#170). */
+const MAX_FRAMED_SPAN = 240
 
 interface Box {
   west: number
@@ -65,7 +68,7 @@ export function coverageFlyTarget(coverages: readonly Coverage[]): FlyTarget | n
       east = gapStart + 360
     }
   }
-  if (gap < MIN_GAP_DEGREES) return { kind: 'global' }
+  if (gap < MIN_GAP_DEGREES || east - west > MAX_FRAMED_SPAN) return { kind: 'global' }
 
   const south = Math.min(...kept.map((b) => b.south))
   const north = Math.max(...kept.map((b) => b.north))

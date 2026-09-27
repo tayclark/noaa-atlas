@@ -67,9 +67,18 @@ function footprintOf(services: readonly ServiceNode[]): Footprint {
   }
 }
 
+const isWholeWorld = (coverage: Coverage) =>
+  (coverage.type === 'Polygon' ? [coverage.coordinates] : coverage.coordinates).some((polygon) => {
+    const lons = (polygon[0] ?? []).map(([lon]) => lon)
+    const lats = (polygon[0] ?? []).map(([, lat]) => lat)
+    return Math.min(...lons) === -180 && Math.max(...lons) === 180 && Math.min(...lats) === -90 && Math.max(...lats) === 90
+  })
+
 /** One line saying what's outlined, which depends on whether it could be framed at all. */
-function coverageLine(target: FlyTarget | null, what: string): string {
-  return target?.kind === 'global' ? `${what} worldwide, so the whole globe is tinted.` : `${what} outlined on the globe.`
+function coverageLine(target: FlyTarget | null, coverages: readonly Coverage[], what: string): string {
+  if (target?.kind !== 'global') return `${what} outlined on the globe.`
+  // Ocean basins that circle the globe can't be framed either, but they don't tint all of it (#170).
+  return coverages.some(isWholeWorld) ? `${what} worldwide, so the whole globe is tinted.` : `${what} spans the globe, outlined on it.`
 }
 
 export function describeSelectionForGlobe(selection: Selection, context: GlobeViewContext): SelectionGlobeView {
@@ -127,7 +136,7 @@ function viewOf(title: string, services: readonly ServiceNode[], what: string): 
     liveLayers: liveLayersOf(services),
     card: {
       title,
-      lines: [coverageLine(flyTarget, what)],
+      lines: [coverageLine(flyTarget, services.map((n) => n.coverage), what)],
       colors: [...new Set(services.map((n) => THEME_COLORS[n.theme]))],
     },
   }

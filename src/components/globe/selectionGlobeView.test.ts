@@ -68,6 +68,12 @@ describe('describeSelectionForGlobe', () => {
     expect(view.card?.lines[0]).toBe('Coverage worldwide, so the whole globe is tinted.')
   })
 
+  it('says ocean basins that circle the globe are outlined, not that the whole globe is tinted', () => {
+    const view = describeSelectionForGlobe({ ...none, selectedNodeId: 'ndbc-dart-realtime' }, context)
+    expect(view.flyTarget).toEqual({ kind: 'global' })
+    expect(view.card?.lines[0]).toBe('Coverage spans the globe, outlined on it.')
+  })
+
   it('draws every service of a selected theme hub', () => {
     const ocean = nodes.filter((n) => n.theme === 'ocean')
     const view = describeSelectionForGlobe({ ...none, selectedNodeId: 'theme-ocean' }, context)
