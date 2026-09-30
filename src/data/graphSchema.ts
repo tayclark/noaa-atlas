@@ -132,6 +132,13 @@ export const graphFileSchema = z
   })
   .superRefine((file, ctx) => {
     const ids = new Set(file.nodes.map((node) => node.id))
+    const seenIds = new Set<string>()
+    file.nodes.forEach((node, i) => {
+      if (seenIds.has(node.id)) {
+        ctx.addIssue({ code: 'custom', message: `duplicate node id "${node.id}"`, path: ['nodes', i, 'id'] })
+      }
+      seenIds.add(node.id)
+    })
     const seen = new Set<string>()
     file.edges.forEach((edge, i) => {
       for (const end of ['source', 'target'] as const) {
