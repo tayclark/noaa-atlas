@@ -4,7 +4,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
-import { AURORA_BAND_VALUE, AURORA_FIXTURE_CELLS, mockSwpc } from './fixtures/swpc'
+import { AURORA_BAND_VALUE, AURORA_FIXTURE_CELLS, mockSwpc, mockSwpcRefresh } from './fixtures/swpc'
 
 const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
 
@@ -59,6 +59,40 @@ test('says so when the aurora forecast cannot be loaded', async ({ page }) => {
   await expect(readout).toContainText('Aurora forecast: SWPC is unavailable (503)')
   await expect(readout).toContainText('Kp 6.7')
   await expect(page.locator(GLOBE)).not.toHaveAttribute('data-aurora-cells', /.*/)
+})
+
+test('refreshes the aurora forecast and Kp every five minutes', async ({ page }) => {
+  await page.clock.install()
+  await mockAlerts(page, emptyAlertsFixture())
+  await mockPointLookup(page)
+  await mockSwpcRefresh(page)
+  await page.goto('/')
+
+  const readout = page.getByLabel('Geomagnetic activity')
+  await expect(readout).toContainText('Kp 6.7')
+
+  await page.clock.fastForward(5 * 60_000)
+  await expect(readout).toContainText('Kp 5.3 · G1 Minor storm')
+
+  await page.locator(GLOBE).click()
+  await expect(page.locator('.maplibregl-popup-content')).toContainText('forecast for 02:22 UTC')
+})
+
+test('keeps the last aurora forecast and Kp when a refresh fails', async ({ page }) => {
+  await page.clock.install()
+  await mockAlerts(page, emptyAlertsFixture())
+  await mockSwpcRefresh(page, { refreshFails: true })
+  await page.goto('/')
+
+  const readout = page.getByLabel('Geomagnetic activity')
+  await expect(readout).toContainText('Kp 6.7')
+
+  await page.clock.fastForward(5 * 60_000)
+  // Let the failed refreshes settle before asserting nothing changed.
+  await page.clock.runFor(1000)
+  await expect(readout).toContainText('Kp 6.7')
+  await expect(readout).not.toContainText('unavailable')
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-aurora-cells', String(AURORA_FIXTURE_CELLS))
 })
 
 test('loads the real aurora forecast and Kp @live', async ({ page }) => {
