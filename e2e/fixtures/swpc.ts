@@ -41,3 +41,24 @@ export async function mockSwpc(page: Page, { ovationStatus = 200 }: { ovationSta
   )
   await page.route('**/json/planetary_k_index_1m.json', (route) => route.fulfill({ json: kpFixture() }))
 }
+
+/**
+ * The first fetch of each file serves the usual fixture; every later one (the periodic refresh)
+ * serves a newer forecast and Kp, or a 503 when `refreshFails` is set.
+ */
+export async function mockSwpcRefresh(page: Page, { refreshFails = false }: { refreshFails?: boolean } = {}) {
+  let ovationCalls = 0
+  let kpCalls = 0
+  await page.route('**/json/ovation_aurora_latest.json', (route) => {
+    ovationCalls++
+    if (ovationCalls === 1) return route.fulfill({ json: ovationFixture() })
+    if (refreshFails) return route.fulfill({ status: 503, body: '' })
+    return route.fulfill({ json: { ...ovationFixture(), 'Forecast Time': '2026-09-25T02:22:00Z' } })
+  })
+  await page.route('**/json/planetary_k_index_1m.json', (route) => {
+    kpCalls++
+    if (kpCalls === 1) return route.fulfill({ json: kpFixture() })
+    if (refreshFails) return route.fulfill({ status: 503, body: '' })
+    return route.fulfill({ json: [{ time_tag: '2026-09-25T00:32:00', kp_index: 5, estimated_kp: 5.33, kp: '5P' }] })
+  })
+}

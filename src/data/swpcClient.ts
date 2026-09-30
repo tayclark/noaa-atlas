@@ -32,6 +32,9 @@ const { request, clearCache } = createLiveClient({
   parseError: (path, cause) => new SwpcParseError(`SWPC response for ${path} did not match the expected shape`, cause),
 })
 
+/** How often the globe re-fetches the aurora forecast and Kp; SWPC regenerates both every few minutes. */
+export const SWPC_REFRESH_MS = 5 * 60_000
+
 /** Clears the in-memory response cache. Intended for test isolation between cases. */
 export const clearSwpcCache = clearCache
 
