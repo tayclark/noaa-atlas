@@ -19,6 +19,13 @@ describe('isPointInCoverage', () => {
     expect(isPointInCoverage(coverage, [20, 20])).toBe(false)
   })
 
+  it('wraps a longitude from a repeated copy of the world before testing it (#80)', () => {
+    const coverage: Coverage = { type: 'Polygon', coordinates: [square(-170, 50, -130, 70)] }
+    expect(isPointInCoverage(coverage, [190, 60])).toBe(true) // 190 is -170 round the back
+    expect(isPointInCoverage(coverage, [-500, 60])).toBe(true) // -500 is -140
+    expect(isPointInCoverage(coverage, [-90, 60])).toBe(false)
+  })
+
   it('rejects points inside a hole and accepts points between the hole and the outer ring', () => {
     const coverage: Coverage = {
       type: 'Polygon',

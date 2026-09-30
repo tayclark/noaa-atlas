@@ -86,7 +86,7 @@ A 3D globe (MapLibre GL, OpenFreeMap dark basemap) that opens on the continental
 - **Linked selection.** Selecting something in the graph or finder outlines its coverage on the globe in its theme colour and flies there:
   - a service draws its own coverage; a status card says so, and either that its live layer is highlighted (the alerts layer, the aurora glow, the tide stations or the Kp readout is emphasised) or why it isn't on the map yet;
   - a theme hub draws the coverage of all its services, and a task draws every API on its path;
-  - coverage that spans the antimeridian (the GOES-West view) is framed across the dateline; small outlying areas such as Guam's waters are drawn but don't pull the view out to the Pacific; and worldwide coverage tints the whole globe while the view stays on the US, as it also does for ocean basins too wide to frame (the tsunami and DART services).
+  - coverage that spans the antimeridian (the GOES-West view) is framed across the dateline; small outlying areas such as Guam's waters are drawn but don't pull the view out to the Pacific; and worldwide coverage tints the whole globe and zooms out in place, without moving the view. Ocean basins too wide to frame (the tsunami and DART services) zoom out centred on their own arc. The detail panel's coverage line gives the smallest longitude range, so a basin across the dateline reads like "~150°E–130°W" and worldwide coverage reads "all longitudes".
 
   Going the other way, clicking the globe (or an alert polygon) selects that point, highlights every graph node that covers it, and the card says how many there are.
 

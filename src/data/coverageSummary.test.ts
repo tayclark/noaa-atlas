@@ -34,10 +34,23 @@ describe('summarizeCoverage', () => {
     expect(summarizeCoverage(coverage)).toBe('~125°W–67°W, 25°N–49°N')
   })
 
+  it('reads coverage across the antimeridian as the smaller arc (#80)', () => {
+    const coverage: Coverage = {
+      type: 'MultiPolygon',
+      coordinates: [[square(150, -20, 180, 20)], [square(-180, -20, -130, 20)]],
+    }
+    expect(summarizeCoverage(coverage)).toBe('~150°E–130°W, 20°S–20°N')
+  })
+
+  it('says all longitudes for worldwide coverage (#80)', () => {
+    const coverage: Coverage = { type: 'Polygon', coordinates: [square(-180, -90, 180, 90)] }
+    expect(summarizeCoverage(coverage)).toBe('all longitudes, 90°S–90°N')
+  })
+
   it('formats real graph.json coverage without throwing, as a drift guard', () => {
     const nodes = parseGraphFile(graphJson).nodes as ServiceNode[]
     for (const node of nodes) {
-      expect(summarizeCoverage(node.coverage)).toMatch(/^~\d+°[WE]–\d+°[WE], \d+°[NS]–\d+°[NS]$/)
+      expect(summarizeCoverage(node.coverage)).toMatch(/^(~\d+°[WE]–\d+°[WE]|all longitudes), \d+°[NS]–\d+°[NS]$/)
     }
   })
 })

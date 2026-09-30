@@ -1,11 +1,13 @@
 import type { Coverage, ServiceNode } from './graphSchema'
+import { wrapLon } from './lonArc'
 
 export type LonLat = readonly [number, number]
 
 // Rings are always closed (first position repeated at the end) per the graph schema,
 // so the classic PNPOLY loop below naturally handles that without special-casing it.
-// Antimeridian-crossing polygons are not special-cased — no current node's coverage
-// needs it, but a future Pacific-crossing coverage area would require handling it.
+// Stored rings never cross the antimeridian (the preset tooling splits them at ±180), so they need
+// no special case; instead the tested point is wrapped into [-180, 180], because a click on a
+// repeated copy of the world reports a longitude outside that range (#80).
 function isPointInRing(point: LonLat, ring: readonly LonLat[]): boolean {
   const [x, y] = point
   let inside = false
@@ -24,7 +26,8 @@ function isPointInPolygon(point: LonLat, rings: readonly (readonly LonLat[])[]):
 }
 
 /** Tests whether a WGS84 [lon, lat] point falls inside a coverage geometry (Polygon or MultiPolygon, holes included). */
-export function isPointInCoverage(coverage: Coverage, point: LonLat): boolean {
+export function isPointInCoverage(coverage: Coverage, [lon, lat]: LonLat): boolean {
+  const point: LonLat = [wrapLon(lon), lat]
   if (coverage.type === 'Polygon') return isPointInPolygon(point, coverage.coordinates)
   return coverage.coordinates.some((polygon) => isPointInPolygon(point, polygon))
 }
