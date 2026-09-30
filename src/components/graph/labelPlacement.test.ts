@@ -56,6 +56,17 @@ describe('placeLabels', () => {
     expect(result.get('a')).toBe('left')
   })
 
+  it('lets a label that fits nowhere clean graze a dot edge, but not reach a dot core (#176)', () => {
+    // "a" can't go left (bounds), below or above (obstacles), so only the right is left, where a dot sits. The dot's own (oversized) label fits nowhere, so it can't block "a".
+    const boxed = [
+      { x0: 0, y0: 57, x1: 400, y1: 80 },
+      { x0: 0, y0: 20, x1: 400, y1: 43 },
+    ]
+    const a = item('a', 50, 50)
+    expect(placeLabels([a, item('edge', 56, 50, 0, 500)], bounds, boxed).get('a')).toBe('right')
+    expect(placeLabels([a, item('core', 65, 50, 0, 500)], bounds, boxed).get('a')).toBeNull()
+  })
+
   it('lets an overNodes label cover another node but not another label', () => {
     const blocker = item('blocker', 130, 50, 0, 10)
     expect(placeLabels([{ ...item('hub', 100, 50, 3), overNodes: true }, blocker], bounds).get('hub')).toBe('right')
