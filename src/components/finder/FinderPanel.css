@@ -34,6 +34,11 @@
   overflow-y: auto;
 }
 
+/* Inset, because the mask below would clip an outline drawn outside the box. */
+.finder-body:focus-visible {
+  outline-offset: -2px;
+}
+
 /* A fade at the bottom while there is more to scroll to. The scroll timeline is inactive when
    nothing overflows, so the base value (no fade) applies then. */
 @property --finder-fade {

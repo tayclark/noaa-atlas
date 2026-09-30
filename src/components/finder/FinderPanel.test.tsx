@@ -31,6 +31,18 @@ describe('FinderPanel', () => {
     }
   })
 
+  it('makes the intro scroller keyboard-focusable only while the intro is showing', () => {
+    const first = tasks[0]
+    if (!first) throw new Error('expected at least one authored task')
+    render(<FinderPanel />)
+    const intro = screen.getByRole('region', { name: 'How to read NOAA Atlas' })
+    expect(intro.getAttribute('tabindex')).toBe('0')
+    expect(intro.classList.contains('finder-body')).toBe(true)
+
+    fireEvent.click(screen.getByText(first.label))
+    expect(document.querySelector('.finder-body')?.hasAttribute('tabindex')).toBe(false)
+  })
+
   it('replaces the intro with the picked task\'s ranked nodes', () => {
     const first = tasks[0]
     if (!first) throw new Error('expected at least one authored task')
