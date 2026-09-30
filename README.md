@@ -175,3 +175,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and push 
 
 - **ci**: typecheck, lint, unit tests with the coverage gate (summary posted to the run), production build.
 - **e2e**: Playwright (Chromium) with the report uploaded on failure.
+
+## Hosting
+
+The site is static, so it is served from GitHub Pages at https://tayclark.github.io/noaa-atlas/. Pages is free for a public repo and needs no extra vendor or secrets. `.github/workflows/deploy.yml` runs the unit tests, builds with `VITE_BASE=/noaa-atlas/` (the Pages sub-path) and deploys on every push to `main`. The build copies MapLibre's worker to `dist/maplibre/` (`maplibreWorker` in `vite.config.ts`); without it the globe never loads in a production build.
