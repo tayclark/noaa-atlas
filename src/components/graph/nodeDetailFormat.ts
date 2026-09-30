@@ -43,3 +43,37 @@ export function formatFreshness(freshness: ServiceNode['freshness']): string {
 export function liveStatusLabel(node: ServiceNode): string {
   return node.liveLayer ? 'Live' : 'Available, not live yet'
 }
+
+const DATASET_FREQUENCY_LABELS: Record<string, string> = {
+  asNeeded: 'As needed',
+  notPlanned: 'Not planned',
+  irregular: 'Irregular',
+  continual: 'Continual',
+  daily: 'Daily',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  biannually: 'Twice a year',
+  annually: 'Annually',
+}
+
+/** NCEI sends raw ISO 19115 codes, plus one mangled value that starts with `irregular` (#70). */
+export function formatDatasetFrequency(raw: string | null): string | null {
+  if (!raw) return null
+  const label = DATASET_FREQUENCY_LABELS[raw]
+  if (label) return label
+  return raw.startsWith('irregular') ? 'Irregular' : null
+}
+
+export function formatDatasetRange(start: string | null, end: string | null): string | null {
+  if (start && end) return `${start} to ${end}`
+  if (start) return `From ${start}`
+  if (end) return `Until ${end}`
+  return null
+}
+
+/** The snapshot's `doi` field is a full URL, and some rows point at NCEI's metadata page instead. */
+export function datasetLink(url: string | null): { href: string; label: string } | null {
+  if (!url?.startsWith('https://')) return null
+  return { href: url, label: url.startsWith('https://doi.org/') ? 'DOI ↗' : 'Metadata ↗' }
+}

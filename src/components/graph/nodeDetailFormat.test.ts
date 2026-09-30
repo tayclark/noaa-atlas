@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { ServiceNode } from '../../data/graphSchema'
-import { formatAuth, formatFormats, formatFreshness, formatOwner, formatRateLimits, liveStatusLabel } from './nodeDetailFormat'
+import {
+  datasetLink,
+  formatAuth,
+  formatDatasetFrequency,
+  formatDatasetRange,
+  formatFormats,
+  formatFreshness,
+  formatOwner,
+  formatRateLimits,
+  liveStatusLabel,
+} from './nodeDetailFormat'
 
 describe('formatOwner', () => {
   it('joins office and program', () => {
@@ -76,5 +86,32 @@ describe('liveStatusLabel', () => {
 
   it('labels a not-live node', () => {
     expect(liveStatusLabel({ ...base, liveLayer: false, notLiveReason: 'not wired yet' })).toBe('Available, not live yet')
+  })
+})
+
+describe('dataset formatting (#70)', () => {
+  it('maps ISO frequency codes and the mangled irregular value', () => {
+    expect(formatDatasetFrequency('asNeeded')).toBe('As needed')
+    expect(formatDatasetFrequency('biannually')).toBe('Twice a year')
+    expect(formatDatasetFrequency('irregularAdditions as new data are received.')).toBe('Irregular')
+  })
+
+  it('returns null for unknown or missing frequency', () => {
+    expect(formatDatasetFrequency('somethingNew')).toBeNull()
+    expect(formatDatasetFrequency(null)).toBeNull()
+  })
+
+  it('formats date ranges', () => {
+    expect(formatDatasetRange('1998-08-01', '2025-03-31')).toBe('1998-08-01 to 2025-03-31')
+    expect(formatDatasetRange('1998-08-01', null)).toBe('From 1998-08-01')
+    expect(formatDatasetRange(null, '2025-03-31')).toBe('Until 2025-03-31')
+    expect(formatDatasetRange(null, null)).toBeNull()
+  })
+
+  it('labels DOI and metadata links and rejects non-https urls', () => {
+    expect(datasetLink('https://doi.org/10.7289/V500004W')?.label).toBe('DOI ↗')
+    expect(datasetLink('https://www.ncei.noaa.gov/metadata/x')?.label).toBe('Metadata ↗')
+    expect(datasetLink('javascript:alert(1)')).toBeNull()
+    expect(datasetLink(null)).toBeNull()
   })
 })
