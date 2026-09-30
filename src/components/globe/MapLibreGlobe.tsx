@@ -444,8 +444,10 @@ export function MapLibreGlobe() {
     // essential while animating; with "reduce motion" on the camera jumps instead of flying (#47).
     const reduceMotion = prefersReducedMotion()
     if (view.flyTarget?.kind === 'global') {
-      if (reduceMotion) map.jumpTo({ center: US_CENTER, zoom: GLOBAL_VIEW_ZOOM })
-      else map.flyTo({ center: US_CENTER, zoom: GLOBAL_VIEW_ZOOM, essential: true })
+      // Worldwide coverage zooms out in place; wide-but-not-worldwide coverage centres on itself (#80).
+      const center = view.flyTarget.center ?? map.getCenter()
+      if (reduceMotion) map.jumpTo({ center, zoom: GLOBAL_VIEW_ZOOM })
+      else map.flyTo({ center, zoom: GLOBAL_VIEW_ZOOM, essential: true })
     } else if (view.flyTarget) {
       // east may exceed 180 when the coverage crosses the antimeridian; MapLibre accepts that.
       const [west, south, east, north] = view.flyTarget.bounds

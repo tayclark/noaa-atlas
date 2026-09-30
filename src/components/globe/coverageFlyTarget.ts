@@ -1,13 +1,14 @@
 // Where the globe should fly for a set of coverage geometries (#149). A plain min/max bbox broke
 // for any coverage that touches both sides of the antimeridian (Guam, the Aleutians, worldwide):
 // it came out as lon -180..180 and fitBounds centred the globe on Europe. This picks the smallest
-// longitude arc instead, and treats near-global coverage as "global" so the caller can keep a
-// US-centred view. Pure, so it's unit-tested (MapLibreGlobe.tsx is covered by e2e only).
+// longitude arc instead, and treats near-global coverage as "global" so the caller can zoom
+// out to the whole globe (#80). Pure, so it's unit-tested (MapLibreGlobe.tsx is covered by e2e only).
 
 import type { Coverage } from '../../data/graphSchema'
+import { smallestLonArc, wrapLon } from '../../data/lonArc'
 
 export type Bounds = [west: number, south: number, east: number, north: number]
-export type FlyTarget = { kind: 'bounds'; bounds: Bounds } | { kind: 'global' }
+export type FlyTarget = { kind: 'bounds'; bounds: Bounds } | { kind: 'global'; center?: [lon: number, lat: number] }
 
 /** Polygons smaller than this share of the total area only widen the view, so they're left out of framing (still drawn).
  * 5% keeps the US territories' EEZs (Guam's is ~4% of nws-api's coverage) from pulling the camera out to the Pacific (#163). */
@@ -44,33 +45,14 @@ export function coverageFlyTarget(coverages: readonly Coverage[]): FlyTarget | n
   const total = boxes.reduce((sum, b) => sum + b.area, 0)
   const kept = boxes.filter((b) => b.area >= total * MIN_AREA_SHARE)
 
-  // Merge the longitude intervals, then find the widest gap between them, going round the circle.
-  const intervals = kept.map((b) => [b.west, b.east] as [number, number]).sort((a, b) => a[0] - b[0])
-  const merged: [number, number][] = []
-  for (const [west, east] of intervals) {
-    const last = merged[merged.length - 1]
-    if (last && west <= last[1]) last[1] = Math.max(last[1], east)
-    else merged.push([west, east])
-  }
-  const first = merged[0] as [number, number]
-  const last = merged[merged.length - 1] as [number, number]
-  // The gap that wraps from the last interval's east edge over the antimeridian to the first's west edge.
-  let gap = first[0] + 360 - last[1]
-  let west = first[0]
-  let east = last[1]
-  for (let i = 0; i + 1 < merged.length; i++) {
-    const [, gapStart] = merged[i] as [number, number]
-    const [gapEnd] = merged[i + 1] as [number, number]
-    if (gapEnd - gapStart > gap) {
-      gap = gapEnd - gapStart
-      // Everything outside this gap: from its far side, round through the antimeridian, back to its near side.
-      west = gapEnd
-      east = gapStart + 360
-    }
-  }
-  if (gap < MIN_GAP_DEGREES || east - west > MAX_FRAMED_SPAN) return { kind: 'global' }
-
+  const arc = smallestLonArc(kept.map((b) => [b.west, b.east] as const))
+  if (!arc) return null
+  const { west, east, gap } = arc
   const south = Math.min(...kept.map((b) => b.south))
   const north = Math.max(...kept.map((b) => b.north))
+  // Near-global coverage has no natural centre, so the caller keeps the current one. Coverage that is
+  // merely too wide to frame (the tsunami basins) is centred on its own arc instead of the US.
+  if (gap < MIN_GAP_DEGREES) return { kind: 'global' }
+  if (east - west > MAX_FRAMED_SPAN) return { kind: 'global', center: [wrapLon((west + east) / 2), (south + north) / 2] }
   return { kind: 'bounds', bounds: [west, south, east, north] }
 }

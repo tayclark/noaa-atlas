@@ -75,3 +75,14 @@ test('globe -> graph: clicking a point highlights the covering node(s) in the gr
     `${expectedIds.length} APIs cover this spot, highlighted in the graph.`,
   )
 })
+
+test('a coverage that crosses the antimeridian reads as the smaller arc (#80)', async ({ page }) => {
+  await mockAlerts(page, emptyAlertsFixture())
+  await page.goto('/')
+  await page.locator('.graph-node[data-node-id="goes-aws-open-data"]').focus()
+  await page.keyboard.press('Enter')
+  const coverage = page.getByText('Coverage', { exact: true }).locator('xpath=following-sibling::dd')
+  await expect(coverage).toBeVisible()
+  await expect(coverage).not.toContainText('180°W–180°E')
+  await expect(coverage).toContainText(/^~\d+°E–\d+°W/)
+})
