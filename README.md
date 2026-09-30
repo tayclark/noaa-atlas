@@ -3,7 +3,7 @@
 A linked globe and graph that answers "which NOAA API do I use for X?".
 
 - The **graph** is the NOAA API ecosystem: a curated set of services (owner, base URL, formats, auth, coverage, freshness, sample call) grouped by theme and connected where a documented relationship exists.
-- The **globe** shows NOAA APIs in action: live layers of active National Weather Service alerts, the Space Weather Prediction Center's aurora forecast, the current Kp index and CO-OPS tide stations, click-anywhere point lookups, and the geographic coverage of whichever service you select.
+- The **globe** shows NOAA APIs in action: live layers of active National Weather Service alerts, the Space Weather Prediction Center's aurora forecast, the current Kp index, CO-OPS tide stations and nowCOAST radar, click-anywhere point lookups, and the geographic coverage of whichever service you select.
 - The two are linked. Select something on one side and the other reacts.
 
 It is a client-only single-page app. There is no backend, no accounts and no API keys; live data comes straight from `api.weather.gov`, `services.swpc.noaa.gov` and `api.tidesandcurrents.noaa.gov` in the browser.
@@ -80,6 +80,7 @@ A 3D globe (MapLibre GL, OpenFreeMap dark basemap) that opens on the continental
 - **Aurora forecast layer.** SWPC's OVATION forecast (a global 1° grid of the chance of seeing the aurora 30 to 90 minutes from now) is drawn as a smoothed colour layer under the alerts: green for a low chance, through yellow at about 50%, to red above about 80%, whatever the zoom. It is re-fetched every 5 minutes while the tab is visible (and on returning to a tab that has been hidden longer than that); a failed refresh keeps the forecast already drawn.
 - **Kp readout.** The bottom-right corner shows the latest one-minute planetary Kp estimate, its NOAA G-scale level (G0 Quiet up to G5 Extreme storm) and the time it was issued. It refreshes on the same 5-minute cycle. If SWPC can't be reached on the first load, the corner says so instead; a failed refresh keeps the last reading.
 - **Tide stations layer.** The 302 CO-OPS water-level stations appear as blue dots once you zoom in to a regional view (zoom 3 and up), and grow when the CO-OPS Data API node is selected. Click one for its latest water level (metres above MLLW) and today's predicted high and low tides, all in UTC. The two requests fail independently, so one can show a message (CO-OPS's own, for a station without that product) while the other still shows. The readings are preliminary and not quality-controlled, and the popup says so. The station list is a snapshot in `src/data/coopsStations.json` rather than a runtime request (CO-OPS's own list is about 780 KB); refresh it with `npm run coops-stations` when CO-OPS adds or retires a station.
+- **Radar layer.** Selecting the nowCOAST web map services node draws current radar (the base reflectivity mosaic) over the globe at 70% opacity, credited to NOAA/NWS via nowCOAST in the map's attribution. It is hidden otherwise, so nothing is requested on page load. MapLibre fetches the WMS tiles itself, so these requests don't appear in the Inspector, and the layer always shows the latest frame (no time slider yet).
 - **Click anywhere for a point lookup.** A popup shows the current forecast period and the nearest station's latest observation (temperature and wind normalised to °F and mph, conditions and observation time), then the aurora chance at that spot when there is one ("Aurora: 22% chance here", with the forecast time), followed by **APIs covering this point**: every service in the graph whose coverage contains the spot, each marked live or "available, not live yet". Errors (rate limiting, 403s, unexpected responses) are reported in the popup rather than failing silently.
 - **Locate me.** The navigation-arrow button (top right) asks the browser for your precise location (GPS where the device has it), flies there, marks the spot with an accuracy circle and runs the same point lookup. If location access is blocked or times out, a note says why.
 - **Linked selection.** Selecting something in the graph or finder outlines its coverage on the globe in its theme colour and flies there:
@@ -132,7 +133,7 @@ A service node records: `id`, `name`, `summary`, `owner` (office and program), `
 
 ## Data terms and attribution
 
-The graph only points at NOAA services and the app itself fetches three of them (NWS, SWPC and CO-OPS), so it follows the terms NOAA publishes. These were read from the pages themselves on 2026-09-30:
+The graph only points at NOAA services and the app itself fetches three of them through typed clients (NWS, SWPC and CO-OPS) and draws radar tiles from a fourth (nowCOAST), so it follows the terms NOAA publishes. These were read from the pages themselves on 2026-09-30:
 
 | Source | What the terms say | Terms |
 | --- | --- | --- |
@@ -143,7 +144,7 @@ The graph only points at NOAA services and the app itself fetches three of them 
 
 Not read from the pages themselves: NDBC, NCEI, NOAA Fisheries (FOSS and ERDDAP), tsunami.gov, nowCOAST, Coast Survey and NGS. The pages I tried returned 403 or 404 to scripted requests, and I didn't look further. They are NOAA sites, so the general NOAA public-data policy is assumed to apply. Check each service's own page before relying on it for anything beyond reference.
 
-The app does not modify NOAA data and does not use NOAA or NWS logos. Its footer says it isn't an official NOAA product, which covers the endorsement and "official material" conditions above. Live data shown on the globe comes straight from NWS, SWPC and CO-OPS, so their timestamps are shown as they arrive.
+The app does not modify NOAA data and does not use NOAA or NWS logos. Its footer says it isn't an official NOAA product, which covers the endorsement and "official material" conditions above. Live data shown on the globe comes straight from NWS, SWPC, CO-OPS and nowCOAST, so their timestamps are shown as they arrive.
 
 ## Live data and limits
 
@@ -151,6 +152,7 @@ The app does not modify NOAA data and does not use NOAA or NWS logos. Its footer
   - `api.weather.gov` (`src/data/nwsClient.ts`). Browsers cannot set the `User-Agent` header NWS asks for, so the client sends the documented `Accept: application/geo+json` header instead. NWS rate limits or 403s surface as readable messages in the alerts overlay, point popup and Inspector.
   - `services.swpc.noaa.gov` (`src/data/swpcClient.ts`): the OVATION aurora forecast (about 1 MB) and the one-minute planetary Kp. They are static files served with `access-control-allow-origin: *`, so no headers are needed.
   - `api.tidesandcurrents.noaa.gov` (`src/data/coopsClient.ts`): the water level and hi/lo predictions for a clicked station, with `access-control-allow-origin: *`. CO-OPS answers an unknown station or missing product with HTTP 200 and an `error` body, which the client returns as a message rather than a failure.
+- `nowcoast.noaa.gov` (`src/components/globe/nowcoastRadarLayer.ts`) is a fourth live source with no client: MapLibre requests WMS radar tiles directly (`access-control-allow-origin: *`, about 4 minutes of caching), only while the nowCOAST node is selected.
 - `src/components/globe/liveLayers.ts` maps each live service to the globe layer it drives; a test keeps it in step with `liveLayer` in `graph.json`.
 - Every other service in the graph is reference data only. Its sample is a static excerpt, and it is marked "not live yet" with the reason.
 
