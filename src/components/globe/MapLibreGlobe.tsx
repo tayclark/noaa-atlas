@@ -33,6 +33,12 @@ import {
 } from './auroraLayer'
 import { prefersReducedMotion } from '../prefersReducedMotion'
 import { describeKp, type KpReadout } from './kpReadout'
+import {
+  NOWCOAST_RADAR_ATTRIBUTION,
+  NOWCOAST_RADAR_OPACITY,
+  NOWCOAST_RADAR_TILE_SIZE,
+  NOWCOAST_RADAR_TILE_URL,
+} from './nowcoastRadarLayer'
 import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePopup'
 import { describeGeolocationError, GEOLOCATE_MAX_ZOOM, GEOLOCATE_POSITION_OPTIONS } from './geolocation'
 import {
@@ -95,6 +101,11 @@ const AURORA_SOURCE_ID = 'swpc-aurora'
 const AURORA_LAYER_ID = 'swpc-aurora-raster'
 const AURORA_OPACITY = 0.75
 const AURORA_OPACITY_SELECTED = 1
+
+// The nowCOAST radar tiles (#56): a WMS raster that MapLibre fetches itself, hidden until the
+// nowCOAST node is selected so nothing is requested on load.
+const RADAR_SOURCE_ID = 'nowcoast-radar'
+const RADAR_LAYER_ID = 'nowcoast-radar-raster'
 
 // The CO-OPS tide stations (#51): static points from coopsStations.json, drawn from regional zoom
 // (COOPS_MIN_ZOOM) and enlarged when the CO-OPS Data API node is selected. Their water level and
@@ -225,6 +236,20 @@ export function MapLibreGlobe() {
         type: 'line',
         source: COVERAGE_SOURCE_ID,
         paint: { 'line-color': ['get', 'color'], 'line-width': 1.5 },
+      })
+      // Radar sits under the stations and the alerts. Hidden layers fetch no tiles.
+      map.addSource(RADAR_SOURCE_ID, {
+        type: 'raster',
+        tiles: [NOWCOAST_RADAR_TILE_URL],
+        tileSize: NOWCOAST_RADAR_TILE_SIZE,
+        attribution: NOWCOAST_RADAR_ATTRIBUTION,
+      })
+      map.addLayer({
+        id: RADAR_LAYER_ID,
+        type: 'raster',
+        source: RADAR_SOURCE_ID,
+        layout: { visibility: 'none' },
+        paint: { 'raster-opacity': NOWCOAST_RADAR_OPACITY, 'raster-fade-duration': 0 },
       })
       // Under the alerts, which are added later. Stations are static, so the layer needs no fetch.
       map.addSource(COOPS_SOURCE_ID, { type: 'geojson', data: stationsToGeoJSON(COOPS_STATIONS) })
@@ -455,6 +480,14 @@ export function MapLibreGlobe() {
     )
   }, [coopsHighlighted, mapLoaded])
 
+  // The radar (#56) is shown only while its node is selected, once the layer exists (mapLoaded).
+  const radarShown = view.liveLayers.includes('nowcoast-radar')
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded || !map.getLayer(RADAR_LAYER_ID)) return
+    map.setLayoutProperty(RADAR_LAYER_ID, 'visibility', radarShown ? 'visible' : 'none')
+  }, [radarShown, mapLoaded])
+
   return (
     <div className="globe">
       <div
@@ -463,6 +496,7 @@ export function MapLibreGlobe() {
         aria-label="Globe view of NOAA API coverage"
         data-coverage-features={view.footprint.features.length}
         data-coops-stations={mapLoaded ? COOPS_STATIONS.length : undefined}
+        data-nowcoast-radar={mapLoaded ? (radarShown ? 'visible' : 'hidden') : undefined}
         data-aurora-cells={auroraCells ?? undefined}
         style={{ width: '100%', height: '100%' }}
       />

@@ -6750,8 +6750,7 @@
         "url": "https://nowcoast.noaa.gov/geoserver/ows?service=wms&version=1.3.0&request=GetCapabilities",
         "responseExcerpt": "<WMS_Capabilities ...><Service><Name>WMS</Name><Title>nowCOAST Web Map Services</Title> ... <Layer><Title>12-Hour Probability of Precipitation (%)</Title> ... <Name>ndfd_precipitation:conus_12hr_precipitation_probability</Name> ..."
       },
-      "liveLayer": false,
-      "notLiveReason": "Deferred: outside the v1 live layers. CORS works and the WMS/WMTS layers are a plausible later basemap overlay.",
+      "liveLayer": true,
       "tags": [
         "wms",
         "wmts",
