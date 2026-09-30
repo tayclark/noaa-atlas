@@ -47,7 +47,13 @@ export function FinderPanel() {
           </li>
         ))}
       </ul>
-      <div className="finder-body" ref={bodyRef}>
+      {/* With only the intro inside there is nothing focusable, so the scroller takes focus itself
+          (axe scrollable-region-focusable); the steps' buttons cover that once a task is picked. */}
+      <div
+        className="finder-body"
+        ref={bodyRef}
+        {...(selectedTask ? {} : { tabIndex: 0, role: 'region', 'aria-label': 'How to read NOAA Atlas' })}
+      >
         {!selectedTask && <FinderIntro />}
         {selectedTask && (
           <ol className="finder-node-list" aria-label="Recommended nodes">
@@ -76,7 +82,7 @@ export function FinderPanel() {
 /** What the app is and how to read it, shown until a task is picked (#148). */
 function FinderIntro() {
   return (
-    <section className="finder-intro" aria-label="How to read NOAA Atlas">
+    <div className="finder-intro">
       <p className="finder-intro-lead">Pick a task above to see which NOAA APIs to use.</p>
       <ul>
         <li>
@@ -89,6 +95,6 @@ function FinderIntro() {
         </li>
         <li>Click anything, on either side, and the other side follows.</li>
       </ul>
-    </section>
+    </div>
   )
 }
