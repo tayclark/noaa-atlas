@@ -19,6 +19,24 @@ function App() {
       <main className="app-main" id="main" tabIndex={-1}>
         {narrow ? <LeftPanel globe={<MapLibreGlobe />} /> : <SplitPane left={<LeftPanel />} right={<MapLibreGlobe />} />}
       </main>
+      <footer className="app-footer">
+        <p>
+          Data from NOAA and partner services. Not an official NOAA product and not endorsed by NOAA. Not for emergency or life-safety
+          decisions; use{' '}
+          <a href="https://www.weather.gov" target="_blank" rel="noreferrer">
+            weather.gov
+          </a>
+          .{' '}
+          <a href="https://github.com/tayclark/noaa-atlas#data-terms-and-attribution" target="_blank" rel="noreferrer">
+            Data terms
+          </a>
+          . Made with{' '}
+          <span role="img" aria-label="love">
+            ❤️
+          </span>{' '}
+          in Ocean Springs.
+        </p>
+      </footer>
     </div>
   )
 }

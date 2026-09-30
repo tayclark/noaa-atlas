@@ -32,4 +32,11 @@ describe('App', () => {
     render(<App />)
     expect(screen.getByRole('region', { name: 'Graph' })).toBeTruthy()
   })
+
+  it('shows the NOAA disclaimer and a link to the data terms in the footer', () => {
+    render(<App />)
+    const footer = screen.getByRole('contentinfo')
+    expect(footer.textContent).toContain('Not an official NOAA product')
+    expect(screen.getByRole('link', { name: 'Data terms' }).getAttribute('href')).toContain('#data-terms-and-attribution')
+  })
 })

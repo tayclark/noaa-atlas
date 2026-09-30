@@ -21,6 +21,8 @@ Requires Node 24.21 or newer (`.nvmrc`, `engines`).
 
 The window is split into two resizable panes: the left pane has two tabs, **Explore** and **Inspector**, and the right pane is the globe. Drag a divider to resize, or focus it and use the arrow keys (`Home` and `End` jump to the limits).
 
+A slim footer under both panes carries the NOAA disclaimer (not an official NOAA product, not endorsed by NOAA, not for life-safety decisions), a link to the data terms below, and the maker's credit.
+
 On a phone (700px wide or less) the panes aren't split: the globe becomes a third tab, **Explore · Globe · Inspector**, at full width. It stays loaded while you use the other tabs, and the Globe tab shows a dot when a selection made elsewhere has changed what it shows. On a narrow globe the alerts box and the Kp readout stack at the bottom, and the map credits start folded behind the ⓘ button. The graph's detail panel starts collapsed to its title bar, so a selection doesn't cover the graph, and the finder gets a larger share of the height.
 
 ## Explore tab
@@ -127,6 +129,21 @@ A service node records: `id`, `name`, `summary`, `owner` (office and program), `
 
 `npm run verify:data` makes a real GET (with an `Origin` header) to every URL in `graph.json` (base, doc, sample, rate-limit and edge source URLs) and flags HTTP errors, moved endpoints, samples of live-layer nodes without CORS, and doc pages that mention deprecation. Add `-- --out /absolute/report.json` for the full results. It needs the network, so it is a manual check and not part of CI. Bare API roots that return 400 or 404, and services whose `auth.note` already records a 403 or missing CORS, are expected flags. Only bump a node's `lastVerified` after re-checking it.
 
+## Data terms and attribution
+
+The graph only points at NOAA services and the app itself fetches two of them, so it follows the terms NOAA publishes. These were read from the pages themselves on 2026-09-30:
+
+| Source | What the terms say | Terms |
+| --- | --- | --- |
+| National Weather Service (`api.weather.gov`, SPC, WPC, CPC, NHC and the other NWS-hosted services, including SWPC) | Public domain and free for any lawful purpose, as long as you don't claim it as your own, imply NOAA/NWS endorsement or affiliation, or modify it and present it as official. The user assumes the risk of use, and data and product timestamps should be checked. | https://www.weather.gov/disclaimer |
+| NOAA Open Data Dissemination (the AWS-hosted GOES, NEXRAD, MRMS, JPSS, GFS, HRRR, GEFS, NBM and CORS buckets) | Open to the public and free to use. NOAA requests attribution for unaltered data, and you may not state or imply NOAA endorsement, or say modified data is original NOAA data. | https://registry.opendata.aws/noaa-goes/ (same wording on each dataset page) |
+| CO-OPS Tides & Currents | Raw data has not had National Ocean Service quality control and is preliminary, for limited use with caution. Its operational forecast systems have their own disclaimer. | https://tidesandcurrents.noaa.gov/disclaimers.html |
+| Marine Regions (coverage outlines on the globe) | CC BY 4.0, credited in the map's attribution bar. | see Globe |
+
+Not read from the pages themselves: NDBC, NCEI, NOAA Fisheries (FOSS and ERDDAP), tsunami.gov, nowCOAST, Coast Survey and NGS. The pages I tried returned 403 or 404 to scripted requests, and I didn't look further. They are NOAA sites, so the general NOAA public-data policy is assumed to apply. Check each service's own page before relying on it for anything beyond reference.
+
+The app does not modify NOAA data and does not use NOAA or NWS logos. Its footer says it isn't an official NOAA product, which covers the endorsement and "official material" conditions above. Live data shown on the globe comes straight from NWS and SWPC, so their timestamps are shown as they arrive.
+
 ## Live data and limits
 
 - There are two live integrations, each through a typed client that validates every response with zod and caches successful GETs in memory for 60 seconds (both share `src/data/liveRequest.ts`):
@@ -189,6 +206,10 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and push 
 
 - **ci**: typecheck, lint, unit tests with the coverage gate (summary posted to the run), production build, bundle size budget.
 - **e2e**: Playwright (Chromium) with the report uploaded on failure.
+
+## License
+
+MIT, see `LICENSE`. That covers this code only: NOAA data and the third-party map data keep their own terms (see [Data terms and attribution](#data-terms-and-attribution)).
 
 ## Hosting
 
