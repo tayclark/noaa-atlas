@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import graph from './graph.json'
 import { parseNceiDatasets } from './nceiDatasetSchema'
-import { NCEI_DATASETS, ONESTOP_DATASETS, datasetsForService } from './nceiDatasets'
+import { AWS_DATASETS, NCEI_DATASETS, ONESTOP_DATASETS, datasetsForService } from './nceiDatasets'
 
 describe('NCEI_DATASETS', () => {
   it('is a validated snapshot of unique datasets', () => {
@@ -33,6 +33,19 @@ describe('NCEI_DATASETS', () => {
     }
     const onestop = datasetsForService('onestop-search-api').map((d) => d.id)
     expect(onestop).toContain(ONESTOP_DATASETS[0].id)
+  })
+
+  it('adds NOAA AWS Open Data registry rows attached to bucket or catalog nodes (#64)', () => {
+    const nodeIds = new Set(graph.nodes.map((n) => n.id))
+    expect(AWS_DATASETS.length).toBeGreaterThan(50)
+    const ids = [...NCEI_DATASETS, ...ONESTOP_DATASETS, ...AWS_DATASETS].map((d) => d.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    for (const d of AWS_DATASETS) {
+      expect(nodeIds.has(d.serviceId), d.id).toBe(true)
+      expect(d.doi?.startsWith('https://registry.opendata.aws/'), d.id).toBe(true)
+    }
+    expect(AWS_DATASETS.some((d) => d.serviceId !== 'aws-open-data-noaa')).toBe(true)
+    expect(datasetsForService('aws-open-data-noaa').length).toBeGreaterThan(50)
   })
 
   it('rejects malformed rows', () => {

@@ -19,6 +19,7 @@
     "coops-stations": "node scripts/coops-stations.mjs",
     "ncei-datasets": "node scripts/ncei-datasets.mjs",
     "onestop-datasets": "node scripts/onestop-datasets.mjs",
+    "aws-open-data-datasets": "node scripts/aws-open-data-datasets.mjs",
     "test:e2e": "playwright test",
     "test:e2e:mocked": "playwright test --grep-invert @live",
     "test:e2e:live": "playwright test --grep @live"
@@ -57,7 +58,8 @@
     "polyclip-ts": "^0.16.8",
     "typescript": "~7.0.2",
     "vite": "^8.3.1",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.1",
+    "yaml": "^2.9.1"
   },
   "engines": {
     "node": ">=24.21.0"
