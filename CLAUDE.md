@@ -59,5 +59,6 @@ The workflow is in the README ("Adding or editing services"). Beyond that:
 ## Conventions
 
 - Conventional Commits with the issue number as a suffix, e.g. `fix(graph): frame a selection beside the detail panel (#141)`. Branches: `feature/`, `fix/`, `chore/`, `docs/`.
+- Husky hooks run on commit: `pre-commit` runs lint-staged (oxlint on staged JS/TS) and `commit-msg` runs commitlint (`config-conventional`, types restricted in `commitlint.config.js`). Don't bypass them with `--no-verify`.
 - When user-visible behaviour changes, update `README.md` in the same PR.
 - `SESSION_NOTES.md` is an intentionally untracked scratch file for session hand-off. Never stage it.
