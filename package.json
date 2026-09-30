@@ -17,6 +17,7 @@
     "coverage-geometry": "node scripts/coverage-geometry.ts",
     "verify:data": "node scripts/verify-links.mjs",
     "coops-stations": "node scripts/coops-stations.mjs",
+    "ncei-datasets": "node scripts/ncei-datasets.mjs",
     "test:e2e": "playwright test",
     "test:e2e:mocked": "playwright test --grep-invert @live",
     "test:e2e:live": "playwright test --grep @live"
