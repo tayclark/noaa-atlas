@@ -1,4 +1,4 @@
-import { GeolocateControl, Map as MapLibreMap, Popup, type CanvasSource, type GeoJSONSource, type MapLayerMouseEvent, type MapMouseEvent } from 'maplibre-gl'
+import { GeolocateControl, Map as MapLibreMap, Popup, setWorkerUrl, type CanvasSource, type GeoJSONSource, type MapLayerMouseEvent, type MapMouseEvent } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import './MapLibreGlobe.css'
@@ -52,6 +52,10 @@ import { parseTasksFile } from '../../data/taskSchema'
 import tasksJson from '../../data/tasks.json'
 import { describeSelectionForGlobe, type GlobeViewContext } from './selectionGlobeView'
 import { subscribeSelection, getSelectionSnapshot, selectPoint } from '../../data/selectionStore'
+
+// `vite build` doesn't discover maplibre's worker on its own; the `maplibreWorker` plugin in
+// vite.config.ts emits it under `maplibre/`. The dev server needs no help (#49).
+if (!import.meta.env.DEV) setWorkerUrl(`${import.meta.env.BASE_URL}maplibre/maplibre-gl-worker.mjs`)
 
 // Beyond this many zone-only alerts, the overlay collapses the rest behind a "N more" toggle
 // rather than growing unbounded during a high-volume event (#106).

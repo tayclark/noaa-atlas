@@ -10,12 +10,9 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  // `vite preview` (the production build) was tried first as more CI-representative, but
-  // maplibre-gl's worker script isn't emitted into `dist/` by `vite build` at all — the globe
-  // never fires its 'load' event against a production build as a result. Every prior session's
-  // manual Playwright verification used `npm run dev`, which is why this never surfaced before.
-  // Worth a follow-up issue to fix the production build itself; out of scope here, so e2e runs
-  // against the dev server like every prior manual check did.
+  // e2e runs against the dev server rather than `vite preview`. The production build's MapLibre
+  // worker is now emitted (see the `maplibreWorker` plugin in vite.config.ts, #49), so switching
+  // to a preview server is possible but hasn't been done.
   webServer: {
     command: 'npm run dev -- --port 5173',
     url: 'http://localhost:5173',

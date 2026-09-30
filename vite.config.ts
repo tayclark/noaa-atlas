@@ -1,9 +1,29 @@
+import { readFileSync } from 'node:fs'
 import react from '@vitejs/plugin-react'
+import type { Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
+
+// maplibre-gl 5+ starts its worker from a separate ESM file that imports a shared chunk by its
+// bare name, so both must ship unhashed and side by side. (#49)
+const maplibreWorker = (): Plugin => ({
+  name: 'maplibre-worker',
+  apply: 'build',
+  generateBundle() {
+    for (const name of ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs']) {
+      this.emitFile({
+        type: 'asset',
+        fileName: `maplibre/${name}`,
+        source: readFileSync(new URL(`./node_modules/maplibre-gl/dist/${name}`, import.meta.url)),
+      })
+    }
+  },
+})
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  // Project Pages serves from /noaa-atlas/; the deploy workflow sets VITE_BASE. (#49)
+  base: process.env.VITE_BASE ?? '/',
+  plugins: [react(), maplibreWorker()],
   // maplibre-gl loads its tile-parsing worker as a separate ESM chunk at
   // runtime; Vite's dep pre-bundling doesn't discover that chunk, so the
   // worker 404s unless maplibre-gl is excluded from pre-bundling. (#82 spike)
