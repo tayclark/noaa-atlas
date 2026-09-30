@@ -12,6 +12,8 @@ const RUNNABLE_SAMPLES: Partial<Record<string, () => Promise<unknown>>> = {
   'nws-api': () => getPoint(39.7456, -97.0892),
   // OVATION isn't runnable here: its ~1 MB grid is no use as a pretty-printed body.
   'swpc-geomagnetic-indices': () => getPlanetaryKp(),
+  // CO-OPS isn't runnable either: the client returns a parsed result (latest row, `ok` wrapper), not
+  // the raw body the sample excerpt shows, so the live output wouldn't match the sample it replaces.
 }
 
 type RunState = { status: 'idle' } | { status: 'loading' } | { status: 'done'; body: string } | { status: 'error'; message: string }
