@@ -1,4 +1,4 @@
-import { GeolocateControl, Map as MapLibreMap, Popup, setWorkerUrl, type CanvasSource, type GeoJSONSource, type MapLayerMouseEvent, type MapMouseEvent } from 'maplibre-gl'
+import { GeolocateControl, Map as MapLibreMap, Popup, setWorkerUrl, type CanvasSource, type ExpressionSpecification, type GeoJSONSource, type MapLayerMouseEvent, type MapMouseEvent } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import './MapLibreGlobe.css'
@@ -13,8 +13,17 @@ import graphJson from '../../data/graph.json'
 import { parseGraphFile, type ServiceNode } from '../../data/graphSchema'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
 import { pollWhileVisible } from '../../data/pollWhileVisible'
+import { getHiloPredictions, getWaterLevel } from '../../data/coopsClient'
+import { COOPS_STATIONS } from '../../data/coopsStations'
 import { getOvationAurora, getPlanetaryKp, SWPC_REFRESH_MS } from '../../data/swpcClient'
 import type { SwpcOvation } from '../../data/swpcSchema'
+import {
+  COOPS_MIN_ZOOM,
+  formatStationLoadingHtml,
+  formatStationPopupHtml,
+  stationsToGeoJSON,
+  type StationProperties,
+} from './coopsStationsLayer'
 import {
   AURORA_RASTER_COORDINATES,
   auroraAt,
@@ -86,6 +95,19 @@ const AURORA_SOURCE_ID = 'swpc-aurora'
 const AURORA_LAYER_ID = 'swpc-aurora-raster'
 const AURORA_OPACITY = 0.75
 const AURORA_OPACITY_SELECTED = 1
+
+// The CO-OPS tide stations (#51): static points from coopsStations.json, drawn from regional zoom
+// (COOPS_MIN_ZOOM) and enlarged when the CO-OPS Data API node is selected. Their water level and
+// predictions are fetched on click.
+const COOPS_SOURCE_ID = 'coops-stations'
+const COOPS_LAYER_ID = 'coops-stations-circle'
+const COOPS_RADIUS: [number, number][] = [
+  [COOPS_MIN_ZOOM, 3],
+  [8, 6],
+]
+const COOPS_RADIUS_SELECTED = COOPS_RADIUS.map(([zoom, radius]): [number, number] => [zoom, radius + 2])
+const coopsRadius = (stops: [number, number][]) =>
+  ['interpolate', ['linear'], ['zoom'], ...stops.flat()] as ExpressionSpecification
 
 // Worldwide coverage tints the whole globe, so the default view is kept rather than framing the world.
 const GLOBAL_VIEW_ZOOM = 1.5
@@ -204,18 +226,47 @@ export function MapLibreGlobe() {
         source: COVERAGE_SOURCE_ID,
         paint: { 'line-color': ['get', 'color'], 'line-width': 1.5 },
       })
+      // Under the alerts, which are added later. Stations are static, so the layer needs no fetch.
+      map.addSource(COOPS_SOURCE_ID, { type: 'geojson', data: stationsToGeoJSON(COOPS_STATIONS) })
+      map.addLayer({
+        id: COOPS_LAYER_ID,
+        type: 'circle',
+        source: COOPS_SOURCE_ID,
+        minzoom: COOPS_MIN_ZOOM,
+        paint: {
+          'circle-color': '#0b6fb8',
+          'circle-radius': coopsRadius(COOPS_RADIUS),
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 1.5,
+        },
+      })
+      map.on('click', COOPS_LAYER_ID, (e: MapLayerMouseEvent) => {
+        const feature = e.features?.[0]
+        if (!feature || feature.geometry.type !== 'Point') return
+        const station = feature.properties as StationProperties
+        const [lng, lat] = feature.geometry.coordinates
+        selectPoint([lng, lat])
+        const popup = new Popup().setLngLat([lng, lat]).setHTML(formatStationLoadingHtml(station)).addTo(map)
+        void Promise.allSettled([getWaterLevel(station.id), getHiloPredictions(station.id)]).then(([water, tides]) => {
+          popup.setHTML(formatStationPopupHtml(station, water, tides))
+        })
+      })
+      map.on('mouseenter', COOPS_LAYER_ID, () => {
+        map.getCanvas().style.cursor = 'pointer'
+      })
+      map.on('mouseleave', COOPS_LAYER_ID, () => {
+        map.getCanvas().style.cursor = ''
+      })
       setMapLoaded(true)
 
       // Point-click forecast/observation lookup (#39). Registered as a global click handler,
       // not layer-scoped like the alerts click handler below, so it works immediately without
       // waiting on the alerts fetch. Guarded so a click on an alert polygon is handled only by
       // the alert popup below, not both — map.getLayer(...) also guards queryRenderedFeatures
-      // being called before the alerts layer exists.
+      // being called before the alerts layer exists. A tide station is guarded the same way (#51).
       map.on('click', (e: MapMouseEvent) => {
-        const alertFeatures = map.getLayer(ALERTS_FILL_LAYER_ID)
-          ? map.queryRenderedFeatures(e.point, { layers: [ALERTS_FILL_LAYER_ID] })
-          : []
-        if (alertFeatures.length > 0) return
+        const layers = [ALERTS_FILL_LAYER_ID, COOPS_LAYER_ID].filter((id) => map.getLayer(id))
+        if (layers.length > 0 && map.queryRenderedFeatures(e.point, { layers }).length > 0) return
         showPointLookup(map, e.lngLat.lng, e.lngLat.lat, ovationRef.current)
       })
 
@@ -392,6 +443,18 @@ export function MapLibreGlobe() {
     map.setPaintProperty(AURORA_LAYER_ID, 'raster-opacity', auroraHighlighted ? AURORA_OPACITY_SELECTED : AURORA_OPACITY)
   }, [auroraHighlighted, auroraCells])
 
+  // The stations' emphasis (#51), applied once the layer exists (mapLoaded).
+  const coopsHighlighted = view.liveLayers.includes('coops-stations')
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded || !map.getLayer(COOPS_LAYER_ID)) return
+    map.setPaintProperty(
+      COOPS_LAYER_ID,
+      'circle-radius',
+      coopsRadius(coopsHighlighted ? COOPS_RADIUS_SELECTED : COOPS_RADIUS),
+    )
+  }, [coopsHighlighted, mapLoaded])
+
   return (
     <div className="globe">
       <div
@@ -399,6 +462,7 @@ export function MapLibreGlobe() {
         role="group"
         aria-label="Globe view of NOAA API coverage"
         data-coverage-features={view.footprint.features.length}
+        data-coops-stations={mapLoaded ? COOPS_STATIONS.length : undefined}
         data-aurora-cells={auroraCells ?? undefined}
         style={{ width: '100%', height: '100%' }}
       />
