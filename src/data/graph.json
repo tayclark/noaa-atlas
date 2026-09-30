@@ -306,7 +306,7 @@
         "note": "Alerts and observations are near real-time; forecasts follow each forecast office's cycle."
       },
       "docUrl": "https://www.weather.gov/documentation/services-web-api",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://api.weather.gov/points/39.7456,-97.0892",
         "headers": {
@@ -623,7 +623,7 @@
         "note": "Varies by layer; each layer follows its source product's issuance."
       },
       "docUrl": "https://www.weather.gov/gis/cloudgiswebservices",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://mapservices.weather.noaa.gov/vector/rest/services?f=json",
         "headers": {
@@ -914,7 +914,7 @@
         "note": "Update schedule is not documented on the data page; files follow each outlook issuance. Days 4-8 outlooks are experimental."
       },
       "docUrl": "https://www.spc.noaa.gov/gis/",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://www.spc.noaa.gov/products/outlook/day1otlk_cat.nolyr.geojson",
         "headers": {
@@ -1230,7 +1230,7 @@
         "note": "Update schedule is not documented on the data page; products are issued multiple times daily in UTC."
       },
       "docUrl": "https://www.wpc.ncep.noaa.gov/kml/kmlproducts.php",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://www.wpc.ncep.noaa.gov/kml/",
         "responseExcerpt": "HTML index page listing downloadable files, for example:\n  artcc_boundaries.kml\n  cave_artcc.kmz\n  cave_statebounds.kmz\n  modified_state_bnds.kml\n(download only; no JSON API)"
@@ -1280,7 +1280,7 @@
         "note": "Update schedule is not documented on the data page; cadence varies by product."
       },
       "docUrl": "https://www.cpc.ncep.noaa.gov/products/GIS/GIS_DATA/",
-      "lastVerified": "2026-09-21",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://www.cpc.ncep.noaa.gov/products/GIS/GIS_DATA/",
         "responseExcerpt": "HTML page linking to FTP directories of shapefiles and GeoTIFFs, for example:\n  https://ftp.cpc.ncep.noaa.gov/GIS/USDM_Products/precip/\n  https://ftp.cpc.ncep.noaa.gov/GIS/GRADS_GIS/GeoTIFF/TEMP/\n(FTP-hosted; not fetchable from a browser)"
@@ -1620,7 +1620,7 @@
         "note": "Real-time observations are mostly 6-minute values; hourly, daily and monthly aggregates are also available, and verified data lags by about a month."
       },
       "docUrl": "https://api.tidesandcurrents.noaa.gov/api/prod/",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=noaa-atlas&date=latest&datum=MLLW&station=8729108&time_zone=gmt&units=metric&format=json",
         "responseExcerpt": "{\"metadata\":{\"id\":\"8729108\",\"name\":\"Panama City\",\"lat\":\"30.1497\",\"lon\":\"-85.6644\"},\n \"data\":[{\"t\":\"2026-09-23 22:42\",\"v\":\"0.252\",\"s\":\"0.007\",\"f\":\"1,0,0,0\",\"q\":\"p\"}]}"
@@ -1954,7 +1954,7 @@
         "note": "Station and sensor metadata; changes when stations are installed, moved or reconfigured."
       },
       "docUrl": "https://api.tidesandcurrents.noaa.gov/mdapi/prod/",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/8729108.json",
         "responseExcerpt": "{\n  \"count\": 1,\n  \"stations\": [\n    {\n      \"id\": \"8729108\",\n      \"name\": \"Panama City\",\n      \"state\": \"FL\",\n      \"lat\": 30.149723,\n      \"lng\": -85.664444,\n      \"details\": { \"self\": \".../stations/8729108/details.json\" },\n      \"datums\": { \"self\": \".../stations/8729108/datums.json\" }\n    }\n  ]\n}\n(abbreviated)"
@@ -2288,7 +2288,7 @@
         "note": "Derived from long-term records and updated as each product is reprocessed, not a live feed."
       },
       "docUrl": "https://api.tidesandcurrents.noaa.gov/dpapi/prod/",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://api.tidesandcurrents.noaa.gov/dpapi/prod/webapi/product/sealvltrends.json?station=8729108",
         "responseExcerpt": "{\n  \"count\": 1,\n  \"SeaLvlTrends\": [\n    {\n      \"stationId\": \"8729108\",\n      \"stationName\": \"Panama City\",\n      \"trendUnits\": \"inches/decade\",\n      \"trend\": 1.21,\n      \"trendError\": 0.1\n    }\n  ]\n}\n(abbreviated)"
@@ -2342,7 +2342,7 @@
         "note": "Most stations report hourly and data is mostly available 25 minutes after the hour."
       },
       "docUrl": "https://www.ndbc.noaa.gov/faq/rt_data_access.shtml",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://www.ndbc.noaa.gov/data/realtime2/42001.txt",
         "responseExcerpt": "#YY  MM DD hh mm WDIR WSPD GST  WVHT   DPD   APD MWD   PRES  ATMP  WTMP  DEWP  VIS PTDY  TIDE\n#yr  mo dy hr mn degT m/s  m/s     m   sec   sec degT   hPa  degC  degC  degC  nmi  hPa    ft\n2026 09 23 22 10  60  5.0  6.0   0.5    MM   3.8  52 1013.0  30.3  30.7  24.7   MM   MM    MM\n(abbreviated)"
@@ -2670,7 +2670,7 @@
         "note": "Real-time files list water column height in 15-minute steps; DART II stations transmit every six hours in standard mode, with high-rate event mode when a tsunami is detected."
       },
       "docUrl": "https://www.ndbc.noaa.gov/dart/dart.shtml",
-      "lastVerified": "2026-09-26",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://www.ndbc.noaa.gov/data/realtime2/21414.dart",
         "responseExcerpt": "#YY  MM DD hh mm ss T   HEIGHT\n#yr  mo dy hr mn  s -        m\n2026 09 10 18 00 00 1 5421.034\n2026 09 10 17 45 00 1 5421.057\n(abbreviated)"
@@ -2724,7 +2724,7 @@
         "note": "Dataset dependent; recent data trails observation time and archive-quality data can lag 45-60 days."
       },
       "docUrl": "https://www.ncei.noaa.gov/cdo-web/webservices/v2",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://www.ncei.noaa.gov/cdo-web/api/v2/data?datasetid=GSOM&stationid=GHCND:USC00010008&startdate=2010-05-01&enddate=2010-05-31&units=standard",
         "headers": {
@@ -2779,7 +2779,7 @@
         "note": "Dataset dependent; active US GHCN-Daily stations update from real-time feeds and are replaced by archive-quality data later."
       },
       "docUrl": "https://www.ncei.noaa.gov/support/access-data-service-api-user-documentation",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations=USW00013874&startDate=2024-01-01&endDate=2024-01-03&format=json&dataTypes=TMAX,TMIN,PRCP",
         "responseExcerpt": "[\n{\"DATE\":\"2024-01-01\",\"STATION\":\"USW00013874\",\"TMAX\":\"  100\",\"TMIN\":\"   11\",\"PRCP\":\"    0\"}\n,{\"DATE\":\"2024-01-02\",\"STATION\":\"USW00013874\",\"TMAX\":\"  122\",\"TMIN\":\"  -10\",\"PRCP\":\"    0\"}\n,{\"DATE\":\"2024-01-03\",\"STATION\":\"USW00013874\",\"TMAX\":\"   83\",\"TMIN\":\"   -5\",\"PRCP\":\"    8\"}\n]"
@@ -3093,7 +3093,7 @@
         "note": "Yearly files are regenerated periodically; the 2026 details file was last generated 2026-09-18."
       },
       "docUrl": "https://www.ncei.noaa.gov/access/storm-events-database/",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/",
         "responseExcerpt": "Directory listing of files such as:\nStorm-Data-Bulk-csv-Format.pdf\nStormEvents_details-ftp_v1.0_d2026_c20260918.csv.gz\nStormEvents_details-ftp_v1.0_d2025_c20260819.csv.gz\n(abbreviated)"
@@ -3410,7 +3410,7 @@
         "note": "Advisories are issued about every six hours per active storm (intermediate updates more often); CurrentStorms.json is empty when no storms are active."
       },
       "docUrl": "https://www.nhc.noaa.gov/gis/",
-      "lastVerified": "2026-09-26",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://www.nhc.noaa.gov/CurrentStorms.json",
         "responseExcerpt": "{\n  \"activeStorms\": [\n    {\n      \"id\": \"al062026\",\n      \"name\": \"Fay\",\n      \"classification\": \"TD\",\n      \"intensity\": \"30\",\n      \"pressure\": \"1011\",\n      \"latitude\": \"30.1N\",\n      \"longitude\": \"39.2W\",\n      \"movementDir\": 270,\n      \"movementSpeed\": 8,\n      \"lastUpdate\": \"2026-09-23T21:00:00.000Z\"\n    }\n  ]\n}\n(trimmed: each storm also lists advisory text URLs and zip/kmz GIS file URLs)"
@@ -3737,7 +3737,7 @@
         "note": "Event-driven: messages appear when a center issues a product for an earthquake or tsunami, otherwise the feed holds the last message."
       },
       "docUrl": "https://www.tsunami.gov/?page=cap",
-      "lastVerified": "2026-09-26",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://www.tsunami.gov/events/xml/PHEBCAP.xml",
         "responseExcerpt": "<alert xmlns=\"urn:oasis:names:tc:emergency:cap:1.2\">\n  <identifier>PHEB-1-26261050</identifier>\n  <sender>ntwc@noaa.gov</sender>\n  <status>Actual</status>\n  <msgType>Alert</msgType>\n  <source>PTWC</source>\n  <info>\n    <event>Tsunami Information</event>\n    <severity>Minor</severity>\n    <certainty>Unlikely</certainty>\n    ...\n    <parameter><valueName>EventLocationName</valueName><value>VICINITY OF PUERTO RICO</value></parameter>\n    <parameter><valueName>EventPreliminaryMagnitude</valueName><value>4.6</value></parameter>\n  </info>\n</alert>"
@@ -4014,7 +4014,7 @@
         "aws"
       ],
       "kind": "service",
-      "lastVerified": "2026-09-23"
+      "lastVerified": "2026-09-30"
     },
     {
       "id": "star-goes-imagery",
@@ -4275,7 +4275,7 @@
         "jpeg"
       ],
       "kind": "service",
-      "lastVerified": "2026-09-23"
+      "lastVerified": "2026-09-30"
     },
     {
       "id": "nexrad-level2-aws",
@@ -4591,7 +4591,7 @@
         "aws"
       ],
       "kind": "service",
-      "lastVerified": "2026-09-23"
+      "lastVerified": "2026-09-30"
     },
     {
       "id": "mrms-aws-open-data",
@@ -4907,7 +4907,7 @@
         "aws"
       ],
       "kind": "service",
-      "lastVerified": "2026-09-23"
+      "lastVerified": "2026-09-30"
     },
     {
       "id": "jpss-aws-open-data",
@@ -4961,7 +4961,7 @@
         "aws"
       ],
       "kind": "service",
-      "lastVerified": "2026-09-23"
+      "lastVerified": "2026-09-30"
     },
     {
       "id": "coastwatch-erddap",
@@ -5016,7 +5016,7 @@
         "api"
       ],
       "kind": "service",
-      "lastVerified": "2026-09-23"
+      "lastVerified": "2026-09-30"
     },
     {
       "id": "nomads",
@@ -5068,7 +5068,7 @@
         "grib-filter"
       ],
       "kind": "service",
-      "lastVerified": "2026-09-23"
+      "lastVerified": "2026-09-30"
     },
     {
       "id": "gfs-aws-open-data",
@@ -5120,7 +5120,7 @@
         "aws"
       ],
       "kind": "service",
-      "lastVerified": "2026-09-23"
+      "lastVerified": "2026-09-30"
     },
     {
       "id": "hrrr-aws-open-data",
@@ -5408,7 +5408,7 @@
         "aws"
       ],
       "kind": "service",
-      "lastVerified": "2026-09-23"
+      "lastVerified": "2026-09-30"
     },
     {
       "id": "gefs-aws-open-data",
@@ -5461,7 +5461,7 @@
         "aws"
       ],
       "kind": "service",
-      "lastVerified": "2026-09-23"
+      "lastVerified": "2026-09-30"
     },
     {
       "id": "nbm-aws-open-data",
@@ -5750,7 +5750,7 @@
         "aws"
       ],
       "kind": "service",
-      "lastVerified": "2026-09-23"
+      "lastVerified": "2026-09-30"
     },
     {
       "id": "foss-landings-api",
@@ -6071,7 +6071,7 @@
         "note": "Annual statistics, updated as each year is finalized."
       },
       "docUrl": "https://apps-st.fisheries.noaa.gov/ods/foss/metadata-catalog/landings/",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://apps-st.fisheries.noaa.gov/ods/foss/landings/?q=%7B%22state_name%22:%22ALASKA%22,%22year%22:2022%7D&limit=2",
         "responseExcerpt": "{\"items\":[{\"tsn\":\"164711\",\"ts_afs_name\":\"COD, PACIFIC\",\"ts_scientific_name\":\"Gadus macrocephalus\",\"region_name\":\"Alaska\",\"state_name\":\"ALASKA\",\"year\":2022,\"pounds\":402864560.29894,\"dollars\":183052044.63417,\"tot_count\":null,\"source\":\"AKFIN\",\"collection\":\"Commercial\", ...}, ...],\"hasMore\":true,\"limit\":2,\"offset\":0,\"count\":2}"
@@ -6125,7 +6125,7 @@
         "note": "Layers change when a species designation is published or revised."
       },
       "docUrl": "https://www.fisheries.noaa.gov/resource/map/national-esa-critical-habitat-mapper",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://maps.fisheries.noaa.gov/server/rest/services/All_NMFS_Critical_Habitat/MapServer/180/query?where=1%3D1&outFields=*&resultRecordCount=1&returnGeometry=false&f=json",
         "responseExcerpt": "{\"displayFieldName\":\"SCIENAME\",\"fieldAliases\":{\"OBJECTID\":\"OBJECTID\",\"ID\":\"ID\",\"SCIENAME\":\"Scientific Name\",\"COMNAME\":\"Common Name\",\"LISTENTITY\":\"Listed Entity\",\"LISTSTATUS\":\"Listing Status\",\"CHSTATUS\":\"Critical Habitat Status\", ...},\"fields\":[...], ...}"
@@ -6429,7 +6429,7 @@
         "note": "Varies by dataset from near real-time eMOLT records to fixed historical series."
       },
       "docUrl": "https://comet.nefsc.noaa.gov/erddap/information.html",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://comet.nefsc.noaa.gov/erddap/search/index.json?page=1&itemsPerPage=1&searchFor=emolt",
         "responseExcerpt": "{\"table\":{\"columnNames\":[\"griddap\",\"Subset\",\"tabledap\",\"Make A Graph\",\"wms\",\"files\",\"Title\",\"Summary\",...,\"Institution\",\"Dataset ID\"],\"rows\":[[\"\",\"https://comet.nefsc.noaa.gov/erddap/tabledap/eMOLT_realtime_bottom_temps_and_profiles.subset\",\"https://comet.nefsc.noaa.gov/erddap/tabledap/eMOLT_realtime_bottom_temps_and_profiles\", ...]]}}"
@@ -6746,7 +6746,7 @@
         "note": "Varies by layer, from radar refreshed every few minutes to forecast grids updated hourly or daily."
       },
       "docUrl": "https://nowcoast.noaa.gov/",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://nowcoast.noaa.gov/geoserver/ows?service=wms&version=1.3.0&request=GetCapabilities",
         "responseExcerpt": "<WMS_Capabilities ...><Service><Name>WMS</Name><Title>nowCOAST Web Map Services</Title> ... <Layer><Title>12-Hour Probability of Precipitation (%)</Title> ... <Name>ndfd_precipitation:conus_12hr_precipitation_probability</Name> ..."
@@ -7065,7 +7065,7 @@
         "note": "Varies by service, from observation mosaics to daily outlooks and snow analyses."
       },
       "docUrl": "https://www.weather.gov/gis/",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://mapservices.weather.noaa.gov/raster/rest/services?f=json",
         "responseExcerpt": "{\"currentVersion\":11.3,\"folders\":[\"air_quality\",\"climate\",\"hazards\",\"NDFD\",\"obs\",\"outlooks\",\"precip\",\"snow\",\"Utilities\"],\"services\":[]}"
@@ -7402,7 +7402,7 @@
         "note": "Chart data is refreshed as Coast Survey publishes chart updates."
       },
       "docUrl": "https://nauticalcharts.noaa.gov/data/gis-data-and-services.html",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://gis.charttools.noaa.gov/arcgis/rest/services/MarineChart_Services/NOAACharts/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
         "responseExcerpt": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Capabilities xmlns=\"http://www.opengis.net/wmts/1.0\" ... version=\"1.0.0\"> ..."
@@ -7455,7 +7455,7 @@
         "note": "Computed on request from the current model epoch; the model is revised about every five years."
       },
       "docUrl": "https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?lat1=40&lon1=-100&resultFormat=json&key=YOUR_KEY",
         "responseExcerpt": "{\"result\":[{\"date\":2026.7288,\"elevation\":0,\"declination\":4.66039,\"alt_info\":\" Warning: The height validity of the geomagnetic components is dependent on the geomagnetic activity level. ...\", ...}], ...}"
@@ -7771,7 +7771,7 @@
         "note": "New daily RINEX files are added per station; NCEI's CLASS archive is the route for older or bulk orders."
       },
       "docUrl": "https://geodesy.noaa.gov/CORS/data.shtml",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://noaa-cors-pds.s3.amazonaws.com/?list-type=2&max-keys=3&delimiter=/",
         "responseExcerpt": "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>noaa-cors-pds</Name> ... <CommonPrefixes><Prefix>Plots/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>coord/</Prefix></CommonPrefixes> ..."
@@ -7823,7 +7823,7 @@
         "note": "Catalog records are updated as providers publish or revise metadata; no fixed schedule is documented."
       },
       "docUrl": "https://cedardevs.github.io/onestop/api/search-api",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://data.noaa.gov/onestop/api/search/search/collection",
         "responseExcerpt": "POST {\"queries\":[{\"type\":\"queryText\",\"value\":\"sea surface temperature\"}],\"page\":{\"max\":1,\"offset\":0}} -> {\"data\":[{\"attributes\":{\"title\":\"NOAA Daily Optimum Interpolation Sea Surface Temperature\",\"beginDate\":\"1971-01-01T00:00:00Z\",\"endDate\":\"2023-05-30T23:59:59.999Z\",\"links\":[{\"linkFunction\":\"download\",\"linkName\":\"Thredds Server\",\"linkUrl\":\"https://psl.noaa.gov/thredds/catalog/Datasets/noaa.oisst.v2.highres/catalog.html\"}]},\"id\":\"9f90fd45-3c05-49ce-a2c0-4d6d69b4527f\",\"type\":\"collection\"}],\"meta\":{\"took\":37,\"total\":16851,\"exactCount\":true}}"
@@ -7875,7 +7875,7 @@
         "note": "Entries are added or changed as datasets join or leave NODD; no fixed schedule is documented."
       },
       "docUrl": "https://www.noaa.gov/information-technology/open-data-dissemination",
-      "lastVerified": "2026-09-23",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://registry.opendata.aws/collab/noaa/",
         "responseExcerpt": "<h3><a href=\"/noaa-nexrad/\">NEXRAD on AWS</a></h3>\n          <p><a href=\"/noaa-nexrad/\">Details &rarr;</a></p>"
@@ -7932,7 +7932,7 @@
         "note": "noaa-scales.json is refreshed every few minutes; alerts.json lists messages from the past few days as they are issued; the 3-day forecast is issued twice daily."
       },
       "docUrl": "https://www.spaceweather.gov/products/alerts-watches-and-warnings",
-      "lastVerified": "2026-09-24",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://services.swpc.noaa.gov/products/noaa-scales.json",
         "responseExcerpt": "{\n  \"0\": {\n    \"DateStamp\": \"2026-09-24\", \"TimeStamp\": \"23:42:00\",\n    \"R\": { \"Scale\": \"0\", \"Text\": \"none\", \"MinorProb\": null, \"MajorProb\": null },\n    \"S\": { \"Scale\": \"0\", \"Text\": \"none\", \"Prob\": null },\n    \"G\": { \"Scale\": \"0\", \"Text\": \"none\" }\n  },\n  \"1\": {\n    \"DateStamp\": \"2026-09-24\", \"TimeStamp\": \"23:42:00\",\n    \"R\": { \"Scale\": null, \"Text\": null, \"MinorProb\": \"20\", \"MajorProb\": \"1\" },\n    \"S\": { \"Scale\": null, \"Text\": null, \"Prob\": \"1\" },\n    \"G\": { \"Scale\": \"1\", \"Text\": \"minor\" }\n  },\n  ...\n}\n(trimmed: \"0\" is now and \"-1\" the past 24 hours; \"1\" to \"3\" are the next three days)"
@@ -7989,7 +7989,7 @@
         "note": "Kp is issued for each 3-hour interval; planetary_k_index_1m.json gives a running one-minute estimate."
       },
       "docUrl": "https://www.spaceweather.gov/products/planetary-k-index",
-      "lastVerified": "2026-09-24",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json",
         "responseExcerpt": "[\n  { \"time_tag\": \"2026-09-24T19:17:00\", \"kp_index\": 2, \"estimated_kp\": 1.67, \"kp\": \"2M\" },\n  ...\n  { \"time_tag\": \"2026-09-25T01:12:00\", \"kp_index\": 3, \"estimated_kp\": 3.00, \"kp\": \"3Z\" },\n  { \"time_tag\": \"2026-09-25T01:13:00\", \"kp_index\": 3, \"estimated_kp\": 3.00, \"kp\": \"3Z\" }\n]\n(trimmed: one running estimate per minute over about the last 6 hours; the 3-hour official Kp is products/noaa-planetary-k-index.json)"
@@ -8044,7 +8044,7 @@
         "note": "Regenerated every few minutes; the forecast lead time is the solar wind travel time from L1 to Earth (falls back to a Kp-driven estimate with no lead time when solar wind data is unavailable)."
       },
       "docUrl": "https://www.spaceweather.gov/products/aurora-30-minute-forecast",
-      "lastVerified": "2026-09-24",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://services.swpc.noaa.gov/json/ovation_aurora_latest.json",
         "responseExcerpt": "{\n  \"Observation Time\": \"2026-09-24T23:34:00Z\",\n  \"Forecast Time\": \"2026-09-25T00:38:00Z\",\n  \"Data Format\": \"[Longitude, Latitude, Aurora]\",\n  \"coordinates\": [[0, -90, 4], [0, -89, 0], [0, -88, 6], [0, -87, 8], ...]\n}\n(trimmed: about 65,000 grid points, roughly 1 MB)"
@@ -8098,7 +8098,7 @@
         "note": "One-minute data, roughly the past week per file (rtsw_wind_1m.json, rtsw_mag_1m.json). The source field names the active spacecraft (SOLAR1 at the time of checking)."
       },
       "docUrl": "https://www.spaceweather.gov/products/solar-wind",
-      "lastVerified": "2026-09-24",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
         "responseExcerpt": "[\n  {\n    \"time_tag\": \"2026-09-24T23:40:00\",\n    \"active\": true,\n    \"source\": \"SOLAR1\",\n    \"proton_speed\": 432.8,\n    \"proton_temperature\": 129322,\n    \"proton_density\": 7.92,\n    \"proton_vx_gse\": -432.0,\n    ...\n  },\n  ...\n]\n(trimmed: each row also has GSM components, alpha-particle fields and quality flags)"
@@ -8153,7 +8153,7 @@
         "note": "One-minute data; files are grouped by satellite (primary, secondary) and window (6-hour, 1-day, 3-day, 7-day)."
       },
       "docUrl": "https://www.spaceweather.gov/products/goes-x-ray-flux",
-      "lastVerified": "2026-09-24",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json",
         "responseExcerpt": "[\n  {\n    \"time_tag\": \"2026-09-24T17:44:00Z\",\n    \"satellite\": 18,\n    \"flux\": 4.546471359390125e-07,\n    \"observed_flux\": 4.6932447617109574e-07,\n    \"electron_correction\": 1.4677340232083225e-08,\n    \"electron_contaminaton\": false,\n    \"energy\": \"0.1-0.8nm\"\n  },\n  ...\n]\n(trimmed: one row per minute for each of the two X-ray bands)"
@@ -8205,7 +8205,7 @@
         "note": "Daily science-quality files arrive about a day after the data date."
       },
       "docUrl": "https://www.ncei.noaa.gov/products/satellite/goes-r",
-      "lastVerified": "2026-09-24",
+      "lastVerified": "2026-09-30",
       "sample": {
         "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/xrsf-l2-avg1m_science/2026/09/",
         "responseExcerpt": "(HTML directory listing)\nsci_xrsf-l2-avg1m_g19_d20260922_v2-2-1.nc  2026-09-23 04:20  282K\nsci_xrsf-l2-avg1m_g19_d20260923_v2-2-1.nc  2026-09-24 04:22  285K\n(trimmed: one file per day)"
