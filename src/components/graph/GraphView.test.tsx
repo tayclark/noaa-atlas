@@ -35,6 +35,26 @@ describe('GraphView', () => {
     expect(node.querySelector('title')?.textContent).toMatch(/^MRMS multi-radar/)
   })
 
+  it('announces the selection and marks the selected node pressed (#86)', () => {
+    const { container } = render(<GraphView />)
+    const announcement = screen.getByTestId('selection-announcement')
+    expect(announcement.textContent).toBe('')
+    act(() => selectNode('nws-api'))
+    expect(announcement.textContent).toMatch(/^Selected /)
+    const pressed = container.querySelectorAll('.graph-node[aria-pressed="true"]')
+    expect(pressed).toHaveLength(1)
+    expect(pressed[0]?.getAttribute('data-node-id')).toBe('nws-api')
+    act(() => clearSelection())
+    expect(announcement.textContent).toBe('')
+  })
+
+  it('names the graph canvas and describes its keyboard controls (#86)', () => {
+    render(<GraphView />)
+    const canvas = screen.getByRole('group', { name: 'Service graph' })
+    const hint = document.getElementById(canvas.getAttribute('aria-describedby') ?? '')
+    expect(hint?.textContent).toMatch(/arrow keys pan/)
+  })
+
   it('keeps the detail panel collapsed across selection changes (#141)', () => {
     const { container } = render(<GraphView />)
     act(() => selectNode('nws-api'))
