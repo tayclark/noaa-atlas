@@ -3,7 +3,7 @@
 
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
+import { emptyAlertsFixture, mappableAlertsFixture, mockAlerts, zoneOnlyAlertsFixture } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 
 async function openApp(page: Page) {
@@ -88,3 +88,25 @@ test('a selection is announced and the focused graph pans and zooms from the key
   expect(await layer.getAttribute('transform')).not.toEqual(panned)
 })
 
+
+test('an open alert popup has no serious axe violations (#86)', async ({ page }) => {
+  await mockAlerts(page, mappableAlertsFixture())
+  await mockSwpc(page)
+  await page.goto('/')
+  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
+  const globe = page.locator('[aria-label="Globe view of NOAA API coverage"]')
+  await page.waitForTimeout(500)
+  await globe.click()
+  await expect(page.getByText('Flood Warning')).toBeVisible()
+  expect(await seriousViolations(page)).toEqual([])
+})
+
+test('the expanded zone-only alerts overlay has no serious axe violations (#86)', async ({ page }) => {
+  await mockAlerts(page, zoneOnlyAlertsFixture(7))
+  await mockSwpc(page)
+  await page.goto('/')
+  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
+  await page.getByRole('button', { name: 'Expand zone alerts' }).click()
+  await expect(page.getByLabel('Alerts without a mapped area').getByRole('listitem')).toHaveCount(5)
+  expect(await seriousViolations(page)).toEqual([])
+})
