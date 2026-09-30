@@ -1,4 +1,4 @@
-import { GeolocateControl, Map as MapLibreMap, Popup, type GeoJSONSource, type MapLayerMouseEvent, type MapMouseEvent } from 'maplibre-gl'
+import { GeolocateControl, Map as MapLibreMap, Popup, type CanvasSource, type GeoJSONSource, type MapLayerMouseEvent, type MapMouseEvent } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import './MapLibreGlobe.css'
@@ -12,7 +12,8 @@ import {
 import graphJson from '../../data/graph.json'
 import { parseGraphFile, type ServiceNode } from '../../data/graphSchema'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
-import { getOvationAurora, getPlanetaryKp } from '../../data/swpcClient'
+import { pollWhileVisible } from '../../data/pollWhileVisible'
+import { getOvationAurora, getPlanetaryKp, SWPC_REFRESH_MS } from '../../data/swpcClient'
 import type { SwpcOvation } from '../../data/swpcSchema'
 import {
   AURORA_RASTER_COORDINATES,
@@ -160,6 +161,7 @@ export function MapLibreGlobe() {
       zoom: US_ZOOM,
     })
     mapRef.current = map
+    let stopSwpcPolling: (() => void) | null = null
 
     const geolocate = new GeolocateControl({
       positionOptions: GEOLOCATE_POSITION_OPTIONS,
@@ -212,32 +214,64 @@ export function MapLibreGlobe() {
         showPointLookup(map, e.lngLat.lng, e.lngLat.lat, ovationRef.current)
       })
 
-      getOvationAurora()
-        .then((ovation) => {
-          ovationRef.current = ovation
-          const raster = auroraRaster(ovation)
-          const canvas = document.createElement('canvas')
-          canvas.width = raster.width
-          canvas.height = raster.height
-          canvas.getContext('2d')?.putImageData(new ImageData(raster.data, raster.width, raster.height), 0, 0)
-          map.addSource(AURORA_SOURCE_ID, { type: 'canvas', canvas, coordinates: AURORA_RASTER_COORDINATES, animate: false })
-          // Under the alerts if they're already drawn; if they arrive later they're added on top anyway.
-          map.addLayer(
-            {
-              id: AURORA_LAYER_ID,
-              type: 'raster',
-              source: AURORA_SOURCE_ID,
-              paint: { 'raster-opacity': AURORA_OPACITY, 'raster-resampling': 'linear', 'raster-fade-duration': 0 },
-            },
-            map.getLayer(ALERTS_FILL_LAYER_ID) ? ALERTS_FILL_LAYER_ID : undefined,
-          )
-          setAuroraCells(raster.cells)
-        })
-        .catch((err: unknown) => setAuroraError(describeSwpcFetchOutcome(err)))
+      // Both files are re-fetched every few minutes while the tab is visible. A failed refresh
+      // keeps what is already on screen; only a failed first load shows an error.
+      let auroraCanvas: HTMLCanvasElement | null = null
+      let kpLoaded = false
 
-      getPlanetaryKp()
-        .then((rows) => setKp({ status: 'ok', readout: describeKp(rows) }))
-        .catch((err: unknown) => setKp({ status: 'error', message: describeSwpcFetchOutcome(err) }))
+      const loadAurora = () =>
+        getOvationAurora()
+          .then((ovation) => {
+            ovationRef.current = ovation
+            const raster = auroraRaster(ovation)
+            if (!auroraCanvas) {
+              auroraCanvas = document.createElement('canvas')
+              auroraCanvas.width = raster.width
+              auroraCanvas.height = raster.height
+              auroraCanvas.getContext('2d')?.putImageData(new ImageData(raster.data, raster.width, raster.height), 0, 0)
+              map.addSource(AURORA_SOURCE_ID, { type: 'canvas', canvas: auroraCanvas, coordinates: AURORA_RASTER_COORDINATES, animate: false })
+              // Under the alerts if they're already drawn; if they arrive later they're added on top anyway.
+              map.addLayer(
+                {
+                  id: AURORA_LAYER_ID,
+                  type: 'raster',
+                  source: AURORA_SOURCE_ID,
+                  paint: { 'raster-opacity': AURORA_OPACITY, 'raster-resampling': 'linear', 'raster-fade-duration': 0 },
+                },
+                map.getLayer(ALERTS_FILL_LAYER_ID) ? ALERTS_FILL_LAYER_ID : undefined,
+              )
+            } else {
+              auroraCanvas.getContext('2d')?.putImageData(new ImageData(raster.data, raster.width, raster.height), 0, 0)
+              // A non-animated canvas source only uploads its texture on load; play() then pause()
+              // uploads the redrawn canvas once.
+              const source = map.getSource(AURORA_SOURCE_ID) as CanvasSource | undefined
+              source?.play()
+              source?.pause()
+              map.triggerRepaint()
+            }
+            setAuroraError(null)
+            setAuroraCells(raster.cells)
+          })
+          .catch((err: unknown) => {
+            if (!auroraCanvas) setAuroraError(describeSwpcFetchOutcome(err))
+          })
+
+      const loadKp = () =>
+        getPlanetaryKp()
+          .then((rows) => {
+            kpLoaded = true
+            setKp({ status: 'ok', readout: describeKp(rows) })
+          })
+          .catch((err: unknown) => {
+            if (!kpLoaded) setKp({ status: 'error', message: describeSwpcFetchOutcome(err) })
+          })
+
+      void loadAurora()
+      void loadKp()
+      stopSwpcPolling = pollWhileVisible(() => {
+        void loadAurora()
+        void loadKp()
+      }, SWPC_REFRESH_MS)
 
       getActiveAlerts()
         .then((alerts) => {
@@ -297,6 +331,7 @@ export function MapLibreGlobe() {
 
     return () => {
       mapRef.current = null
+      stopSwpcPolling?.()
       map.remove()
     }
   }, [])
