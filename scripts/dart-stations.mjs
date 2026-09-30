@@ -14,8 +14,8 @@ if (!res.ok) throw new Error(`NDBC station list failed (${res.status})`)
 const xml = await res.text()
 
 const attr = (tag, name) => new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1]
-const decode = (s) =>
-  s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+const ENTITIES = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>' }
+const decode = (s) => s.replace(/&(amp|quot|apos|lt|gt);/g, (_, e) => ENTITIES[e])
 
 const rows = (xml.match(/<station\b[^>]*>/g) ?? [])
   .filter((tag) => attr(tag, 'type') === 'dart')
