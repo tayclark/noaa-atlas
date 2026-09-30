@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 NOAA Atlas is a client-only React SPA that answers "which NOAA API do I use for X?": a force-directed graph of curated NOAA services linked to a MapLibre globe. There is no backend, no accounts and no API keys. The only live integration is `api.weather.gov`, called from the browser; every other service is reference data with a static sample. `README.md` is the user-facing feature tour and the data field reference, so read it rather than duplicating it here.
 
-Stack: React 19, TypeScript, Vite, MapLibre GL, d3-force / d3-zoom / d3-drag (SVG graph), zod, Vitest + Testing Library, Playwright. Node 22 (`.nvmrc`).
+Stack: React 19, TypeScript, Vite, MapLibre GL, d3-force / d3-zoom / d3-drag (SVG graph), zod, Vitest + Testing Library, Playwright. Node 24 (`.nvmrc`).
 
 ## Commands
 

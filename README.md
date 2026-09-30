@@ -15,7 +15,7 @@ npm test        # unit tests
 npm run build   # typecheck + production build
 ```
 
-Requires Node 22 or newer (`.nvmrc`, `engines`).
+Requires Node 24.21 or newer (`.nvmrc`, `engines`).
 
 ## What you see
 
