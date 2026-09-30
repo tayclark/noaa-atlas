@@ -262,6 +262,11 @@ const NORTH_ATLANTIC = { name: 'North Atlantic Ocean' }
 export const PRESETS: Record<string, Preset> = {
   'contiguous-us': { description: 'Lower 48 states from Natural Earth', countries: ['USA'], select: [[-125, 24, -66, 50]] },
   alaska: { description: 'Alaska including the Aleutians, from Natural Earth', countries: ['USA'], select: [[-170, 50, -129, 72], [170, 50, 180, 56]] },
+  'conus-alaska': {
+    description: 'Lower 48 states and Alaska including the Aleutians, from Natural Earth',
+    countries: ['USA'],
+    select: [[-125, 24, -66, 50], [-170, 50, -129, 72], [170, 50, 180, 56]],
+  },
   hawaii: { description: 'Hawaiian islands from Natural Earth', countries: ['USA'], select: [[-161, 18, -154, 23]] },
   'us-waters': {
     description: 'US EEZ (Marine Regions) and the US part of the Great Lakes (Natural Earth)',
