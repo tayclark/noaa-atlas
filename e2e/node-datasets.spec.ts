@@ -38,3 +38,20 @@ test('the OneStop node lists the curated catalog subset', async ({ page }) => {
   await summary.click()
   await expect(section.getByRole('link').first()).toHaveAttribute('href', /^https:\/\//)
 })
+
+test('the AWS registry node and a bucket node list registry datasets', async ({ page }) => {
+  await page.goto('/')
+  for (const id of ['aws-open-data-noaa', 'hrrr-aws-open-data']) {
+    await page.locator(`.graph-node[data-node-id="${id}"]`).focus()
+    await page.keyboard.press('Enter')
+    const section = page.getByRole('region', { name: 'Datasets' })
+    // The disclosure may stay open from the previous node, so only click it when closed.
+    if (!(await section.getByRole('link').first().isVisible())) {
+      await section.getByText(/^Datasets \(\d+\)$/).click()
+    }
+    await expect(section.getByRole('link').first()).toHaveAttribute(
+      'href',
+      /^https:\/\/registry\.opendata\.aws\//,
+    )
+  }
+})

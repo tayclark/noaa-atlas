@@ -99,7 +99,7 @@ The graph is authored as JSON and validated with [zod](https://zod.dev) at load 
 | File | Contents |
 | --- | --- |
 | `src/data/graph.json` | Service nodes and the authored edges (`shared-id`, `data-flow`). Theme hubs and theme edges are derived in `buildGraph.ts`. |
-| `src/data/nceiDatasets.json`, `onestopDatasets.json` | Slim dataset snapshots listed in the detail panels of the NCEI and OneStop service nodes. The NCEI one is the full NCEI catalog; the OneStop one is a curated subset deduped against it. |
+| `src/data/nceiDatasets.json`, `onestopDatasets.json`, `awsOpenDataDatasets.json` | Slim dataset snapshots listed in the detail panels of the NCEI, OneStop and AWS Open Data service nodes. The NCEI one is the full NCEI catalog; the OneStop one is a curated subset deduped against it; the AWS one holds the NOAA-managed registry entries, each on its bucket node or the registry node. |
 | `src/data/tasks.json` | "I need..." tasks, each an ordered list of node ids with a one-line reason. |
 | `src/data/graphSchema.ts`, `taskSchema.ts` | The schemas and the list of themes. |
 
@@ -162,7 +162,7 @@ The app does not modify NOAA data and does not use NOAA or NWS logos. Its footer
 - **Keyboard**: a skip link is the first Tab stop, and every control shows a focus ring. The view tabs move with the arrow keys, Home and End. Graph nodes are focusable and open with Enter or Space, and the pane dividers resize with the arrow keys. With the graph itself focused (Tab past the toolbar), the arrow keys pan and + / - zoom. Screen readers hear the selected node (`aria-pressed`) and a polite announcement when the selection changes, wherever it was made. Not covered: exploring the globe itself, whose content is reachable through the graph and detail panel.
 - **Reduced motion**: with the OS "reduce motion" setting on, the globe jumps to its target instead of flying, the graph is laid out in one step instead of animating, and the geolocate pulse and finder scroll fade are switched off.
 - **Contrast**: `src/contrast.test.ts` checks the text and accent tokens in `index.css` against WCAG AA (4.5:1 for text, 3:1 for the focus ring). `e2e/a11y.spec.ts` runs axe (WCAG A and AA) on the initial view, with a node selected, on the Inspector tab and in the phone layout, and fails on serious or critical findings.
-- **Load budget**: `npm run check:budget` fails if the built JavaScript (including MapLibre's worker files) exceeds 670 kB gzip (607 kB when set; the OneStop snapshot brought it to about 658 kB) or the CSS exceeds 17 kB gzip (15 kB when set). Raise a limit in the same PR that adds the weight.
+- **Load budget**: `npm run check:budget` fails if the built JavaScript (including MapLibre's worker files) exceeds 670 kB gzip (607 kB when set; the OneStop snapshot brought it to about 658 kB and the AWS registry snapshot to about 666 kB) or the CSS exceeds 17 kB gzip (15 kB when set). Raise a limit in the same PR that adds the weight.
 - **Interaction budget**: `e2e/performance.spec.ts` allows 2 s from navigation to the first graph node and 1 s from selecting a node to its detail panel, against mocked network (about 0.2 s and 0.1 s measured on the dev server). The graph keeps easing for about 6.5 s after it first appears, so settling time is not budgeted.
 - **Scale**: `src/components/graph/graphScale.test.ts` runs the layout and label placement on a synthetic 1000-node graph (about 25x the real one). A simulation tick took about 2.5 ms and a label pass about 2 ms, so no optimisation was needed; the test's limits are loose and only catch a blow-up.
 
@@ -181,7 +181,7 @@ src/
   data/                  graph/task JSON + schemas, NWS, SWPC and CO-OPS clients, request log,
                          selection store, coverage geometry and lookup
 e2e/                     Playwright specs and fixtures
-scripts/                 coverage-geometry generator, CO-OPS station, NCEI and OneStop dataset snapshots
+scripts/                 coverage-geometry generator, CO-OPS station, NCEI, OneStop and AWS Open Data dataset snapshots
 ```
 
 Stack: React 19, TypeScript, Vite, MapLibre GL (globe), d3-force / d3-zoom / d3-drag (graph, rendered as SVG), zod (validation). There is no state library: shared state lives in small module-level stores (`selectionStore.ts`, `requestLog.ts`) read with `useSyncExternalStore`.
@@ -202,6 +202,7 @@ Stack: React 19, TypeScript, Vite, MapLibre GL (globe), d3-force / d3-zoom / d3-
 | `npm run coverage-geometry` | Coverage geometry generator (see above) |
 | `npm run coops-stations` | Regenerates the CO-OPS station snapshot (needs the network) |
 | `npm run ncei-datasets` | Regenerates the NCEI dataset catalog snapshot, `src/data/nceiDatasets.json` (needs the network). Each dataset links to the service node that reaches it; the detail panels of the two NCEI service nodes list them (#62, #70), and the graph search matches their names |
+| `npm run aws-open-data-datasets` | Regenerates `src/data/awsOpenDataDatasets.json` (needs the network and the system `tar`). It unpacks the AWS Open Data registry repo and keeps entries whose `ManagedBy` names NOAA (no entry carries a `noaa` tag), plus a short allow list of NOAA data hosted by others, minus third-party derivatives. Each row goes to the node whose bucket host matches the entry's first S3 bucket, else to the registry node (#64) |
 | `npm run onestop-datasets` | Regenerates the curated OneStop snapshot, `src/data/onestopDatasets.json` (needs the network). It takes the top hits of a dozen topic queries (the catalog has about 107k records and its search caps `offset`, so a full crawl is impossible), drops anything already in the NCEI snapshot by DOI or title, and keeps name, dates and one link. Listed under the OneStop node (#68) |
 
 The Playwright config starts the dev server on port 5173 (reusing one if it is already running). If another app holds that port, run `npx vite --port 5199 --strictPort` and point a copy of the config at it.

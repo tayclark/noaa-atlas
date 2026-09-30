@@ -18,6 +18,11 @@ describe('matchNodeIds', () => {
     expect(matchNodeIds(index, term)?.has('ncei-access-data-service')).toBe(true)
   })
 
+  it('matches an AWS registry dataset through the bucket node that holds it (#64)', () => {
+    const dataset = datasetsForService('hrrr-aws-open-data')[0]
+    expect(matchNodeIds(index, dataset.name)?.has('hrrr-aws-open-data')).toBe(true)
+  })
+
   it('returns null for an empty or whitespace-only query', () => {
     expect(matchNodeIds(index, '')).toBeNull()
     expect(matchNodeIds(index, '   ')).toBeNull()
