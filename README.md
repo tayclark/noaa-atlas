@@ -123,6 +123,10 @@ A service node records: `id`, `name`, `summary`, `owner` (office and program), `
 3. Add the node to `graph.json`, then add or extend a task in `tasks.json` (its node ids must exist).
 4. Run `npm test`: the schema and task tests fail on unknown fields, missing `notLiveReason`, duplicate ids or dangling references.
 
+### Re-verifying the data
+
+`npm run verify:data` makes a real GET (with an `Origin` header) to every URL in `graph.json` (base, doc, sample, rate-limit and edge source URLs) and flags HTTP errors, moved endpoints, samples of live-layer nodes without CORS, and doc pages that mention deprecation. Add `-- --out /absolute/report.json` for the full results. It needs the network, so it is a manual check and not part of CI. Bare API roots that return 400 or 404, and services whose `auth.note` already records a 403 or missing CORS, are expected flags. Only bump a node's `lastVerified` after re-checking it.
+
 ## Live data and limits
 
 - There are two live integrations, each through a typed client that validates every response with zod and caches successful GETs in memory for 60 seconds (both share `src/data/liveRequest.ts`):
