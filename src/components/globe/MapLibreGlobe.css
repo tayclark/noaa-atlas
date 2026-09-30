@@ -150,6 +150,13 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-waiting .maplibregl-ctrl-icon {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
 /* The user's position: a steady dot in the app's accent colour, ringed in the page background so it
    stands out on the dark basemap, instead of MapLibre's pulsing blue dot with a white border. */
 .maplibregl-user-location-dot {

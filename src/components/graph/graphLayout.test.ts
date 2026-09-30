@@ -12,6 +12,7 @@ import {
   largestLinkedGroup,
   nodeRadius,
   RING_ORDER,
+  settleSimulation,
   themeAnchors,
   type SimEdge,
   type SimNode,
@@ -273,5 +274,22 @@ describe('computePathFitTransform', () => {
   it('keeps the whole-path fit when no two steps are close', () => {
     const items = [step(0, -600), step(0, 600)]
     expect(fit(items)).toEqual(computeLabelledFitTransform(items, 640, 352, 60, 1.25, inset, 4))
+  })
+})
+
+describe('settleSimulation', () => {
+  it('runs the layout to rest synchronously and leaves it stopped', () => {
+    const { nodes, edges } = buildGraph(parseGraphFile(graphJson))
+    const simNodes: SimNode[] = nodes.map((node) => ({ ...node }))
+    const simEdges: SimEdge[] = edges.map((edge) => ({ ...edge }))
+    const simulation = createGraphSimulation(simNodes, simEdges, 700, 470)
+    const ticks = settleSimulation(simulation)
+    expect(ticks).toBeGreaterThan(0)
+    expect(simulation.alpha()).toBeLessThan(simulation.alphaMin())
+    expect(simNodes.every((node) => Number.isFinite(node.x) && Number.isFinite(node.y))).toBe(true)
+    // Stopped: no further ticks are scheduled, so the positions no longer move.
+    const before = simNodes.map((node) => node.x)
+    expect(settleSimulation(simulation)).toBe(0)
+    expect(simNodes.map((node) => node.x)).toEqual(before)
   })
 })

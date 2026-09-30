@@ -50,6 +50,15 @@
   }
 }
 
+/* The fade is scroll-driven rather than timed, but it is still motion; without it the mask has
+   no fade (--finder-fade falls back to its 0px initial value). */
+@media (prefers-reduced-motion: reduce) {
+  .finder-body {
+    animation: none;
+    mask-image: none;
+  }
+}
+
 @keyframes finder-fade-out {
   from,
   90% {
