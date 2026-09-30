@@ -24,3 +24,17 @@ test('an NCEI service lists its datasets, and other services do not', async ({ p
   await page.keyboard.press('Enter')
   await expect(page.getByRole('region', { name: 'Datasets' })).toHaveCount(0)
 })
+
+test('the OneStop node lists the curated catalog subset', async ({ page }) => {
+  await page.goto('/')
+  await page.locator('.graph-node[data-node-id="onestop-search-api"]').focus()
+  await page.keyboard.press('Enter')
+
+  const section = page.getByRole('region', { name: 'Datasets' })
+  const summary = section.getByText(/^Datasets \(\d+\)$/)
+  await expect(summary).toBeVisible()
+  const count = Number((await summary.textContent())?.match(/\d+/)?.[0])
+  expect(count).toBeGreaterThan(400)
+  await summary.click()
+  await expect(section.getByRole('link').first()).toHaveAttribute('href', /^https:\/\//)
+})
