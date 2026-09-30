@@ -1429,6 +1429,7 @@
       "id": "coops-metadata-api",
       "kind": "service",
       "name": "CO-OPS Metadata API",
+      "shortName": "CO-OPS Metadata API",
       "summary": "Station metadata for CO-OPS water level, tide prediction and current stations: details, sensors, datums, flood levels, harmonic constituents and nearby stations.",
       "owner": {
         "office": "NOS",
@@ -1737,6 +1738,7 @@
       "id": "coops-derived-product-api",
       "kind": "service",
       "name": "CO-OPS Derived Product API",
+      "shortName": "CO-OPS Derived API",
       "summary": "Analysis products built from CO-OPS water level records: sea level trends, high tide flooding, extreme water levels and monthly mean sea level.",
       "owner": {
         "office": "NOS",
@@ -2046,6 +2048,7 @@
       "id": "ndbc-realtime",
       "kind": "service",
       "name": "NDBC Real-Time Observations",
+      "shortName": "NDBC Real-Time",
       "summary": "Latest 45 days of buoy and C-MAN station observations (winds, waves, pressure, air and sea temperature) as plain-text files per station.",
       "owner": {
         "office": "NWS",
@@ -2099,6 +2102,7 @@
       "id": "ndbc-dart-realtime",
       "kind": "service",
       "name": "DART Tsunami Buoy Data",
+      "shortName": "DART Buoy Data",
       "summary": "Deep-ocean bottom-pressure water column heights from NOAA's DART tsunami detection stations, as per-station real-time text files.",
       "owner": {
         "office": "NWS",
@@ -2484,6 +2488,7 @@
       "id": "ncei-access-data-service",
       "kind": "service",
       "name": "NCEI Access Data Service",
+      "shortName": "NCEI Access Data",
       "summary": "Tokenless REST API that subsets NCEI datasets by station, date range, data type and bounding box. Includes GHCN-Daily (dataset daily-summaries, 100,000+ stations in 180 countries) and monthly summaries, as JSON, CSV or NetCDF.",
       "owner": {
         "office": "NESDIS",
@@ -2784,6 +2789,7 @@
       "id": "nhc-active-storms",
       "kind": "service",
       "name": "NHC Active Tropical Cyclones",
+      "shortName": "NHC Active Storms",
       "summary": "National Hurricane Center's machine-readable active-storm list (CurrentStorms.json), per-basin RSS feeds, and advisory GIS files (forecast track, cone, watches/warnings, wind radii) for Atlantic and eastern Pacific storms.",
       "owner": {
         "office": "NWS",
@@ -3690,6 +3696,7 @@
     {
       "id": "star-goes-imagery",
       "name": "NESDIS STAR GOES image CDN",
+      "shortName": "STAR GOES Imagery",
       "summary": "Pre-rendered GOES-East and GOES-West JPEG imagery (GeoColor, infrared, water vapor and other bands) for the CONUS, full disk and regional sectors, at several resolutions, from a plain directory-listing CDN. Includes a stable latest image per sector and band.",
       "owner": {
         "office": "NESDIS",
@@ -4571,6 +4578,7 @@
     {
       "id": "coastwatch-erddap",
       "name": "NOAA CoastWatch ERDDAP",
+      "shortName": "CoastWatch ERDDAP",
       "summary": "ERDDAP data server for gridded and tabular satellite-derived ocean products (sea surface temperature, chlorophyll, ocean color, winds, sea ice) with a REST API: search datasets, then subset by time, area and variable and download as CSV, JSON, NetCDF, GeoTIFF or PNG, or view through WMS.",
       "owner": {
         "office": "NESDIS",
@@ -5760,6 +5768,7 @@
       "id": "nowcoast-map-services",
       "kind": "service",
       "name": "nowCOAST web map services",
+      "shortName": "nowCOAST Maps",
       "summary": "NOAA's OGC web map services (WMS and WMTS on a GeoServer) serving near-real-time and forecast map layers: radar, NDFD forecast grids, watches and warnings, observations and marine guidance, for the US and territories.",
       "owner": {
         "office": "NOS",
@@ -6264,6 +6273,7 @@
       "id": "noaa-chart-services",
       "kind": "service",
       "name": "NOAA nautical chart services",
+      "shortName": "NOAA Chart Services",
       "summary": "Office of Coast Survey ArcGIS REST server for nautical chart products, with OGC WMTS and WMS endpoints for NOAA raster charts and ENC display, plus folders for maritime boundaries, navigation services, hydrographic services and precision navigation.",
       "owner": {
         "office": "NOS",
@@ -6881,6 +6891,7 @@
       "id": "onestop-search-api",
       "kind": "service",
       "name": "NCEI OneStop search API",
+      "shortName": "OneStop Search",
       "summary": "JSON search API behind data.noaa.gov/onestop, NCEI's dataset discovery system. POST a JSON body (e.g. a queryText query with page max/offset) to /search/collection; each hit is a collection with title, date range and download or service links (FTP, THREDDS and others). It finds datasets and points to where to get them; it does not serve the data itself.",
       "owner": {
         "office": "NESDIS",
