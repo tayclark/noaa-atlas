@@ -60,7 +60,7 @@ const PATH_LINK_DISTANCE = 150
 const FIT_ALL_PADDING = 40
 // Labels render at this size on screen at every zoom level (#138); overlaps are hidden instead.
 const LABEL_PX = 12
-const LABEL_HEIGHT = 15
+const LABEL_HEIGHT = 13
 const AUTOFIT_TICK_INTERVAL = 20
 // Clearance between the detail panel and the area a selection is framed into.
 const PANEL_GAP = 8
@@ -156,7 +156,12 @@ export function GraphView() {
 
     const simNodes: SimNode[] = graph.nodes.map((node) => ({ ...node }))
     const simEdges: SimEdge[] = graph.edges.map((edge) => ({ ...edge }))
-    const simulation = createGraphSimulation(simNodes, simEdges, initialSizeRef.current.width, initialSizeRef.current.height)
+    // Lay out for the canvas as it is now, not the 600x400 default, so the theme ring matches its
+    // aspect and the fit-all scale isn't squeezed by a mismatched layout (#176).
+    const container = containerRef.current
+    const layoutWidth = container?.clientWidth || initialSizeRef.current.width
+    const layoutHeight = container?.clientHeight || initialSizeRef.current.height
+    const simulation = createGraphSimulation(simNodes, simEdges, layoutWidth, layoutHeight)
 
     const svg = select(svgRef.current)
     const zoomLayer = select(zoomLayerRef.current)
