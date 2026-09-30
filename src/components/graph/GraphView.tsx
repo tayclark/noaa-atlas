@@ -13,7 +13,7 @@
 import { drag as d3drag } from 'd3-drag'
 import { select } from 'd3-selection'
 import { zoom as d3zoom, zoomIdentity, zoomTransform, type ZoomBehavior, type ZoomTransform } from 'd3-zoom'
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import './GraphView.css'
 import graphJson from '../../data/graph.json'
 import tasksJson from '../../data/tasks.json'
@@ -35,6 +35,7 @@ import {
   computeLabelledFitTransform,
   computePathFitTransform,
   createGraphSimulation,
+  keyboardViewTransform,
   settleSimulation,
   EDGE_CLASS,
   NO_INSET,
@@ -44,6 +45,7 @@ import {
   type SimEdge,
   type SimNode,
 } from './graphLayout'
+import { selectionAnnouncement } from './a11yAnnouncements'
 import { GraphLegend } from './GraphLegend'
 import { GraphSearch } from './GraphSearch'
 import { buildSearchIndex, matchNodeIds } from './searchMatch'
@@ -67,7 +69,10 @@ const AUTOFIT_TICK_INTERVAL = 20
 // Clearance between the detail panel and the area a selection is framed into.
 const PANEL_GAP = 8
 
-const searchIndex = buildSearchIndex(graph.nodes, parseTasksFile(tasksJson).tasks)
+const tasks = parseTasksFile(tasksJson).tasks
+const searchIndex = buildSearchIndex(graph.nodes, tasks)
+const nodeNameById = new Map(graph.nodes.map((node) => [node.id, node.name]))
+const taskLabelById = new Map(tasks.map((task) => [task.id, task.label]))
 
 // The on-graph label; the full name stays in the tooltip, aria-label and detail panel (#141).
 const labelText = (node: GraphNode) => (node.kind === 'service' ? (node.shortName ?? node.name) : node.name)
@@ -136,6 +141,7 @@ export function GraphView() {
   const highlightKey = highlightedIds.join('|')
   const taskPath = getSelectedTaskPath()
   const pathPairs = taskPath.slice(1).map((target, i) => ({ source: taskPath[i] as string, target }))
+  const announcement = selectionAnnouncement(selection, nodeNameById, taskLabelById, highlightedIds.length)
   const [query, setQuery] = useState('')
   const matchedIds = useMemo(() => matchNodeIds(searchIndex, query), [query])
 
@@ -426,6 +432,21 @@ export function GraphView() {
     placeLabelsRef.current()
   }, [highlightKey, matchedIds])
 
+  // Arrow keys pan and +/- zoom, for keyboard users who can't drag or scroll (#86). Only when the
+  // canvas itself has focus, so typing in the search box or moving between nodes is untouched.
+  const onCanvasKeyDown = (event: ReactKeyboardEvent<SVGSVGElement>) => {
+    const svgEl = svgRef.current
+    const zoomBehavior = zoomBehaviorRef.current
+    if (!svgEl || !zoomBehavior || event.target !== svgEl || event.ctrlKey || event.metaKey || event.altKey) return
+    const current = zoomTransform(svgEl)
+    const next = keyboardViewTransform({ x: current.x, y: current.y, k: current.k }, event.key, size.width, size.height)
+    if (!next) return
+    event.preventDefault()
+    select(svgEl).call(zoomBehavior.transform, zoomIdentity.translate(next.x, next.y).scale(next.k))
+    // A programmatic transform has no sourceEvent, so end the automatic framing explicitly.
+    initialFitDoneRef.current = true
+  }
+
   return (
     <section className="graph-view" aria-label="Graph">
       <div className="graph-toolbar">
@@ -444,7 +465,22 @@ export function GraphView() {
         </button>
       </div>
       <div className="graph-canvas" ref={containerRef}>
-        <svg ref={svgRef} width={size.width} height={size.height}>
+        <p id="graph-keyboard-hint" className="visually-hidden">
+          Tab moves between services. Enter selects one. With the graph focused, arrow keys pan and plus and minus zoom.
+        </p>
+        <p className="visually-hidden" aria-live="polite" aria-atomic="true" data-testid="selection-announcement">
+          {announcement}
+        </p>
+        <svg
+          ref={svgRef}
+          width={size.width}
+          height={size.height}
+          role="group"
+          aria-label="Service graph"
+          aria-describedby="graph-keyboard-hint"
+          tabIndex={0}
+          onKeyDown={onCanvasKeyDown}
+        >
           <g ref={zoomLayerRef}>
             <g className="graph-edges">
               {graph.edges.map((edge, i) => (
@@ -477,6 +513,7 @@ export function GraphView() {
                   role="button"
                   tabIndex={0}
                   aria-label={node.name}
+                  aria-pressed={selection.selectedNodeId === node.id}
                   ref={(el) => {
                     if (el) nodeElsRef.current.set(node.id, el)
                     else nodeElsRef.current.delete(node.id)

@@ -80,6 +80,44 @@ export interface Inset {
 export const NO_INSET: Inset = { left: 0, top: 0, right: 0, bottom: 0 }
 
 const FIT_SCALE_EXTENT: [number, number] = [0.25, 4]
+
+const KEY_PAN_STEP = 60
+const KEY_ZOOM_FACTOR = 1.25
+
+/**
+ * The transform after a keyboard pan/zoom key (#86), or null for any other key. Arrows move the
+ * view by a fixed screen distance; +/- scale about the viewport centre, clamped to the zoom extent.
+ */
+export function keyboardViewTransform(
+  current: FitTransform,
+  key: string,
+  viewportWidth: number,
+  viewportHeight: number,
+): FitTransform | null {
+  switch (key) {
+    case 'ArrowLeft':
+      return { ...current, x: current.x + KEY_PAN_STEP }
+    case 'ArrowRight':
+      return { ...current, x: current.x - KEY_PAN_STEP }
+    case 'ArrowUp':
+      return { ...current, y: current.y + KEY_PAN_STEP }
+    case 'ArrowDown':
+      return { ...current, y: current.y - KEY_PAN_STEP }
+    case '+':
+    case '=':
+    case '-':
+    case '_': {
+      const factor = key === '+' || key === '=' ? KEY_ZOOM_FACTOR : 1 / KEY_ZOOM_FACTOR
+      const k = Math.min(FIT_SCALE_EXTENT[1], Math.max(FIT_SCALE_EXTENT[0], current.k * factor))
+      const ratio = k / current.k
+      const cx = viewportWidth / 2
+      const cy = viewportHeight / 2
+      return { x: cx - (cx - current.x) * ratio, y: cy - (cy - current.y) * ratio, k }
+    }
+    default:
+      return null
+  }
+}
 /** Half-size (px) of the box used to frame a single highlighted node, so scale doesn't blow up. */
 const SINGLE_POINT_HALF_SIZE = 40
 

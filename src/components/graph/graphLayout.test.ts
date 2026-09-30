@@ -3,6 +3,7 @@ import graphJson from '../../data/graph.json'
 import { buildGraph } from '../../data/buildGraph'
 import { parseGraphFile, THEMES, type GraphEdge, type ServiceNode, type ThemeNode } from '../../data/graphSchema'
 import {
+  keyboardViewTransform,
   computeFitTransform,
   computeLabelledFitTransform,
   computePathFitTransform,
@@ -291,5 +292,33 @@ describe('settleSimulation', () => {
     const before = simNodes.map((node) => node.x)
     expect(settleSimulation(simulation)).toBe(0)
     expect(simNodes.map((node) => node.x)).toEqual(before)
+  })
+})
+
+describe('keyboardViewTransform', () => {
+  const start = { x: 100, y: 100, k: 1 }
+
+  it('pans by a fixed distance opposite the arrow direction', () => {
+    expect(keyboardViewTransform(start, 'ArrowRight', 800, 600)).toEqual({ x: 40, y: 100, k: 1 })
+    expect(keyboardViewTransform(start, 'ArrowLeft', 800, 600)).toEqual({ x: 160, y: 100, k: 1 })
+    expect(keyboardViewTransform(start, 'ArrowDown', 800, 600)).toEqual({ x: 100, y: 40, k: 1 })
+    expect(keyboardViewTransform(start, 'ArrowUp', 800, 600)).toEqual({ x: 100, y: 160, k: 1 })
+  })
+
+  it('zooms about the viewport centre', () => {
+    const zoomed = keyboardViewTransform({ x: 0, y: 0, k: 1 }, '+', 800, 600)
+    expect(zoomed?.k).toBeCloseTo(1.25)
+    // The world point under the centre stays under the centre.
+    expect((400 - (zoomed?.x ?? 0)) / (zoomed?.k ?? 1)).toBeCloseTo(400)
+    expect((300 - (zoomed?.y ?? 0)) / (zoomed?.k ?? 1)).toBeCloseTo(300)
+  })
+
+  it('clamps the scale to the zoom extent', () => {
+    expect(keyboardViewTransform({ x: 0, y: 0, k: 4 }, '+', 800, 600)?.k).toBe(4)
+    expect(keyboardViewTransform({ x: 0, y: 0, k: 0.25 }, '-', 800, 600)?.k).toBe(0.25)
+  })
+
+  it('ignores other keys', () => {
+    expect(keyboardViewTransform(start, 'a', 800, 600)).toBeNull()
   })
 })

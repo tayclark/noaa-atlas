@@ -59,3 +59,32 @@ test('with reduced motion the graph is laid out before the first frame settles',
   await page.waitForTimeout(500)
   expect(await positions()).toEqual(first)
 })
+
+test('the Inspector tab has no serious axe violations', async ({ page }) => {
+  await openApp(page)
+  await page.getByRole('tab', { name: 'Inspector' }).click()
+  expect(await seriousViolations(page)).toEqual([])
+})
+
+test('the phone layout has no serious axe violations', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await openApp(page)
+  expect(await seriousViolations(page)).toEqual([])
+})
+
+test('a selection is announced and the focused graph pans and zooms from the keyboard', async ({ page }) => {
+  await openApp(page)
+  await page.locator('.graph-node[data-node-id="nws-api"]').focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByTestId('selection-announcement')).toHaveText(/^Selected /)
+
+  const layer = page.locator('.graph-canvas svg > g').first()
+  await page.getByRole('group', { name: 'Service graph' }).focus()
+  const before = await layer.getAttribute('transform')
+  await page.keyboard.press('ArrowRight')
+  const panned = await layer.getAttribute('transform')
+  expect(panned).not.toEqual(before)
+  await page.keyboard.press('+')
+  expect(await layer.getAttribute('transform')).not.toEqual(panned)
+})
+
