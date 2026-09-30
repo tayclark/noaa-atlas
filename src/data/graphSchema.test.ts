@@ -26,6 +26,10 @@ describe('parseGraphFile', () => {
     expect(() => parseGraphFile(makeFile([makeNode({ coverage })]))).not.toThrow()
   })
 
+  it('rejects a duplicate node id', () => {
+    expect(() => parseGraphFile(makeFile([makeNode(), makeNode()]))).toThrow('duplicate node id "nws-api"')
+  })
+
   it('accepts a valid authored edge', () => {
     expect(() => parseGraphFile(makeFile(edgeNodes, [makeEdge()]))).not.toThrow()
   })
