@@ -17,6 +17,7 @@ Stack: React 19, TypeScript, Vite, MapLibre GL, d3-force / d3-zoom / d3-drag (SV
 - `npm test`: Vitest. For a single file use `npx vitest run src/data/buildGraph.test.ts`, and for a single test add `-t "<name>"`. The output is long, so pipe it through `grep -E "Test Files|Tests "` for the counts.
 - `npm run test:coverage`: 75% gate on lines, statements, functions and branches. `MapLibreGlobe.tsx` and `GraphView.tsx` are excluded (`vite.config.ts`) and covered by e2e instead.
 - `npm run test:e2e:mocked` runs Playwright against mocked NWS responses. `npm run test:e2e:live` runs only the `@live`-tagged specs against the real API.
+- `npm run ncei-datasets`: rewrites `src/data/nceiDatasets.json` from the NCEI search v1 catalog (about 100 datasets, one page).
 - `npm run coverage-geometry -- --preset <us-coastal-waters|contiguous-us|alaska|hawaii|worldwide> --out file.json`: writes schema-valid coverage geometry.
 
 CI (`.github/workflows/ci.yml`) runs on every PR and on pushes to `main`. The `ci` job runs typecheck → lint → `test:coverage` → build, and the `e2e` job runs Playwright in Chromium. Both must pass.
