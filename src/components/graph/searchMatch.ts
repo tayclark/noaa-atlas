@@ -2,6 +2,7 @@
 // query term must appear somewhere in a node's haystack.
 
 import { THEME_LABELS, type GraphNode } from '../../data/graphSchema'
+import { datasetsForService } from '../../data/nceiDatasets'
 import type { Task } from '../../data/taskSchema'
 
 export type SearchIndex = Map<string, string>
@@ -28,6 +29,8 @@ export function buildSearchIndex(nodes: GraphNode[], tasks: Task[]): SearchIndex
             node.owner.program,
             THEME_LABELS[node.theme],
             ...(taskLabelsByNode.get(node.id) ?? []),
+            // Datasets (#70) are reached through their service, so a dataset term highlights it.
+            ...datasetsForService(node.id).flatMap((d) => [d.name, ...d.observationTypes]),
           ]
         : [node.name]
     index.set(node.id, parts.join(' ').toLowerCase())

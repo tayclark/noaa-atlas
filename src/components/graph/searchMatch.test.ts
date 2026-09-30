@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import graphJson from '../../data/graph.json'
 import tasksJson from '../../data/tasks.json'
 import { buildGraph } from '../../data/buildGraph'
+import { datasetsForService } from '../../data/nceiDatasets'
 import { parseGraphFile } from '../../data/graphSchema'
 import { parseTasksFile } from '../../data/taskSchema'
 import { buildSearchIndex, matchNodeIds } from './searchMatch'
@@ -11,6 +12,12 @@ const { tasks } = parseTasksFile(tasksJson)
 const index = buildSearchIndex(graph.nodes, tasks)
 
 describe('matchNodeIds', () => {
+  it('matches a dataset name through its owning service (#70)', () => {
+    const dataset = datasetsForService('ncei-access-data-service')[0]
+    const term = dataset.name.split(' ').find((w) => w.length > 6) ?? dataset.name
+    expect(matchNodeIds(index, term)?.has('ncei-access-data-service')).toBe(true)
+  })
+
   it('returns null for an empty or whitespace-only query', () => {
     expect(matchNodeIds(index, '')).toBeNull()
     expect(matchNodeIds(index, '   ')).toBeNull()

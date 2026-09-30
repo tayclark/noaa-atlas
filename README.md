@@ -200,7 +200,7 @@ Stack: React 19, TypeScript, Vite, MapLibre GL (globe), d3-force / d3-zoom / d3-
 | `npm run check:budget` | Bundle size budget, run after `npm run build` |
 | `npm run coverage-geometry` | Coverage geometry generator (see above) |
 | `npm run coops-stations` | Regenerates the CO-OPS station snapshot (needs the network) |
-| `npm run ncei-datasets` | Regenerates the NCEI dataset catalog snapshot, `src/data/nceiDatasets.json` (needs the network). Each dataset links to the service node that reaches it; nothing in the UI reads it yet (#62) |
+| `npm run ncei-datasets` | Regenerates the NCEI dataset catalog snapshot, `src/data/nceiDatasets.json` (needs the network). Each dataset links to the service node that reaches it; the detail panels of the two NCEI service nodes list them (#62, #70), and the graph search matches their names |
 
 The Playwright config starts the dev server on port 5173 (reusing one if it is already running). If another app holds that port, run `npx vite --port 5199 --strictPort` and point a copy of the config at it.
 

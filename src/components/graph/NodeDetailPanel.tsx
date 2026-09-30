@@ -11,6 +11,7 @@ import type { ServiceNode } from '../../data/graphSchema'
 import { parseGraphFile } from '../../data/graphSchema'
 import { getSelectionSnapshot, subscribeSelection } from '../../data/selectionStore'
 import { formatAuth, formatFormats, formatFreshness, formatOwner, formatRateLimits, liveStatusLabel } from './nodeDetailFormat'
+import { NodeDatasetsSection } from './NodeDatasetsSection'
 import { NodeNeighborsSection } from './NodeNeighborsSection'
 import { NodeSampleSection } from './NodeSampleSection'
 import { RootDetailBody } from './RootDetailBody'
@@ -97,6 +98,7 @@ function NodeDetailBody({ node }: { node: ServiceNode }) {
         </div>
       </dl>
       <NodeSampleSection node={node} />
+      <NodeDatasetsSection serviceId={node.id} />
       <NodeNeighborsSection nodeId={node.id} />
       {!node.liveLayer && node.notLiveReason && <p className="node-detail-not-live-reason">{node.notLiveReason}</p>}
       <a className="node-detail-docs-link" href={node.docUrl} target="_blank" rel="noreferrer">

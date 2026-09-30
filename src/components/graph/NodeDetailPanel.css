@@ -207,6 +207,43 @@
   color: var(--color-accent);
 }
 
+.node-datasets {
+  margin: var(--space-2) 0;
+}
+
+.node-datasets summary {
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.node-datasets ul {
+  max-height: 14rem;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.node-datasets li {
+  margin-bottom: var(--space-1);
+  overflow-wrap: anywhere;
+}
+
+.node-datasets-name,
+.node-datasets-meta {
+  display: block;
+}
+
+.node-datasets-meta {
+  color: var(--color-text-muted);
+}
+
+.node-datasets li a {
+  color: var(--color-accent);
+}
+
 .node-detail-not-live-reason {
   margin: var(--space-1) 0;
   color: var(--color-text-muted);
