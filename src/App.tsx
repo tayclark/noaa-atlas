@@ -9,11 +9,14 @@ function App() {
   const narrow = useNarrowLayout()
   return (
     <div className="app">
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
       <header className="app-header">
         <h1 className="app-title">NOAA Atlas</h1>
         <p className="app-subtitle">Which NOAA API do I use for X?</p>
       </header>
-      <main className="app-main">
+      <main className="app-main" id="main" tabIndex={-1}>
         {narrow ? <LeftPanel globe={<MapLibreGlobe />} /> : <SplitPane left={<LeftPanel />} right={<MapLibreGlobe />} />}
       </main>
     </div>

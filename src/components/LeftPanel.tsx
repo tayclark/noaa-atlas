@@ -5,7 +5,7 @@
 // globe is passed in and becomes a third tab instead of the other half of the screen (#78).
 
 import { useState, useSyncExternalStore } from 'react'
-import type { ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import { getRequestLogSnapshot, subscribeRequestLog } from '../data/requestLog'
 import { getSelectionSnapshot, subscribeSelection } from '../data/selectionStore'
 import { FinderPanel } from './finder/FinderPanel'
@@ -46,15 +46,34 @@ export function LeftPanel({ globe }: LeftPanelProps) {
     setActiveTab(tab)
   }
 
+  // Arrow keys, Home and End move between tabs, and only the active tab is in the Tab order.
+  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const last = tabs.length - 1
+    const next =
+      event.key === 'ArrowRight' ? (index === last ? 0 : index + 1)
+      : event.key === 'ArrowLeft' ? (index === 0 ? last : index - 1)
+      : event.key === 'Home' ? 0
+      : event.key === 'End' ? last
+      : null
+    if (next === null) return
+    event.preventDefault()
+    openTab(tabs[next].id)
+    document.getElementById(`left-tab-${tabs[next].id}`)?.focus()
+  }
+
   return (
     <div className="left-panel">
-      <div className="left-panel-tabs" role="tablist">
-        {tabs.map((tab) => (
+      <div className="left-panel-tabs" role="tablist" aria-label="Views">
+        {tabs.map((tab, index) => (
           <button
             key={tab.id}
+            id={`left-tab-${tab.id}`}
             type="button"
             role="tab"
             aria-selected={activeTab === tab.id}
+            aria-controls="left-panel-content"
+            tabIndex={activeTab === tab.id ? 0 : -1}
+            onKeyDown={(event) => onTabKeyDown(event, index)}
             className={`left-panel-tab ${activeTab === tab.id ? 'left-panel-tab-active' : ''}`}
             onClick={() => openTab(tab.id)}
           >
@@ -68,7 +87,7 @@ export function LeftPanel({ globe }: LeftPanelProps) {
           </button>
         ))}
       </div>
-      <div className="left-panel-content">
+      <div className="left-panel-content" id="left-panel-content" role="tabpanel" aria-labelledby={`left-tab-${activeTab}`}>
         {activeTab === 'explore' && (
           <SplitPane
             direction="column"

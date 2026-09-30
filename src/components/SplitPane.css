@@ -45,5 +45,10 @@
 .split-pane-divider:focus-visible,
 .split-pane--dragging > .split-pane-divider {
   background: var(--color-accent);
-  outline: none;
+}
+
+/* The accent fill alone can't show focus, since it is also the hover colour. */
+.split-pane-divider:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: -2px;
 }
