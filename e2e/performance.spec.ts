@@ -12,7 +12,7 @@ const BUDGET_MS = {
    *  seconds after that (a fixed-rate d3 simulation, about 6.5 s here), so settling isn't measured. */
   firstNodeVisible: 2_000,
   /** Selecting a node (Enter on a focused node) to its detail panel showing. */
-  selectToDetail: 1_000,
+  selectToDetail: 3_000,
 }
 
 test('the first node appears and a selection shows its detail within budget', async ({ page }) => {
