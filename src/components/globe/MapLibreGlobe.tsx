@@ -22,6 +22,7 @@ import {
   describeSwpcFetchOutcome,
   formatAuroraPopupHtml,
 } from './auroraLayer'
+import { prefersReducedMotion } from '../prefersReducedMotion'
 import { describeKp, type KpReadout } from './kpReadout'
 import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePopup'
 import { describeGeolocationError, GEOLOCATE_MAX_ZOOM, GEOLOCATE_POSITION_OPTIONS } from './geolocation'
@@ -363,8 +364,12 @@ export function MapLibreGlobe() {
       )
     }
 
+    // MapLibre's own reduced-motion handling skips `essential` moves, so those are only marked
+    // essential while animating; with "reduce motion" on the camera jumps instead of flying (#47).
+    const reduceMotion = prefersReducedMotion()
     if (view.flyTarget?.kind === 'global') {
-      map.flyTo({ center: US_CENTER, zoom: GLOBAL_VIEW_ZOOM, essential: true })
+      if (reduceMotion) map.jumpTo({ center: US_CENTER, zoom: GLOBAL_VIEW_ZOOM })
+      else map.flyTo({ center: US_CENTER, zoom: GLOBAL_VIEW_ZOOM, essential: true })
     } else if (view.flyTarget) {
       // east may exceed 180 when the coverage crosses the antimeridian; MapLibre accepts that.
       const [west, south, east, north] = view.flyTarget.bounds
@@ -373,7 +378,7 @@ export function MapLibreGlobe() {
           [west, south],
           [east, north],
         ],
-        { padding: 60, maxZoom: 6, essential: true },
+        { padding: 60, maxZoom: 6, essential: !reduceMotion, animate: !reduceMotion },
       )
     }
   }, [view, mapLoaded])
@@ -391,7 +396,7 @@ export function MapLibreGlobe() {
     <div className="globe">
       <div
         ref={containerRef}
-        role="img"
+        role="group"
         aria-label="Globe view of NOAA API coverage"
         data-coverage-features={view.footprint.features.length}
         data-aurora-cells={auroraCells ?? undefined}

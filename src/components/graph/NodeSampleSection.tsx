@@ -59,7 +59,7 @@ export function NodeSampleSection({ node }: { node: ServiceNode }) {
         </p>
       )}
       <span className="node-sample-label">{showingLive ? 'Live response (parsed)' : 'Static sample'}</span>
-      <pre className="node-sample-body">{body}</pre>
+      <pre className="node-sample-body" tabIndex={0} aria-label="Sample response">{body}</pre>
     </section>
   )
 }

@@ -44,6 +44,30 @@ describe('LeftPanel', () => {
     expect(screen.getByRole('tab', { name: /^Inspector\s*1 request$/ })).toBeTruthy()
   })
 
+  it('wires tabs to the panel and keeps only the active tab in the Tab order', () => {
+    render(<LeftPanel />)
+    const explore = screen.getByRole('tab', { name: 'Explore' })
+    const panel = screen.getByRole('tabpanel')
+    expect(explore.getAttribute('aria-controls')).toBe(panel.id)
+    expect(panel.getAttribute('aria-labelledby')).toBe(explore.id)
+    expect(explore.tabIndex).toBe(0)
+    expect(screen.getByRole('tab', { name: 'Inspector' }).tabIndex).toBe(-1)
+  })
+
+  it('moves between tabs with the arrow, Home and End keys', () => {
+    render(<LeftPanel />)
+    const explore = screen.getByRole('tab', { name: 'Explore' })
+    fireEvent.keyDown(explore, { key: 'ArrowRight' })
+    const inspector = screen.getByRole('tab', { name: 'Inspector', selected: true })
+    expect(document.activeElement).toBe(inspector)
+    fireEvent.keyDown(inspector, { key: 'ArrowRight' })
+    expect(screen.getByRole('tab', { name: 'Explore', selected: true })).toBeTruthy()
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Explore' }), { key: 'End' })
+    expect(screen.getByRole('tab', { name: 'Inspector', selected: true })).toBeTruthy()
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Inspector' }), { key: 'Home' })
+    expect(screen.getByRole('tab', { name: 'Explore', selected: true })).toBeTruthy()
+  })
+
   it('has no Globe tab when the globe sits beside the panel', () => {
     render(<LeftPanel />)
     expect(screen.queryByRole('tab', { name: /Globe/ })).toBeNull()

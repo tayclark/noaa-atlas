@@ -249,6 +249,20 @@ export function createGraphSimulation(
     )
 }
 
+/**
+ * Runs a simulation to rest synchronously and stops it, for users who prefer reduced motion (#47):
+ * the layout is final on the first paint instead of visibly spreading out. Returns the tick count.
+ */
+export function settleSimulation(simulation: Simulation<SimNode, SimEdge>, maxTicks = 600): number {
+  simulation.stop()
+  let ticks = 0
+  while (simulation.alpha() >= simulation.alphaMin() && ticks < maxTicks) {
+    simulation.tick()
+    ticks++
+  }
+  return ticks
+}
+
 /** One anchor per theme, evenly spaced on an ellipse sized to the canvas, in the given order. */
 export function themeAnchors(themes: readonly Theme[], width: number, height: number): Map<Theme, { x: number; y: number }> {
   const rx = width * 0.4

@@ -29,11 +29,13 @@ import {
   subscribeSelection,
 } from '../../data/selectionStore'
 import { nodeColor } from '../../data/themeColors'
+import { prefersReducedMotion } from '../prefersReducedMotion'
 import {
   computeFitTransform,
   computeLabelledFitTransform,
   computePathFitTransform,
   createGraphSimulation,
+  settleSimulation,
   EDGE_CLASS,
   NO_INSET,
   nodeRadius,
@@ -293,7 +295,7 @@ export function GraphView() {
       })
 
     let ticks = 0
-    simulation.on('tick', () => {
+    const renderTick = () => {
       edgeElsRef.current.forEach((el, i) => {
         const edge = simEdges[i]
         const source = edge?.source as SimNode | undefined
@@ -318,21 +320,33 @@ export function GraphView() {
         if (!initialFitDoneRef.current && highlightKeyRef.current === '') fitAllRef.current()
         scheduleLabelPlacement()
       }
-    })
+    }
+    simulation.on('tick', renderTick)
 
     // Positions settle after ~100+ ticks, so a selection made before this effect ran (e.g. a
     // globe click while the Inspector tab was active) needs one more pan attempt once real
     // positions exist (#45).
-    simulation.on('end', () => {
+    const onSettled = () => {
       applyHighlightPanRef.current(true)
       placeLabelsRef.current()
       // Lets e2e wait for the final layout rather than guess how long the simulation runs.
       svgEl.dataset.layoutSettled = 'true'
-    })
+    }
+    simulation.on('end', onSettled)
+
+    // "Reduce motion": lay the graph out in one go rather than animating it. The refs the settled
+    // handler reads are assigned by the effects below, so it runs on the next frame.
+    let settledFrame = 0
+    if (prefersReducedMotion()) {
+      settleSimulation(simulation)
+      renderTick()
+      settledFrame = requestAnimationFrame(onSettled)
+    }
 
     return () => {
       simulation.stop()
       if (placementFrame) cancelAnimationFrame(placementFrame)
+      if (settledFrame) cancelAnimationFrame(settledFrame)
     }
     // Created once: a resize only re-frames the view (effect below). Re-seeding the layout on
     // every size change made nodes jump while the user resized the panes.

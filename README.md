@@ -131,6 +131,14 @@ A service node records: `id`, `name`, `summary`, `owner` (office and program), `
 - `src/components/globe/liveLayers.ts` maps each live service to the globe layer it drives; a test keeps it in step with `liveLayer` in `graph.json`.
 - Every other service in the graph is reference data only. Its sample is a static excerpt, and it is marked "not live yet" with the reason.
 
+## Accessibility and performance
+
+- **Keyboard**: a skip link is the first Tab stop, and every control shows a focus ring. The view tabs move with the arrow keys, Home and End. Graph nodes are focusable and open with Enter or Space, and the pane dividers resize with the arrow keys. Not covered yet: panning and zooming the graph from the keyboard, and exploring the globe itself (its content is reachable through the graph and detail panel).
+- **Reduced motion**: with the OS "reduce motion" setting on, the globe jumps to its target instead of flying, the graph is laid out in one step instead of animating, and the geolocate pulse and finder scroll fade are switched off.
+- **Contrast**: `src/contrast.test.ts` checks the text and accent tokens in `index.css` against WCAG AA (4.5:1 for text, 3:1 for the focus ring). `e2e/a11y.spec.ts` runs axe (WCAG A and AA) on the initial view and with a node selected, and fails on serious or critical findings.
+- **Load budget**: `npm run check:budget` fails if the built JavaScript (including MapLibre's worker files) exceeds 670 kB gzip (607 kB when set) or the CSS exceeds 17 kB gzip (15 kB when set). Raise a limit in the same PR that adds the weight.
+- **Interaction budget**: `e2e/performance.spec.ts` allows 2 s from navigation to the first graph node and 1 s from selecting a node to its detail panel, against mocked network (about 0.2 s and 0.1 s measured on the dev server). The graph keeps easing for about 6.5 s after it first appears, so settling time is not budgeted.
+
 ## Project layout
 
 ```
@@ -163,6 +171,7 @@ Stack: React 19, TypeScript, Vite, MapLibre GL (globe), d3-force / d3-zoom / d3-
 | `npm run test:coverage` | Unit tests with a 75% gate on lines, statements, functions and branches |
 | `npm run test:e2e:mocked` | Playwright against mocked NWS and SWPC responses |
 | `npm run test:e2e:live` | Playwright tests tagged `@live` that hit the real NWS and SWPC APIs |
+| `npm run check:budget` | Bundle size budget, run after `npm run build` |
 | `npm run coverage-geometry` | Coverage geometry generator (see above) |
 
 The Playwright config starts the dev server on port 5173 (reusing one if it is already running). If another app holds that port, run `npx vite --port 5199 --strictPort` and point a copy of the config at it.
@@ -173,7 +182,7 @@ The Playwright config starts the dev server on port 5173 (reusing one if it is a
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and push to `main`:
 
-- **ci**: typecheck, lint, unit tests with the coverage gate (summary posted to the run), production build.
+- **ci**: typecheck, lint, unit tests with the coverage gate (summary posted to the run), production build, bundle size budget.
 - **e2e**: Playwright (Chromium) with the report uploaded on failure.
 
 ## Hosting
