@@ -9,7 +9,7 @@ import type { NwsAlertCollection } from '../../data/nwsSchema'
 // Matches the --color-alert-danger/--color-alert-warning tokens in index.css (this module is
 // plain TS, not a component, so it can't read CSS custom properties directly).
 export const ALERT_SEVERITY_COLORS: Record<string, string> = {
-  Extreme: '#f31260',
+  Extreme: '#ff3d7a',
   Severe: '#f5a524',
   Moderate: '#e6c229',
   Minor: '#5c9dd6',

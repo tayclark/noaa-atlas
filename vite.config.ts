@@ -33,6 +33,8 @@ export default defineConfig({
   server: { allowedHosts: ['.ngrok-free.app'] },
   test: {
     environment: 'node',
+    // Vitest blanks CSS by default; contrast.test.ts reads the design tokens out of index.css.
+    css: { include: /src\/index\.css/ },
     include: ['src/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',

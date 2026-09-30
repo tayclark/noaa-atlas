@@ -40,7 +40,7 @@ function EntryDetail({ entry }: { entry: RequestLogEntry }) {
       <div className="inspector-detail-section">
         <div className="inspector-detail-section-title">Response</div>
         {failed ? (
-          <pre className="inspector-detail-body">{entry.errorMessage ?? 'No response body.'}</pre>
+          <pre className="inspector-detail-body" tabIndex={0} aria-label="Error message">{entry.errorMessage ?? 'No response body.'}</pre>
         ) : (
           <div className="inspector-detail-body">
             <JsonTree value={entry.responseBody} />

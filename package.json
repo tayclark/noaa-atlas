@@ -27,6 +27,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@maplibre/maplibre-gl-style-spec": "^26.4.4",
     "@playwright/test": "^1.63.0",
     "@testing-library/dom": "^10.4.2",

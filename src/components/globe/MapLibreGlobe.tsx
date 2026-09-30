@@ -396,7 +396,7 @@ export function MapLibreGlobe() {
     <div className="globe">
       <div
         ref={containerRef}
-        role="img"
+        role="group"
         aria-label="Globe view of NOAA API coverage"
         data-coverage-features={view.footprint.features.length}
         data-aurora-cells={auroraCells ?? undefined}
