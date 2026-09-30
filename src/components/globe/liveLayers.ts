@@ -2,11 +2,12 @@
 // this says what the globe shows for it, so a selection can emphasise the right layer and the
 // status card can name it. liveLayers.test.ts keeps it in step with graph.json's liveLayer flags.
 
-export type LiveLayerKey = 'nws-alerts' | 'aurora' | 'kp' | 'coops-stations'
+export type LiveLayerKey = 'nws-alerts' | 'aurora' | 'kp' | 'coops-stations' | 'nowcoast-radar'
 
 export const LIVE_LAYERS: Readonly<Record<string, { layer: LiveLayerKey; status: string }>> = {
   'nws-api': { layer: 'nws-alerts', status: 'Its live layer, active alerts, is highlighted.' },
   'swpc-ovation-aurora': { layer: 'aurora', status: 'Its live layer, the aurora forecast glow, is highlighted.' },
   'swpc-geomagnetic-indices': { layer: 'kp', status: 'Its live Kp reading is highlighted in the corner.' },
   'coops-data-api': { layer: 'coops-stations', status: 'Its live layer, tide stations, is highlighted. Zoom in to see them.' },
+  'nowcoast-map-services': { layer: 'nowcoast-radar', status: 'Its live layer, current radar, is drawn on the globe while this is selected.' },
 }
