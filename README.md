@@ -21,7 +21,7 @@ Requires Node 24.21 or newer (`.nvmrc`, `engines`).
 
 The window is split into two resizable panes: the left pane has two tabs, **Explore** and **Inspector**, and the right pane is the globe. Drag a divider to resize, or focus it and use the arrow keys (`Home` and `End` jump to the limits).
 
-On a phone (700px wide or less) the panes aren't split: the globe becomes a third tab, **Explore · Globe · Inspector**, at full width. It stays loaded while you use the other tabs, and the Globe tab shows a dot when a selection made elsewhere has changed what it shows. On a narrow globe the alerts box and the Kp readout stack at the bottom, and the map credits start folded behind the ⓘ button.
+On a phone (700px wide or less) the panes aren't split: the globe becomes a third tab, **Explore · Globe · Inspector**, at full width. It stays loaded while you use the other tabs, and the Globe tab shows a dot when a selection made elsewhere has changed what it shows. On a narrow globe the alerts box and the Kp readout stack at the bottom, and the map credits start folded behind the ⓘ button. The graph's detail panel starts collapsed to its title bar, so a selection doesn't cover the graph, and the finder gets a larger share of the height.
 
 ## Explore tab
 

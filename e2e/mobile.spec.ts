@@ -50,3 +50,26 @@ test('a selection made in Explore marks the Globe tab, which then shows it', asy
   await expect(globeTab.getByLabel('updated')).toHaveCount(0)
   await expect(page.getByRole('status', { name: 'Selection status' })).toContainText(task)
 })
+
+test('the finder shows several tasks and a selected node leaves the graph mostly clear (#78)', async ({ page }) => {
+  await mockAlerts(page, zoneOnlyAlertsFixture(3))
+  await mockSwpc(page)
+  await page.goto('/')
+
+  const finder = page.locator('.left-panel-explore-finder')
+  expect((await finder.boundingBox())?.height ?? 0).toBeGreaterThan(300)
+
+  const node = page.locator('.graph-node').first()
+  await node.focus()
+  await page.keyboard.press('Enter')
+  const panel = page.locator('.node-detail-panel')
+  await expect(panel).toBeVisible()
+  // Collapsed by default on a phone: just the header, not most of the canvas.
+  const [canvasBox, panelBox] = [await page.locator('.graph-canvas').boundingBox(), await panel.boundingBox()]
+  if (!canvasBox || !panelBox) throw new Error('expected the canvas and panel to be laid out')
+  expect((panelBox.width * panelBox.height) / (canvasBox.width * canvasBox.height)).toBeLessThan(0.15)
+
+  // Expanding it stays within 40% of the canvas height.
+  await panel.getByRole('button').first().click()
+  expect((await panel.boundingBox())?.height ?? 0).toBeLessThanOrEqual(canvasBox.height * 0.4 + 1)
+})

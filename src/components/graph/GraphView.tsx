@@ -47,6 +47,7 @@ import { GraphSearch } from './GraphSearch'
 import { buildSearchIndex, matchNodeIds } from './searchMatch'
 import { DIAGONAL_OFFSET, LABEL_GAP, placeLabels, type Box, type LabelItem } from './labelPlacement'
 import { NodeDetailPanel } from './NodeDetailPanel'
+import { useNarrowLayout } from '../useNarrowLayout'
 
 const graph = buildGraph(parseGraphFile(graphJson))
 const graphNodeById = new Map(graph.nodes.map((node) => [node.id, node]))
@@ -124,8 +125,10 @@ export function GraphView() {
   const [size, setSize] = useState({ width: 600, height: 400 })
   const initialSizeRef = useRef(size)
   const [legendOpen, setLegendOpen] = useState(false)
-  // Kept across selections, so a user who collapses the panel isn't fighting it on every click.
-  const [panelCollapsed, setPanelCollapsed] = useState(false)
+  // Kept across selections, so a user who collapses the panel isn't fighting it on every click. On a
+  // phone it starts collapsed, since the open panel would cover most of the graph (#78).
+  const narrow = useNarrowLayout()
+  const [panelCollapsed, setPanelCollapsed] = useState(narrow)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const highlightedIds = getHighlightedNodeIds()
   const highlightKey = highlightedIds.join('|')

@@ -12,6 +12,7 @@ import { FinderPanel } from './finder/FinderPanel'
 import { GraphView } from './graph/GraphView'
 import { InspectorPanel } from './inspector/InspectorPanel'
 import { SplitPane } from './SplitPane'
+import { useNarrowLayout } from './useNarrowLayout'
 import './LeftPanel.css'
 
 type LeftTab = 'explore' | 'globe' | 'inspector'
@@ -28,6 +29,7 @@ interface LeftPanelProps {
 }
 
 export function LeftPanel({ globe }: LeftPanelProps) {
+  const narrow = useNarrowLayout()
   const [activeTab, setActiveTab] = useState<LeftTab>('explore')
   // Shown on the Inspector tab (#150), so live calls are discoverable from the Explore tab.
   const requestCount = useSyncExternalStore(subscribeRequestLog, getRequestLogSnapshot).length
@@ -70,7 +72,8 @@ export function LeftPanel({ globe }: LeftPanelProps) {
         {activeTab === 'explore' && (
           <SplitPane
             direction="column"
-            defaultFraction={0.35}
+            // A phone's finder needs more of the height to show a few tasks (#78).
+            defaultFraction={narrow ? 0.45 : 0.35}
             dividerLabel="Resize finder and graph"
             left={
               <div className="left-panel-explore-finder">
