@@ -7,6 +7,9 @@ import { emptyAlertsFixture, mappableAlertsFixture, mockAlerts, zoneOnlyAlertsFi
 import { mockRadar } from './fixtures/nowcoast'
 import { mockSwpc } from './fixtures/swpc'
 
+// These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
+test.use({ reducedMotion: 'reduce' })
+
 async function openApp(page: Page) {
   await mockAlerts(page, emptyAlertsFixture())
   await mockSwpc(page)
@@ -113,16 +116,21 @@ test('a selection is announced and the focused graph pans and zooms from the key
 })
 
 
-test('an open alert popup has no serious axe violations (#86)', async ({ page }) => {
-  await mockAlerts(page, mappableAlertsFixture())
-  await mockSwpc(page)
-  await page.goto('/')
-  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
-  const globe = page.locator('[aria-label="Globe view of NOAA API coverage"]')
-  await page.waitForTimeout(500)
-  await globe.click()
-  await expect(page.getByText('Flood Warning')).toBeVisible()
-  expect(await seriousViolations(page)).toEqual([])
+// This test clicks the globe's centre for a mapped alert and fails under reduced motion, so it keeps full motion.
+test.describe('with motion', () => {
+  test.use({ reducedMotion: 'no-preference' })
+
+  test('an open alert popup has no serious axe violations (#86)', async ({ page }) => {
+    await mockAlerts(page, mappableAlertsFixture())
+    await mockSwpc(page)
+    await page.goto('/')
+    await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
+    const globe = page.locator('[aria-label="Globe view of NOAA API coverage"]')
+    await page.waitForTimeout(500)
+    await globe.click()
+    await expect(page.getByText('Flood Warning')).toBeVisible()
+    expect(await seriousViolations(page)).toEqual([])
+  })
 })
 
 test('the expanded zone-only alerts overlay has no serious axe violations (#86)', async ({ page }) => {

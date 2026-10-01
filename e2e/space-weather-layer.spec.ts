@@ -6,6 +6,9 @@ import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
 import { AURORA_BAND_VALUE, AURORA_FIXTURE_CELLS, mockSwpc, mockSwpcRefresh } from './fixtures/swpc'
 
+// These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
+test.use({ reducedMotion: 'reduce' })
+
 const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
 
 async function selectByKeyboard(page: Page, nodeId: string) {

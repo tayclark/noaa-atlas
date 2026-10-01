@@ -5,6 +5,9 @@ import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
 
+// These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
+test.use({ reducedMotion: 'reduce' })
+
 test.describe('with location allowed', () => {
   test.use({ geolocation: { latitude: 39.05, longitude: -95.68 }, permissions: ['geolocation'] })
 
