@@ -18,9 +18,86 @@
   font-size: var(--font-size-sm);
 }
 
+.graph-search-field {
+  position: relative;
+}
+
+/* The clear button is ours, so every browser has the same one (Chrome on Android has none). */
+.graph-search input::-webkit-search-cancel-button {
+  display: none;
+  -webkit-appearance: none;
+}
+
+.graph-search input {
+  padding-right: 2rem;
+}
+
+.graph-search-clear {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* One line high whether or not it has anything to say, so a match count appearing, or wrapping,
+   never resizes the toolbar and with it the canvas under it. */
 .graph-search-status {
+  height: 1.5em;
   margin: 0;
+  overflow: hidden;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  min-height: 1em;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The matches by name (#78), over the canvas rather than pushing it down. */
+.graph-search-results {
+  position: absolute;
+  top: 100%;
+  right: var(--space-3);
+  left: var(--space-3);
+  z-index: 7;
+  max-height: 50vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+}
+
+.graph-search-results li + li {
+  border-top: 1px solid var(--color-border);
+}
+
+.graph-search-results button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.graph-search-result-detail {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
 }
