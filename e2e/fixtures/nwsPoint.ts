@@ -27,6 +27,9 @@ export async function mockPointLookup(page: Page) {
       },
     }),
   )
+  // The point forecast timeline (#228) asks for the grid on every point; specs that don't look at
+  // it get an answer that fails fast instead of reaching the real service.
+  await page.route(`**/gridpoints/${WFO}/${GRID_X},${GRID_Y}`, (route) => route.fulfill({ status: 503, json: {} }))
   await page.route('**/gridpoints/**/forecast', (route) =>
     route.fulfill({
       json: {
@@ -77,4 +80,30 @@ export async function mockPointLookup(page: Page) {
       },
     }),
   )
+}
+
+/**
+ * The raw forecast grid for the point timeline (#228): 48 hourly wind samples starting three hours
+ * back, so "now" falls inside. `waves: false` answers like an inland point (no unit, no values).
+ */
+export async function mockGridpointData(page: Page, { waves = true } = {}) {
+  const hour = 3_600_000
+  const start = Math.floor(Date.now() / hour) * hour - 3 * hour
+  const hourly = (value: (i: number) => number) =>
+    Array.from({ length: 48 }, (_, i) => ({ validTime: `${new Date(start + i * hour).toISOString()}/PT1H`, value: value(i) }))
+  await page.route(`**/gridpoints/${WFO}/${GRID_X},${GRID_Y}`, (route) =>
+    route.fulfill({
+      json: {
+        properties: {
+          windSpeed: { uom: 'wmoUnit:km_h-1', values: hourly((i) => 10 + (i % 24)) },
+          windDirection: { uom: 'wmoUnit:degree_(angle)', values: hourly(() => 225) },
+          windGust: { uom: 'wmoUnit:km_h-1', values: hourly((i) => 20 + (i % 24)) },
+          waveHeight: waves
+            ? { uom: 'wmoUnit:m', values: hourly((i) => (i % 12 < 6 ? 0.3048 : 0.6096)) }
+            : {},
+        },
+      },
+    }),
+  )
+  return start
 }

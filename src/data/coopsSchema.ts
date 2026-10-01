@@ -21,6 +21,11 @@ const predictionsSchema = z.object({
   predictions: z.array(z.object({ t: z.string(), v: value, type: z.enum(['H', 'L']) })),
 })
 
+// interval=h returns the whole curve, without the high/low `type` of interval=hilo.
+const hourlyPredictionsSchema = z.object({
+  predictions: z.array(z.object({ t: z.string(), v: value })),
+})
+
 export interface CoopsReading {
   /** UTC, "YYYY-MM-DD HH:mm". */
   time: string
@@ -49,6 +54,14 @@ export function parsePredictions(raw: unknown): CoopsResult<CoopsTide[]> {
     ok: true,
     value: body.predictions.map((p) => ({ time: p.t, metres: p.v, kind: p.type === 'H' ? 'high' : 'low' })),
   }
+}
+
+/** Predicted hourly water level (metres above MLLW), oldest first. */
+export function parseHourlyPredictions(raw: unknown): CoopsResult<CoopsReading[]> {
+  const error = errorBody.safeParse(raw)
+  if (error.success) return { ok: false, message: error.data.error.message }
+  const body = hourlyPredictionsSchema.parse(raw)
+  return { ok: true, value: body.predictions.map((p) => ({ time: p.t, metres: p.v })) }
 }
 
 // The station snapshot in coopsStations.json (scripts/coops-stations.mjs).

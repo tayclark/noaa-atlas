@@ -15,6 +15,7 @@
   right: 10px;
   bottom: calc(var(--space-4) + 40px);
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-2);
   pointer-events: none;
@@ -394,6 +395,120 @@
   white-space: nowrap;
 }
 
+/* The point forecast timeline (#228): wind, waves and tide for the tapped point. */
+.forecast-timeline {
+  /* Its own row above the others: the chart is unreadable squeezed beside the alerts. */
+  flex: 1 1 100%;
+  min-width: 0;
+  max-width: 560px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.forecast-timeline p {
+  margin: var(--space-1) 0 0;
+}
+
+.forecast-timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.forecast-timeline-controls input[type='range'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.forecast-timeline-play,
+.forecast-timeline-step,
+.forecast-timeline-now,
+.forecast-timeline-retry {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.forecast-timeline-step {
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}
+
+.forecast-timeline-play:disabled,
+.forecast-timeline-step:disabled,
+.forecast-timeline-now:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+  opacity: 0.5;
+}
+
+.forecast-timeline-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: var(--space-1);
+}
+
+.forecast-timeline-axis {
+  fill: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.forecast-timeline-day,
+.forecast-timeline-base {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.forecast-timeline-wind,
+.forecast-timeline-waves,
+.forecast-timeline-tide,
+.forecast-timeline-gust {
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.forecast-timeline-wind {
+  stroke: var(--color-accent);
+}
+
+.forecast-timeline-gust {
+  stroke: var(--color-accent);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  opacity: 0.7;
+}
+
+.forecast-timeline-waves,
+.forecast-timeline-tide {
+  stroke: var(--color-text);
+}
+
+.forecast-timeline-now-marker {
+  stroke: var(--color-text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.forecast-timeline-cursor {
+  stroke: var(--color-text);
+  stroke-width: 1.5;
+}
+
+.forecast-timeline-note {
+  color: var(--color-text-muted);
+}
+
 /* Narrow globe (#159): the zone-alerts box stacks above the Kp readout, both full width, and the
    selection card keeps clear of the locate-me button. */
 @container globe (max-width: 480px) {
@@ -444,6 +559,7 @@
     /* Clear of MapLibre's credit button: 24px, and 10px from the corner. */
     bottom: calc(var(--space-2) + 28px);
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: stretch;
   }
 
@@ -451,6 +567,23 @@
   .space-weather-readout {
     max-width: none;
     margin-left: 0;
+  }
+
+  /* A phone keeps the controls and the readout; the chart needs more room than the sheet leaves.
+     A popup spans the globe here, so it gives up the strip the timeline takes: anchored above its
+     point it stays clear of it, and anchored below (the upper half) it is shortened to end above it. */
+  .forecast-timeline {
+    flex: none;
+    max-width: none;
+  }
+
+  .globe-popup-narrow .maplibregl-popup-content {
+    max-height: min(calc(50cqh - 7rem), 22rem);
+  }
+
+  .forecast-timeline-chart,
+  .forecast-timeline-note {
+    display: none;
   }
 
   .radar-time input[type='range'] {

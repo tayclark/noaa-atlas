@@ -3,7 +3,7 @@
 // from the coopsStations.json snapshot rather than the Metadata API (see scripts/coops-stations.mjs).
 
 import { createLiveClient } from './liveRequest'
-import { parsePredictions, parseWaterLevel, type CoopsReading, type CoopsResult, type CoopsTide } from './coopsSchema'
+import { parseHourlyPredictions, parsePredictions, parseWaterLevel, type CoopsReading, type CoopsResult, type CoopsTide } from './coopsSchema'
 
 export class CoopsHttpError extends Error {
   readonly status: number
@@ -57,4 +57,12 @@ export function getWaterLevel(station: string): Promise<CoopsResult<CoopsReading
 /** Today's predicted high and low tides (UTC day) at the station. */
 export function getHiloPredictions(station: string): Promise<CoopsResult<CoopsTide[]>> {
   return request(dataPath(station, 'predictions', { date: 'today', interval: 'hilo' }), parsePredictions)
+}
+
+/** Predicted water level every hour from `begin` to `end` (UTC "YYYYMMDD"), for the forecast timeline (#228). */
+export function getHourlyPredictions(station: string, begin: string, end: string): Promise<CoopsResult<CoopsReading[]>> {
+  return request(
+    dataPath(station, 'predictions', { interval: 'h', begin_date: begin, end_date: end }),
+    parseHourlyPredictions,
+  )
 }
