@@ -1,4 +1,4 @@
-import { GeolocateControl, Map as MapLibreMap, Popup, setWorkerUrl, type CanvasSource, type ExpressionSpecification, type GeoJSONSource, type MapLayerMouseEvent, type MapMouseEvent, type RasterTileSource } from 'maplibre-gl'
+import { GeolocateControl, LngLat, Map as MapLibreMap, Marker, Popup, setWorkerUrl, type CanvasSource, type ExpressionSpecification, type GeoJSONSource, type LngLatLike, type MapGeoJSONFeature, type MapMouseEvent, type PopupOptions, type RasterTileSource } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import './MapLibreGlobe.css'
@@ -47,12 +47,13 @@ import {
 import { RadarTimeControl } from './RadarTimeControl'
 import { NOWCOAST_CAPABILITIES_URL, parseRadarFrames } from './radarTimes'
 import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePopup'
+import { hitBox, hitPadding, nearestCandidate } from './hitPick'
 import { describeGeolocationError, GEOLOCATE_MAX_ZOOM, GEOLOCATE_POSITION_OPTIONS } from './geolocation'
 import {
   GLOBE_PROJECTION,
   GLOBE_STYLE_URL,
+  openingZoom,
   US_CENTER,
-  US_ZOOM,
 } from './globeConfig'
 import {
   alertSeverityColorExpression,
@@ -149,17 +150,63 @@ const globeViewContext: GlobeViewContext = {
   nodesAtPoint: (point) => nodesCoveringPoint(graphNodes, point),
 }
 
+// One popup at a time (#78): a station inside an alert, or a second tap, used to stack them. It is
+// at most 320px wide, and less on a screen that is narrower than that.
+const POPUP_MAX_WIDTH = 'min(320px, calc(100vw - 32px))'
+// How far (px) a narrow globe's popup stands off the tapped point.
+const POPUP_POINT_GAP = 14
+let openPopup: Popup | null = null
+function showPopup(map: MapLibreMap, lngLat: LngLatLike, html: string): Popup {
+  openPopup?.remove()
+  const placement = popupPlacement(map, lngLat)
+  const popup = new Popup({ maxWidth: POPUP_MAX_WIDTH, ...placement }).setLngLat(lngLat).setHTML(html).addTo(map)
+  // A popup that spans the globe stands off the point, so a ring marks where was tapped.
+  if (placement.className) {
+    const ring = document.createElement('div')
+    ring.className = 'globe-tap-ring'
+    const marker = new Marker({ element: ring }).setLngLat(lngLat).addTo(map)
+    popup.on('close', () => marker.remove())
+  }
+  openPopup = popup
+  popup.on('close', () => {
+    if (openPopup === popup) openPopup = null
+  })
+  return popup
+}
+
+/**
+ * On a narrow globe the popup spans its width (see the CSS), above the tapped point in the lower
+ * half of the map and below it in the upper half, so it never runs off an edge. MapLibre's own
+ * placement assumes a map at least twice as wide as the popup and leaves one clipped on a phone.
+ */
+function popupPlacement(map: MapLibreMap, lngLat: LngLatLike): Partial<PopupOptions> {
+  const container = map.getContainer()
+  if (container.clientWidth > NARROW_GLOBE_WIDTH) return {}
+  const point = map.project(LngLat.convert(lngLat))
+  const below = point.y > container.clientHeight / 2
+  return {
+    anchor: below ? 'bottom' : 'top',
+    offset: [container.clientWidth / 2 - point.x, below ? -POPUP_POINT_GAP : POPUP_POINT_GAP],
+    className: 'globe-popup-narrow',
+  }
+}
+
+// The second click of a double-tap zoom is not another question for the forecast service (#78).
+const DOUBLE_CLICK_MS = 350
+const STATION_LAYER_IDS = [COOPS_LAYER_ID, DART_LAYER_ID, NDBC_LAYER_ID]
+
 /**
  * Point forecast/observation lookup (#39), shared by a globe click and the locate button. Coverage
  * is purely local (no network call), so it's computed up front and shown whether or not the NWS
  * lookup succeeds (#41).
  */
 function showPointLookup(map: MapLibreMap, lng: number, lat: number, ovation: SwpcOvation | null) {
-  const popup = new Popup().setLngLat([lng, lat]).setHTML(formatPointLoadingHtml()).addTo(map)
   // The aurora chance here (#54), when the forecast has loaded and this cell has any.
   const aurora = ovation ? auroraAt(ovation, [lng, lat]) : null
   const auroraHtml = ovation && aurora !== null ? `${formatAuroraPopupHtml(aurora, ovation.forecastTime)}<hr/>` : ''
   const coverageHtml = auroraHtml + formatCoveragePopupHtml(describeCoverageForPopup(nodesCoveringPoint(graphNodes, [lng, lat])))
+  // Coverage is local, so it is there at once, under the forecast that is still loading (#78).
+  const popup = showPopup(map, [lng, lat], `${formatPointLoadingHtml()}<hr/>${coverageHtml}`)
   // Highlights the covering graph node(s) if/when the Graph tab is open (#45).
   selectPoint([lng, lat])
 
@@ -181,6 +228,24 @@ function showPointLookup(map: MapLibreMap, lng: number, lat: number, ovation: Sw
     .catch((err: unknown) => {
       popup.setHTML(`${formatPointErrorHtml(describePointError(err))}<hr/>${coverageHtml}`)
     })
+}
+
+/** The popup for a tapped station, by the layer it belongs to; each also selects the point (#45, #51). */
+function openStationPopup(map: MapLibreMap, feature: MapGeoJSONFeature) {
+  if (feature.geometry.type !== 'Point') return
+  const [lng, lat] = feature.geometry.coordinates
+  selectPoint([lng, lat])
+  if (feature.layer.id === COOPS_LAYER_ID) {
+    const station = feature.properties as StationProperties
+    const popup = showPopup(map, [lng, lat], formatStationLoadingHtml(station))
+    void Promise.allSettled([getWaterLevel(station.id), getHiloPredictions(station.id)]).then(([water, tides]) => {
+      popup.setHTML(formatStationPopupHtml(station, water, tides))
+    })
+  } else if (feature.layer.id === DART_LAYER_ID) {
+    showPopup(map, [lng, lat], formatDartPopupHtml(feature.properties as DartProperties))
+  } else {
+    showPopup(map, [lng, lat], formatNdbcPopupHtml(feature.properties as NdbcProperties))
+  }
 }
 
 export function MapLibreGlobe() {
@@ -209,6 +274,16 @@ export function MapLibreGlobe() {
   const radarUrlRef = useRef(NOWCOAST_RADAR_TILE_URL)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const view = useMemo(() => describeSelectionForGlobe(selection, globeViewContext), [selection])
+  // A tap on the globe selects a point, which replaces the service whose radar or buoys were on
+  // screen, and with them goes the layer the reader was looking at, even when the tap was on one
+  // of its own buoys (#78). The layers stay while a point is selected.
+  const [heldLayers, setHeldLayers] = useState(view.liveLayers)
+  if (!selection.selectedPoint && heldLayers !== view.liveLayers) setHeldLayers(view.liveLayers)
+  const liveLayers = selection.selectedPoint ? heldLayers : view.liveLayers
+  const geolocateRef = useRef<GeolocateControl | null>(null)
+  const [locating, setLocating] = useState(false)
+  // MapLibre enables its own button once it knows the browser can geolocate; ours waits for that.
+  const [locateReady, setLocateReady] = useState(false)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -217,22 +292,45 @@ export function MapLibreGlobe() {
       container: containerRef.current,
       style: GLOBE_STYLE_URL,
       center: US_CENTER,
-      zoom: US_ZOOM,
+      // The desktop zoom shows a phone's screen only a third of the US (#78).
+      zoom: openingZoom(containerRef.current.clientWidth),
+      // Two fingers zoom and pan the globe, but don't tilt or twist it (#78): with no compass, a
+      // globe turned by an accidental twist has no way back to north.
+      touchPitch: false,
+      // A phone draws every pixel at 3x, which costs battery for a basemap that looks the same at 2x.
+      pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
     })
+    map.touchZoomRotate.disableRotation()
     mapRef.current = map
     let stopSwpcPolling: (() => void) | null = null
 
+    // "Locate me": the same lookup as a click, at the user's position. MapLibre's control does the
+    // positioning, the camera and the user's dot; its own icon-only button is hidden (see the CSS)
+    // in favour of a labelled one of ours, which can show that a fix is being waited for (#78).
     const geolocate = new GeolocateControl({
       positionOptions: GEOLOCATE_POSITION_OPTIONS,
       fitBoundsOptions: { maxZoom: GEOLOCATE_MAX_ZOOM },
     })
     map.addControl(geolocate, 'top-right')
-    // "Locate me" (the navigation-arrow button): the same lookup as a click, at the user's position.
+    geolocateRef.current = geolocate
+    const mapContainer = containerRef.current
+    const nativeLocateButton = () => mapContainer.querySelector<HTMLButtonElement>('.maplibregl-ctrl-geolocate')
+    const readyObserver = new MutationObserver(() => {
+      if (nativeLocateButton()?.disabled === false) {
+        setLocateReady(true)
+        readyObserver.disconnect()
+      }
+    })
+    readyObserver.observe(mapContainer, { attributes: true, subtree: true, childList: true, attributeFilter: ['disabled'] })
     geolocate.on('geolocate', (e) => {
+      setLocating(false)
       setGeolocationError(null)
       showPointLookup(map, e.coords.longitude, e.coords.latitude, ovationRef.current)
     })
-    geolocate.on('error', (e) => setGeolocationError(describeGeolocationError(e.code)))
+    geolocate.on('error', (e) => {
+      setLocating(false)
+      setGeolocationError(describeGeolocationError(e.code))
+    })
 
     // setProjection must run after the style has finished loading, or
     // MapLibre throws "Style is not done loading."
@@ -286,17 +384,6 @@ export function MapLibreGlobe() {
           'circle-stroke-width': 1.5,
         },
       })
-      map.on('click', COOPS_LAYER_ID, (e: MapLayerMouseEvent) => {
-        const feature = e.features?.[0]
-        if (!feature || feature.geometry.type !== 'Point') return
-        const station = feature.properties as StationProperties
-        const [lng, lat] = feature.geometry.coordinates
-        selectPoint([lng, lat])
-        const popup = new Popup().setLngLat([lng, lat]).setHTML(formatStationLoadingHtml(station)).addTo(map)
-        void Promise.allSettled([getWaterLevel(station.id), getHiloPredictions(station.id)]).then(([water, tides]) => {
-          popup.setHTML(formatStationPopupHtml(station, water, tides))
-        })
-      })
       map.on('mouseenter', COOPS_LAYER_ID, () => {
         map.getCanvas().style.cursor = 'pointer'
       })
@@ -315,13 +402,6 @@ export function MapLibreGlobe() {
           'circle-stroke-color': '#ffffff',
           'circle-stroke-width': 1.5,
         },
-      })
-      map.on('click', DART_LAYER_ID, (e: MapLayerMouseEvent) => {
-        const feature = e.features?.[0]
-        if (!feature || feature.geometry.type !== 'Point') return
-        const [lng, lat] = feature.geometry.coordinates
-        selectPoint([lng, lat])
-        new Popup().setLngLat([lng, lat]).setHTML(formatDartPopupHtml(feature.properties as DartProperties)).addTo(map)
       })
       map.on('mouseenter', DART_LAYER_ID, () => {
         map.getCanvas().style.cursor = 'pointer'
@@ -342,13 +422,6 @@ export function MapLibreGlobe() {
           'circle-stroke-width': 1,
         },
       })
-      map.on('click', NDBC_LAYER_ID, (e: MapLayerMouseEvent) => {
-        const feature = e.features?.[0]
-        if (!feature || feature.geometry.type !== 'Point') return
-        const [lng, lat] = feature.geometry.coordinates
-        selectPoint([lng, lat])
-        new Popup().setLngLat([lng, lat]).setHTML(formatNdbcPopupHtml(feature.properties as NdbcProperties)).addTo(map)
-      })
       map.on('mouseenter', NDBC_LAYER_ID, () => {
         map.getCanvas().style.cursor = 'pointer'
       })
@@ -357,14 +430,36 @@ export function MapLibreGlobe() {
       })
       setMapLoaded(true)
 
-      // Point-click forecast/observation lookup (#39). Registered as a global click handler,
-      // not layer-scoped like the alerts click handler below, so it works immediately without
-      // waiting on the alerts fetch. Guarded so a click on an alert polygon is handled only by
-      // the alert popup below, not both — map.getLayer(...) also guards queryRenderedFeatures
-      // being called before the alerts layer exists. A tide station is guarded the same way (#51).
+      // Every tap or click on the map (#39, #51, #78). One handler decides what it meant, so only one
+      // popup opens: a station if one is near (a fingertip can't aim at a 6px dot, so the query is a
+      // padded box and the nearest dot wins), else an alert polygon under the point, else a
+      // forecast and coverage lookup there. Layers that aren't drawn yet are skipped.
+      let lastClickAt = -Infinity
       map.on('click', (e: MapMouseEvent) => {
-        const layers = [ALERTS_FILL_LAYER_ID, COOPS_LAYER_ID, DART_LAYER_ID, NDBC_LAYER_ID].filter((id) => map.getLayer(id))
-        if (layers.length > 0 && map.queryRenderedFeatures(e.point, { layers }).length > 0) return
+        const at = e.originalEvent.timeStamp
+        const isEcho = at - lastClickAt < DOUBLE_CLICK_MS
+        lastClickAt = at
+        if (isEcho) return
+
+        const stationLayers = STATION_LAYER_IDS.filter((id) => map.getLayer(id))
+        const padding = hitPadding(window.matchMedia?.('(pointer: coarse)').matches ?? false)
+        const nearby = stationLayers.length > 0 ? map.queryRenderedFeatures(hitBox(e.point, padding), { layers: stationLayers }) : []
+        const station = nearestCandidate(
+          nearby.flatMap((feature) => (feature.geometry.type === 'Point' ? [{ feature, ...map.project(feature.geometry.coordinates as [number, number]) }] : [])),
+          e.point,
+        )
+        if (station) return openStationPopup(map, station)
+
+        const alert = map.getLayer(ALERTS_FILL_LAYER_ID) ? map.queryRenderedFeatures(e.point, { layers: [ALERTS_FILL_LAYER_ID] })[0] : undefined
+        if (alert?.properties) {
+          const { event, areaDesc, effective, expires } = describeAlertForPopup(alert.properties as Parameters<typeof describeAlertForPopup>[0])
+          // e.lngLat is guaranteed inside the polygon (queryRenderedFeatures matched it), so it's a
+          // valid representative point for coverage lookup (#45).
+          selectPoint([e.lngLat.lng, e.lngLat.lat])
+          showPopup(map, e.lngLat, `<strong>${event}</strong><br/>${areaDesc}<br/>${effective} – ${expires}`)
+          return
+        }
+
         showPointLookup(map, e.lngLat.lng, e.lngLat.lat, ovationRef.current)
       })
 
@@ -453,23 +548,6 @@ export function MapLibreGlobe() {
             },
           })
 
-          map.on('click', ALERTS_FILL_LAYER_ID, (e: MapLayerMouseEvent) => {
-            const feature = e.features?.[0]
-            const properties = feature?.properties
-            if (!properties) return
-            const { event, areaDesc, effective, expires } = describeAlertForPopup(
-              properties as Parameters<typeof describeAlertForPopup>[0],
-            )
-            // e.lngLat is guaranteed inside the clicked alert polygon (queryRenderedFeatures
-            // matched it), so it's a valid representative point for coverage lookup (#45).
-            selectPoint([e.lngLat.lng, e.lngLat.lat])
-            new Popup()
-              .setLngLat(e.lngLat)
-              .setHTML(
-                `<strong>${event}</strong><br/>${areaDesc}<br/>${effective} – ${expires}`,
-              )
-              .addTo(map)
-          })
           map.on('mouseenter', ALERTS_FILL_LAYER_ID, () => {
             map.getCanvas().style.cursor = 'pointer'
           })
@@ -484,7 +562,9 @@ export function MapLibreGlobe() {
     })
 
     return () => {
+      readyObserver.disconnect()
       mapRef.current = null
+      geolocateRef.current = null
       stopSwpcPolling?.()
       map.remove()
     }
@@ -493,13 +573,13 @@ export function MapLibreGlobe() {
   // Reacts to the selection (#44, #149): draws its coverage footprint, flies to it, and
   // emphasises the live layers its services drive (#54). Gated on mapLoaded since the source,
   // fitBounds and setPaintProperty all require a loaded style.
+  const alertsHighlighted = liveLayers.includes('nws-alerts')
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded) return
 
     map.getSource<GeoJSONSource>(COVERAGE_SOURCE_ID)?.setData(view.footprint)
 
-    const alertsHighlighted = view.liveLayers.includes('nws-alerts')
     if (map.getLayer(ALERTS_FILL_LAYER_ID)) {
       map.setPaintProperty(
         ALERTS_FILL_LAYER_ID,
@@ -532,11 +612,11 @@ export function MapLibreGlobe() {
         { padding: 60, maxZoom: 6, essential: !reduceMotion, animate: !reduceMotion },
       )
     }
-  }, [view, mapLoaded])
+  }, [view, mapLoaded, alertsHighlighted])
 
   // The aurora's emphasis (#54) lives apart from the effect above so that the layer arriving
   // (auroraCells) re-applies it without re-framing the globe.
-  const auroraHighlighted = view.liveLayers.includes('aurora')
+  const auroraHighlighted = liveLayers.includes('aurora')
   useEffect(() => {
     const map = mapRef.current
     if (!map || auroraCells === null || !map.getLayer(AURORA_LAYER_ID)) return
@@ -544,7 +624,7 @@ export function MapLibreGlobe() {
   }, [auroraHighlighted, auroraCells])
 
   // The stations' emphasis (#51), applied once the layer exists (mapLoaded).
-  const coopsHighlighted = view.liveLayers.includes('coops-stations')
+  const coopsHighlighted = liveLayers.includes('coops-stations')
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(COOPS_LAYER_ID)) return
@@ -556,7 +636,7 @@ export function MapLibreGlobe() {
   }, [coopsHighlighted, mapLoaded])
 
   // The radar (#56) is shown only while its node is selected, once the layer exists (mapLoaded).
-  const radarShown = view.liveLayers.includes('nowcoast-radar')
+  const radarShown = liveLayers.includes('nowcoast-radar')
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(RADAR_LAYER_ID)) return
@@ -605,14 +685,14 @@ export function MapLibreGlobe() {
   )
 
   // The DART buoys (#80) are shown only while their node is selected, once the layer exists.
-  const dartShown = view.liveLayers.includes('dart-stations')
+  const dartShown = liveLayers.includes('dart-stations')
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(DART_LAYER_ID)) return
     map.setLayoutProperty(DART_LAYER_ID, 'visibility', dartShown ? 'visible' : 'none')
   }, [dartShown, mapLoaded])
 
-  const ndbcShown = view.liveLayers.includes('ndbc-stations')
+  const ndbcShown = liveLayers.includes('ndbc-stations')
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(NDBC_LAYER_ID)) return
@@ -620,7 +700,7 @@ export function MapLibreGlobe() {
   }, [ndbcShown, mapLoaded])
 
   return (
-    <div className="globe">
+    <div className={`globe${view.card ? ' globe-has-card' : ''}`}>
       <div
         ref={containerRef}
         role="group"
@@ -647,6 +727,24 @@ export function MapLibreGlobe() {
           ))}
         </div>
       )}
+      <button
+        type="button"
+        className="globe-locate"
+        aria-label="Find my location"
+        aria-busy={locating}
+        disabled={locating || !locateReady}
+        onClick={() => {
+          setGeolocationError(null)
+          // False before MapLibre has set the control up (it checks for geolocation support first).
+          if (geolocateRef.current?.trigger()) setLocating(true)
+          else setGeolocationError(describeGeolocationError(2))
+        }}
+      >
+        <svg className="globe-locate-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+          <polygon points="3 11 22 2 13 21 11 13 3 11" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        </svg>
+        <span className="globe-locate-label">{locating ? 'Locating…' : 'My location'}</span>
+      </button>
       {geolocationError && (
         <div className="geolocation-status" role="status" aria-label="Location status">
           <p>{geolocationError}</p>
@@ -723,7 +821,7 @@ export function MapLibreGlobe() {
         })()}
         {(kp.status !== 'loading' || auroraError) && (
           <div
-            className={`space-weather-readout${view.liveLayers.includes('kp') ? ' space-weather-readout-highlighted' : ''}`}
+            className={`space-weather-readout${liveLayers.includes('kp') ? ' space-weather-readout-highlighted' : ''}`}
             role="status"
             aria-label="Geomagnetic activity"
           >
