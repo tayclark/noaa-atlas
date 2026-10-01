@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { resetTime } from '../../data/timeStore'
+import { RadarTimeControl } from './RadarTimeControl'
 import { WindControl } from './WindControl'
 
 const CYCLE = Date.parse('2026-10-01T00:00:00Z')
@@ -9,6 +11,7 @@ const H = 3_600_000
 beforeEach(() => vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] }))
 afterEach(() => {
   cleanup()
+  resetTime()
   vi.useRealTimers()
 })
 
@@ -35,6 +38,21 @@ describe('WindControl', () => {
     render(<WindControl layer="wind" onLayerChange={() => {}} cycle={CYCLE} time={null} onChange={() => {}} />)
     expect((screen.getByRole('slider') as HTMLInputElement).value).toBe('4')
     expect(screen.getByRole('button', { name: 'Now' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('hands playback over when another control starts playing', () => {
+    const frames = ['2026-10-01T02:40:00.000Z', '2026-10-01T02:50:00.000Z']
+    render(
+      <>
+        <RadarTimeControl frames={frames} index={0} onChange={() => {}} />
+        <WindControl layer="wind" onLayerChange={() => {}} cycle={CYCLE} time={CYCLE} onChange={() => {}} />
+      </>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Play wind loop' }))
+    expect(screen.getByRole('button', { name: 'Pause wind loop' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Play radar loop' }))
+    expect(screen.getByRole('button', { name: 'Pause radar loop' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Play wind loop' })).toBeTruthy()
   })
 
   it('steps one file at a time and disables the ends', () => {

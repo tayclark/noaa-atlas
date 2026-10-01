@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { usePlayer } from './usePlayer'
 import { formatFrameOffset } from './radarTimes'
 
 const PLAY_INTERVAL_MS = 700
@@ -16,7 +17,7 @@ type Props = {
 // a pixel of a phone-sized track, #78) or play them in a loop. Playback never starts on its own, so
 // a reduced-motion user only animates by asking for it.
 export function RadarTimeControl({ frames, index, onChange, paused = false }: Props) {
-  const [playing, setPlaying] = useState(false)
+  const [playing, setPlaying] = usePlayer('radar')
   const last = frames.length - 1
   const running = playing && !paused
 
@@ -40,7 +41,7 @@ export function RadarTimeControl({ frames, index, onChange, paused = false }: Pr
         type="button"
         className="radar-time-play"
         aria-label={playing ? 'Pause radar loop' : 'Play radar loop'}
-        onClick={() => setPlaying((p) => !p)}
+        onClick={() => setPlaying(!playing)}
       >
         {playing ? '❚❚' : '▶'}
       </button>

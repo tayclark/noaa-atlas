@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { usePlayer } from './usePlayer'
 import { WAVE_LEGEND_STOPS_M, waveColor } from './waveField'
 import { WIND_LEGEND_STOPS_MS, windColor } from './windField'
 import { formatWindTime, windIndexForTime, windTimes } from './windTime'
@@ -60,7 +61,7 @@ function legendGradient(layer: ForecastLayer): string {
 // cycle's 5-day range in 3-hour steps, like the radar control. Playback never starts on its own.
 export function WindControl({ layer, onLayerChange, cycle, time, onChange, paused = false, error = null }: Props) {
   const { noun, ticks, unit, legend, source } = LAYERS[layer]
-  const [playing, setPlaying] = useState(false)
+  const [playing, setPlaying] = usePlayer('wind')
   // "Now" is read once, when the control appears: the slider steps are 3 hours apart.
   const [mountedAt] = useState(Date.now)
   const times = useMemo(() => windTimes(cycle), [cycle])
@@ -102,7 +103,7 @@ export function WindControl({ layer, onLayerChange, cycle, time, onChange, pause
         type="button"
         className="radar-time-play"
         aria-label={playing ? `Pause ${noun} loop` : `Play ${noun} loop`}
-        onClick={() => setPlaying((p) => !p)}
+        onClick={() => setPlaying(!playing)}
       >
         {playing ? '❚❚' : '▶'}
       </button>
