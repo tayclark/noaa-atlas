@@ -3,6 +3,7 @@ import {
   NOWCOAST_RADAR_ATTRIBUTION,
   NOWCOAST_RADAR_TILE_SIZE,
   NOWCOAST_RADAR_TILE_URL,
+  radarTileUrl,
 } from './nowcoastRadarLayer'
 
 describe('nowCOAST radar tile URL', () => {
@@ -25,6 +26,13 @@ describe('nowCOAST radar tile URL', () => {
 
   it('leaves out the time dimension so the server returns the latest frame', () => {
     expect(url.searchParams.has('time')).toBe(false)
+    expect(radarTileUrl(null)).toBe(NOWCOAST_RADAR_TILE_URL)
+  })
+
+  it('adds the frame time, keeping the bbox placeholder for MapLibre', () => {
+    const framed = radarTileUrl('2026-09-30T21:04:07.000Z')
+    expect(new URL(framed.replace('{bbox-epsg-3857}', '0,0,1,1')).searchParams.get('time')).toBe('2026-09-30T21:04:07.000Z')
+    expect(framed).toContain('bbox={bbox-epsg-3857}')
   })
 
   it('credits NOAA and nowCOAST', () => {

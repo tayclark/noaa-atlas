@@ -3,7 +3,7 @@
 
 import { expect, test, type Page } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
-import { mockRadar, RADAR_TILES } from './fixtures/nowcoast'
+import { mockRadar, RADAR_FRAMES, RADAR_TILES } from './fixtures/nowcoast'
 import { mockSwpc } from './fixtures/swpc'
 
 const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
@@ -42,6 +42,37 @@ test('selecting nowCOAST draws the radar with its credit, and selecting somethin
 
   await selectByKeyboard(page, 'nws-api')
   await expect(page.locator(GLOBE)).toHaveAttribute('data-nowcoast-radar', 'hidden')
+})
+
+test('a time slider scrubs the radar through earlier frames, and goes with the layer', async ({ page }) => {
+  const tiles = await mockRadar(page)
+  await page.goto('/')
+  await expect(page.getByRole('slider', { name: 'Radar frame' })).toHaveCount(0)
+
+  await selectByKeyboard(page, NODE)
+  const slider = page.getByRole('slider', { name: 'Radar frame' })
+  await expect(slider).toHaveValue(String(RADAR_FRAMES.length - 1))
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-radar-time', 'latest')
+  await expect(page.locator('.radar-time-label')).toContainText('Latest')
+
+  await slider.fill('0')
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-radar-time', RADAR_FRAMES[0]!)
+  await expect(page.locator('.radar-time-label')).toContainText('20 min earlier')
+  await expect.poll(() => tiles.some((url) => url.includes(`time=${encodeURIComponent(RADAR_FRAMES[0]!)}`))).toBe(true)
+
+  await selectByKeyboard(page, 'nws-api')
+  await expect(slider).toHaveCount(0)
+  await selectByKeyboard(page, NODE)
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-radar-time', 'latest')
+})
+
+test('the radar still draws, without a slider, when the frame list fails', async ({ page }) => {
+  await mockRadar(page, { capabilities: false })
+  await page.goto('/')
+  await selectByKeyboard(page, NODE)
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-nowcoast-radar', 'visible')
+  await page.waitForTimeout(500)
+  await expect(page.getByRole('slider', { name: 'Radar frame' })).toHaveCount(0)
 })
 
 test('fetches a real radar tile @live', async ({ page }) => {

@@ -1,6 +1,6 @@
-import { GeolocateControl, Map as MapLibreMap, Popup, setWorkerUrl, type CanvasSource, type ExpressionSpecification, type GeoJSONSource, type MapLayerMouseEvent, type MapMouseEvent } from 'maplibre-gl'
+import { GeolocateControl, Map as MapLibreMap, Popup, setWorkerUrl, type CanvasSource, type ExpressionSpecification, type GeoJSONSource, type MapLayerMouseEvent, type MapMouseEvent, type RasterTileSource } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import './MapLibreGlobe.css'
 import {
   getActiveAlerts,
@@ -42,7 +42,10 @@ import {
   NOWCOAST_RADAR_OPACITY,
   NOWCOAST_RADAR_TILE_SIZE,
   NOWCOAST_RADAR_TILE_URL,
+  radarTileUrl,
 } from './nowcoastRadarLayer'
+import { RadarTimeControl } from './RadarTimeControl'
+import { NOWCOAST_CAPABILITIES_URL, parseRadarFrames } from './radarTimes'
 import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePopup'
 import { describeGeolocationError, GEOLOCATE_MAX_ZOOM, GEOLOCATE_POSITION_OPTIONS } from './geolocation'
 import {
@@ -109,6 +112,8 @@ const AURORA_OPACITY_SELECTED = 1
 // The nowCOAST radar tiles (#56): a WMS raster that MapLibre fetches itself, hidden until the
 // nowCOAST node is selected so nothing is requested on load.
 const RADAR_SOURCE_ID = 'nowcoast-radar'
+const RADAR_FRAMES_REFRESH_MS = 5 * 60_000
+const RADAR_FRAME_DEBOUNCE_MS = 150
 const RADAR_LAYER_ID = 'nowcoast-radar-raster'
 
 // The CO-OPS tide stations (#51): static points from coopsStations.json, drawn from regional zoom
@@ -198,6 +203,10 @@ export function MapLibreGlobe() {
   const [kp, setKp] = useState<{ status: 'loading' } | { status: 'ok'; readout: KpReadout } | { status: 'error'; message: string }>({
     status: 'loading',
   })
+  // Radar time (#74): the frame list and the chosen frame (null follows the latest one).
+  const [radarFrames, setRadarFrames] = useState<string[]>([])
+  const [radarTime, setRadarTime] = useState<string | null>(null)
+  const radarUrlRef = useRef(NOWCOAST_RADAR_TILE_URL)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const view = useMemo(() => describeSelectionForGlobe(selection, globeViewContext), [selection])
 
@@ -554,6 +563,47 @@ export function MapLibreGlobe() {
     map.setLayoutProperty(RADAR_LAYER_ID, 'visibility', radarShown ? 'visible' : 'none')
   }, [radarShown, mapLoaded])
 
+  // The radar's frame list (#74) is fetched while the layer is shown and refreshed as frames age
+  // out. A failed fetch leaves the latest-frame layer without a slider. Leaving resets to latest.
+  useEffect(() => {
+    if (!radarShown) return
+    const controller = new AbortController()
+    const load = () => {
+      fetch(NOWCOAST_CAPABILITIES_URL, { signal: controller.signal })
+        .then((res) => (res.ok ? res.text() : Promise.reject(new Error(String(res.status)))))
+        .then((xml) => setRadarFrames(parseRadarFrames(xml)))
+        .catch(() => {})
+    }
+    load()
+    const stopPolling = pollWhileVisible(load, RADAR_FRAMES_REFRESH_MS)
+    return () => {
+      controller.abort()
+      stopPolling()
+      setRadarFrames([])
+      setRadarTime(null)
+    }
+  }, [radarShown])
+
+  // Point the source at the chosen frame. Debounced so dragging the slider doesn't refetch tiles
+  // for every frame it passes over.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded || !radarShown) return
+    const url = radarTileUrl(radarTime)
+    if (url === radarUrlRef.current) return
+    const timer = setTimeout(() => {
+      ;(map.getSource(RADAR_SOURCE_ID) as RasterTileSource | undefined)?.setTiles([url])
+      radarUrlRef.current = url
+    }, RADAR_FRAME_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [radarTime, radarShown, mapLoaded])
+
+  const radarIndex = radarTime === null ? radarFrames.length - 1 : Math.max(0, radarFrames.indexOf(radarTime))
+  const chooseRadarFrame = useCallback(
+    (i: number) => setRadarTime(i >= radarFrames.length - 1 ? null : (radarFrames[i] ?? null)),
+    [radarFrames],
+  )
+
   // The DART buoys (#80) are shown only while their node is selected, once the layer exists.
   const dartShown = view.liveLayers.includes('dart-stations')
   useEffect(() => {
@@ -580,6 +630,7 @@ export function MapLibreGlobe() {
         data-dart-stations={mapLoaded ? (dartShown ? DART_STATIONS.length : 0) : undefined}
         data-ndbc-stations={mapLoaded ? (ndbcShown ? NDBC_STATIONS.length : 0) : undefined}
         data-nowcoast-radar={mapLoaded ? (radarShown ? 'visible' : 'hidden') : undefined}
+        data-radar-time={radarShown ? (radarTime ?? 'latest') : undefined}
         data-aurora-cells={auroraCells ?? undefined}
         style={{ width: '100%', height: '100%' }}
       />
@@ -607,6 +658,9 @@ export function MapLibreGlobe() {
       {/* The bottom overlays share one flex box: a row on a wide globe (alerts left, Kp right), a
           column on a narrow one, so they never overlap (#159). */}
       <div className="globe-bottom">
+        {radarShown && radarFrames.length > 1 && (
+          <RadarTimeControl frames={radarFrames} index={radarIndex} onChange={chooseRadarFrame} />
+        )}
         {alertsStatus === 'error' && (
           <div className="zone-only-alerts" role="status" aria-label="Alerts status">
             {alertsErrorMessage}
