@@ -7,6 +7,10 @@ import { mockAlerts, zoneOnlyAlertsFixture } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 import { centreOf, swipe } from './fixtures/touch'
 
+// Reduced motion lays the graph out in one go instead of animating the ~6.5 s settle, and these
+// specs assert the settled layout, not the animation.
+test.use({ reducedMotion: 'reduce' })
+
 async function openGraph(page: Page) {
   await mockAlerts(page, zoneOnlyAlertsFixture(1))
   await mockSwpc(page)
