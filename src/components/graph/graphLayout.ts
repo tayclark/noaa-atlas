@@ -1,7 +1,26 @@
-import { forceCenter, forceCollide, forceX, forceY, forceLink, forceManyBody, forceSimulation, type Simulation, type SimulationLinkDatum, type SimulationNodeDatum } from 'd3-force'
-import { type GraphEdge, type GraphNode, type Theme } from '../../data/graphSchema'
+import { forceCenter, type ForceLink, forceCollide, forceX, forceY, forceLink, forceManyBody, forceSimulation, type Simulation, type SimulationLinkDatum, type SimulationNodeDatum } from 'd3-force'
+import { programNodeId } from '../../data/orgHierarchy'
+import { ROOT_NODE_ID, type GraphEdge, type GraphNode, type OrgNode, type Theme } from '../../data/graphSchema'
 
-export type SimNode = GraphNode & SimulationNodeDatum
+/** Everything the view draws: the graph's nodes plus the render-only org hubs (#58). */
+export type LayoutNode = GraphNode | OrgNode
+export type SimNode = LayoutNode & SimulationNodeDatum
+
+/** Theme: services cluster around theme hubs. Org: a NOAA → office → program → service tree (#58). */
+export type LayoutMode = 'theme' | 'org'
+
+/** Each mode hides the other's hubs; the root and services appear in both. */
+export function isNodeVisible(node: LayoutNode, mode: LayoutMode): boolean {
+  if (node.kind === 'theme') return mode === 'theme'
+  if (node.kind === 'office' || node.kind === 'program') return mode === 'org'
+  return true
+}
+
+export function isEdgeVisible(edge: Pick<GraphEdge, 'type'>, mode: LayoutMode): boolean {
+  if (edge.type === 'root' || edge.type === 'theme') return mode === 'theme'
+  if (edge.type === 'org') return mode === 'org'
+  return true
+}
 export interface SimEdge extends SimulationLinkDatum<SimNode> {
   type: GraphEdge['type']
   label: string
@@ -9,9 +28,10 @@ export interface SimEdge extends SimulationLinkDatum<SimNode> {
 }
 
 /** The root and theme hubs render larger than service nodes: they're structural anchors, not real APIs. */
-export function nodeRadius(node: GraphNode): number {
+export function nodeRadius(node: LayoutNode): number {
   if (node.kind === 'root') return 20
-  return node.kind === 'theme' ? 14 : 8
+  if (node.kind === 'theme' || node.kind === 'office') return 14
+  return node.kind === 'program' ? 10 : 8
 }
 
 // Theme edges are a loose hub-and-spoke ring around each hub, not a tight cluster — services
@@ -21,12 +41,14 @@ export function nodeRadius(node: GraphNode): number {
 const LINK_DISTANCE: Record<GraphEdge['type'], number> = {
   root: 150,
   theme: 55,
+  org: 40,
   'shared-id': 60,
   'data-flow': 60,
 }
 const LINK_STRENGTH: Record<GraphEdge['type'], number> = {
   root: 0.02,
   theme: 0.3,
+  org: 0.5,
   'shared-id': 0.8,
   'data-flow': 0.8,
 }
@@ -51,6 +73,7 @@ export const RING_ORDER: readonly Theme[] = [
 export const EDGE_CLASS: Record<GraphEdge['type'], string> = {
   root: 'graph-edge-root',
   theme: 'graph-edge-theme',
+  org: 'graph-edge-org',
   'shared-id': 'graph-edge-shared-id',
   'data-flow': 'graph-edge-data-flow',
 }
@@ -59,6 +82,7 @@ export const EDGE_CLASS: Record<GraphEdge['type'], string> = {
 export const EDGE_TYPE_LABELS: Record<GraphEdge['type'], string> = {
   root: 'NOAA → theme',
   theme: 'Theme → service',
+  org: 'Office, program → service',
   'shared-id': 'Shared identifiers',
   'data-flow': 'Data flows into',
 }
@@ -242,6 +266,103 @@ export function computePathFitTransform(
   return computeLabelledFitTransform(group, viewportWidth, viewportHeight, padding, maxScale, inset, labelGap)
 }
 
+const ORG_COLUMN_GAP = 200
+// Leaves zig-zag between two columns, so neighbouring labels sit side by side and the tall tree
+// stays closer to the canvas's wide aspect, which keeps it from being scaled down to fit.
+const ORG_ROW_GAP = 13
+const ORG_ZIGZAG = 170
+const ORG_OFFICE_GAP = 16
+
+/**
+ * Target position of every node in the org tree (#58), laid out left to right: the root, then
+ * offices, programs and services in columns. Leaves are stacked top to bottom, one office after
+ * another, and each parent sits at the mean height of its children. Centred on the canvas.
+ * Theme hubs have no place in the tree, so they sit with the root.
+ */
+export function orgTargets(nodes: readonly LayoutNode[], width: number, height: number): Map<string, { x: number; y: number }> {
+  const services = nodes.flatMap((node) => (node.kind === 'service' ? [node] : []))
+  const programIds = new Set(nodes.flatMap((node) => (node.kind === 'program' ? [node.id] : [])))
+  const offices = nodes.flatMap((node) => (node.kind === 'office' ? [node] : []))
+  const raw = new Map<string, { x: number; y: number }>()
+  let cursor = 0
+  let leaves = 0
+  const leaf = (id: string, column: number) => {
+    raw.set(id, { x: column * ORG_COLUMN_GAP + (leaves++ % 2) * ORG_ZIGZAG, y: cursor })
+    cursor += ORG_ROW_GAP
+    return cursor - ORG_ROW_GAP
+  }
+  const mean = (ys: number[]) => ys.reduce((sum, y) => sum + y, 0) / ys.length
+  const officeYs: number[] = []
+  for (const office of offices) {
+    const own = services.filter((service) => service.owner.office === office.office)
+    const unitYs: number[] = []
+    for (const program of nodes.filter((node) => node.kind === 'program' && node.office === office.office)) {
+      const members = own.filter((service) => programNodeId(service) === program.id)
+      const y = mean(members.map((service) => leaf(service.id, 3)))
+      raw.set(program.id, { x: 2 * ORG_COLUMN_GAP, y })
+      unitYs.push(y)
+    }
+    for (const service of own.filter((service) => !programIds.has(programNodeId(service)))) unitYs.push(leaf(service.id, 3))
+    const y = mean(unitYs.length > 0 ? unitYs : [cursor])
+    raw.set(office.id, { x: ORG_COLUMN_GAP, y })
+    officeYs.push(y)
+    cursor += ORG_OFFICE_GAP
+  }
+  const rootY = officeYs.length > 0 ? mean(officeYs) : 0
+  raw.set(ROOT_NODE_ID, { x: 0, y: rootY })
+  const ys = [...raw.values()].map((p) => p.y)
+  const dx = width / 2 - (3 * ORG_COLUMN_GAP + ORG_ZIGZAG) / 2
+  const dy = height / 2 - (Math.min(...ys) + Math.max(...ys)) / 2
+  const targets = new Map([...raw].map(([id, p]) => [id, { x: p.x + dx, y: p.y + dy }]))
+  for (const node of nodes) if (!targets.has(node.id)) targets.set(node.id, targets.get(ROOT_NODE_ID) ?? { x: width / 2, y: height / 2 })
+  return targets
+}
+
+/**
+ * Points the simulation's forces at a layout mode (#58). Every node and edge stays in the
+ * simulation so the view's element indexes never change: what the mode hides simply exerts no
+ * force (zero link strength, charge, collision and gravity). The org tree is fixed positions, so
+ * its nodes are pulled straight to their targets and exert no forces on each other.
+ */
+export function applyLayoutMode(
+  simulation: Simulation<SimNode, SimEdge>,
+  nodes: readonly SimNode[],
+  mode: LayoutMode,
+  width: number,
+  height: number,
+): void {
+  const anchors = themeAnchors(RING_ORDER, width, height)
+  const center = { x: width / 2, y: height / 2 }
+  const targets = mode === 'org' ? orgTargets(nodes, width, height) : new Map<string, { x: number; y: number }>()
+  // The root sits at the centre of the ring of theme anchors.
+  const anchorOf = (node: SimNode) =>
+    mode === 'org'
+      ? (targets.get(node.id) ?? center)
+      : node.kind === 'root'
+        ? center
+        : node.kind === 'office' || node.kind === 'program'
+          ? center
+          : (anchors.get(node.theme) ?? center)
+  const visible = (node: SimNode) => isNodeVisible(node, mode)
+  const pull = (node: SimNode) => {
+    if (!visible(node)) return 0
+    if (mode === 'org') return 1
+    return node.kind === 'root' ? 1 : node.kind === 'theme' ? 0.3 : 0.1
+  }
+  simulation
+    .force<ForceLink<SimNode, SimEdge>>('link')
+    ?.distance((edge) => LINK_DISTANCE[edge.type])
+    .strength((edge) => (mode === 'theme' && isEdgeVisible(edge, mode) ? LINK_STRENGTH[edge.type] : 0))
+  simulation
+    .force('charge', forceManyBody<SimNode>().strength((node) => (!visible(node) || mode === 'org' ? 0 : node.kind === 'root' ? -20 : -110)))
+    // Per-theme gravity: each node is pulled toward its theme's anchor, so services cluster
+    // around their hub and disconnected nodes can't drift off and shrink the whole-graph fit.
+    .force('x', forceX<SimNode>((node) => anchorOf(node).x).strength(pull))
+    .force('y', forceY<SimNode>((node) => anchorOf(node).y).strength(pull))
+    .force('collide', forceCollide<SimNode>((node) => (visible(node) && mode === 'theme' ? nodeRadius(node) + 10 : 0)))
+    .force('center', mode === 'org' ? null : forceCenter(width / 2, height / 2))
+}
+
 /**
  * Builds a configured d3-force simulation for the given nodes/edges. Does not start or stop it —
  * the caller owns the simulation's lifecycle (ticking, stopping on unmount).
@@ -251,40 +372,22 @@ export function createGraphSimulation(
   edges: SimEdge[],
   width: number,
   height: number,
+  mode: LayoutMode = 'theme',
 ): Simulation<SimNode, SimEdge> {
   const anchors = themeAnchors(RING_ORDER, width, height)
   const center = { x: width / 2, y: height / 2 }
-  // The root sits at the centre of the ring of theme anchors.
-  const anchorOf = (node: SimNode) => (node.kind === 'root' ? center : (anchors.get(node.theme) ?? center))
   // Seed at the theme anchor so clusters form immediately instead of untangling from d3's
   // default spiral; the small index-based offset keeps coincident nodes from stacking exactly.
   nodes.forEach((node, i) => {
     if (node.x !== undefined) return
-    const { x, y } = anchorOf(node)
+    const { x, y } = node.kind === 'theme' ? (anchors.get(node.theme) ?? center) : node.kind === 'service' ? (anchors.get(node.theme) ?? center) : center
     const angle = i * 2.399963
     node.x = x + Math.cos(angle) * (8 + (i % 5) * 4)
     node.y = y + Math.sin(angle) * (8 + (i % 5) * 4)
   })
-
-  const pull = (node: SimNode) => (node.kind === 'root' ? 1 : node.kind === 'theme' ? 0.3 : 0.1)
-  return forceSimulation(nodes)
-    .force(
-      'link',
-      forceLink<SimNode, SimEdge>(edges)
-        .id((node) => node.id)
-        .distance((edge) => LINK_DISTANCE[edge.type])
-        .strength((edge) => LINK_STRENGTH[edge.type]),
-    )
-    .force('charge', forceManyBody<SimNode>().strength((node) => (node.kind === 'root' ? -20 : -110)))
-    .force('center', forceCenter(width / 2, height / 2))
-    // Per-theme gravity: each node is pulled toward its theme's anchor, so services cluster
-    // around their hub and disconnected nodes can't drift off and shrink the whole-graph fit.
-    .force('x', forceX<SimNode>((node) => anchorOf(node).x).strength(pull))
-    .force('y', forceY<SimNode>((node) => anchorOf(node).y).strength(pull))
-    .force(
-      'collide',
-      forceCollide<SimNode>((node) => nodeRadius(node) + 10),
-    )
+  const simulation = forceSimulation(nodes).force('link', forceLink<SimNode, SimEdge>(edges).id((node) => node.id))
+  applyLayoutMode(simulation, nodes, mode, width, height)
+  return simulation
 }
 
 /**

@@ -36,6 +36,14 @@ describe('GraphLegend', () => {
       expect(line?.getAttribute('class')).toBe(`graph-edge ${EDGE_CLASS[type]}`)
     }
   })
+
+  it('swaps the theme keys for the office and program keys in the org view (#58)', () => {
+    render(<GraphLegend mode="org" />)
+    expect(screen.getByText('Office or program hub')).toBeTruthy()
+    expect(screen.getByText(EDGE_TYPE_LABELS.org)).toBeTruthy()
+    expect(screen.queryByText('Theme hub')).toBeNull()
+    expect(screen.queryByText(EDGE_TYPE_LABELS.theme)).toBeNull()
+  })
 })
 
 // jsdom normalizes inline `style.background` hex values to rgb(); compare against that form

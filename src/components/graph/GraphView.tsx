@@ -18,7 +18,8 @@ import './GraphView.css'
 import graphJson from '../../data/graph.json'
 import tasksJson from '../../data/tasks.json'
 import { buildGraph } from '../../data/buildGraph'
-import { parseGraphFile, type GraphNode } from '../../data/graphSchema'
+import { buildOrgHierarchy } from '../../data/orgHierarchy'
+import { parseGraphFile } from '../../data/graphSchema'
 import { getNeighbors } from '../../data/neighbors'
 import { parseTasksFile } from '../../data/taskSchema'
 import {
@@ -35,6 +36,9 @@ import {
   computeLabelledFitTransform,
   computePathFitTransform,
   createGraphSimulation,
+  applyLayoutMode,
+  isEdgeVisible,
+  isNodeVisible,
   keyboardViewTransform,
   settleSimulation,
   EDGE_CLASS,
@@ -42,6 +46,8 @@ import {
   nodeRadius,
   type FitTransform,
   type Inset,
+  type LayoutMode,
+  type LayoutNode,
   type SimEdge,
   type SimNode,
 } from './graphLayout'
@@ -53,8 +59,14 @@ import { DIAGONAL_OFFSET, LABEL_GAP, placeLabels, type Box, type LabelItem } fro
 import { NodeDetailPanel } from './NodeDetailPanel'
 import { useNarrowLayout } from '../useNarrowLayout'
 
-const graph = buildGraph(parseGraphFile(graphJson))
+const graphFile = parseGraphFile(graphJson)
+const graph = buildGraph(graphFile)
 const graphNodeById = new Map(graph.nodes.map((node) => [node.id, node]))
+// The org view's hubs (#58) are only drawn: search, neighbours and the detail panel keep reading `graph`.
+const orgHierarchy = buildOrgHierarchy(graphFile)
+const drawnNodes: LayoutNode[] = [...graph.nodes, ...orgHierarchy.nodes]
+const drawnEdges = [...graph.edges, ...orgHierarchy.edges]
+const drawnNodeById = new Map(drawnNodes.map((node) => [node.id, node]))
 // A selected node is framed together with its neighbors, at a scale capped so labels stay legible.
 const SELECTION_MAX_SCALE = 1.25
 // Below this a task's path is too spread out to read, so its largest group of steps (nodes within
@@ -75,7 +87,7 @@ const nodeNameById = new Map(graph.nodes.map((node) => [node.id, node.name]))
 const taskLabelById = new Map(tasks.map((task) => [task.id, task.label]))
 
 // The on-graph label; the full name stays in the tooltip, aria-label and detail panel (#141).
-const labelText = (node: GraphNode) => (node.kind === 'service' ? (node.shortName ?? node.name) : node.name)
+const labelText = (node: LayoutNode) => (node.kind === 'service' ? (node.shortName ?? node.name) : node.name)
 
 // Positions the synthetic task-path connectors (#34) from the live node positions. The lines are
 // React-rendered (they come and go with the selection) but positioned imperatively, like every
@@ -129,9 +141,14 @@ export function GraphView() {
   // The first settled layout is auto-fit once; later settles (e.g. after a node drag) must not
   // yank the view away from where the user left it.
   const initialFitDoneRef = useRef(false)
+  // Read by the fit and label code, which run outside React renders; `relayoutRef` is assigned by
+  // the simulation effect, which owns the simulation (#58).
+  const modeRef = useRef<LayoutMode>('theme')
+  const relayoutRef = useRef<(mode: LayoutMode) => void>(() => {})
   const [size, setSize] = useState({ width: 600, height: 400 })
   const initialSizeRef = useRef(size)
   const [legendOpen, setLegendOpen] = useState(false)
+  const [mode, setMode] = useState<LayoutMode>('theme')
   // Kept across selections, so a user who collapses the panel isn't fighting it on every click. On a
   // phone it starts collapsed, since the open panel would cover most of the graph (#78).
   const narrow = useNarrowLayout()
@@ -162,8 +179,8 @@ export function GraphView() {
   useEffect(() => {
     if (!svgRef.current || !zoomLayerRef.current) return
 
-    const simNodes: SimNode[] = graph.nodes.map((node) => ({ ...node }))
-    const simEdges: SimEdge[] = graph.edges.map((edge) => ({ ...edge }))
+    const simNodes: SimNode[] = drawnNodes.map((node) => ({ ...node }))
+    const simEdges: SimEdge[] = drawnEdges.map((edge) => ({ ...edge }))
     // Lay out for the canvas as it is now, not the 600x400 default, so the theme ring matches its
     // aspect and the fit-all scale isn't squeezed by a mismatched layout (#176).
     const container = containerRef.current
@@ -203,7 +220,7 @@ export function GraphView() {
       nodeElsRef.current.forEach((_, id) => {
         const pos = nodePositionsRef.current.get(id)
         const node = nodeById.get(id)
-        if (!pos || !node) return
+        if (!pos || !node || !isNodeVisible(node, modeRef.current)) return
         const priority = labelPriorityRef.current.get(id) ?? (node.kind === 'service' ? 0 : 3)
         items.push({
           id,
@@ -349,6 +366,20 @@ export function GraphView() {
       settledFrame = requestAnimationFrame(onSettled)
     }
 
+    // Switching layouts re-aims the forces, reheats the simulation and re-frames the view (#58).
+    relayoutRef.current = (nextMode) => {
+      applyLayoutMode(simulation, simNodes, nextMode, layoutWidth, layoutHeight)
+      delete svgEl.dataset.layoutSettled
+      initialFitDoneRef.current = false
+      if (prefersReducedMotion()) {
+        settleSimulation(simulation)
+        renderTick()
+        requestAnimationFrame(onSettled)
+      } else {
+        simulation.alpha(1).restart()
+      }
+    }
+
     return () => {
       simulation.stop()
       if (placementFrame) cancelAnimationFrame(placementFrame)
@@ -357,6 +388,15 @@ export function GraphView() {
     // Created once: a resize only re-frames the view (effect below). Re-seeding the layout on
     // every size change made nodes jump while the user resized the panes.
   }, [])
+
+  // The first run is the mount, where the simulation was created in this mode already.
+  const previousModeRef = useRef(mode)
+  useEffect(() => {
+    modeRef.current = mode
+    if (previousModeRef.current === mode) return
+    previousModeRef.current = mode
+    relayoutRef.current(mode)
+  }, [mode])
 
   // Frames the highlighted node(s) (the globe→graph direction of linking, #45) or, when nothing is
   // highlighted, the whole graph. Reads positions from nodePositionsRef rather than the sim
@@ -379,7 +419,11 @@ export function GraphView() {
     }
 
     const fitAll = () => {
-      applyTransform((inset) => computeFitTransform([...nodePositionsRef.current.values()], size.width, size.height, FIT_ALL_PADDING, 1, inset))
+      const shown = [...nodePositionsRef.current].flatMap(([id, pos]) => {
+        const node = drawnNodeById.get(id)
+        return node && isNodeVisible(node, modeRef.current) ? [pos] : []
+      })
+      applyTransform((inset) => computeFitTransform(shown, size.width, size.height, FIT_ALL_PADDING, 1, inset))
     }
     fitAllRef.current = fitAll
 
@@ -457,6 +501,15 @@ export function GraphView() {
         <button
           type="button"
           className="graph-toolbar-button"
+          aria-pressed={mode === 'org'}
+          title="Group services by the NOAA office and program that runs them"
+          onClick={() => setMode((current) => (current === 'org' ? 'theme' : 'org'))}
+        >
+          Org view
+        </button>
+        <button
+          type="button"
+          className="graph-toolbar-button"
           aria-expanded={legendOpen}
           aria-controls="graph-legend"
           onClick={() => setLegendOpen((open) => !open)}
@@ -483,10 +536,10 @@ export function GraphView() {
         >
           <g ref={zoomLayerRef}>
             <g className="graph-edges">
-              {graph.edges.map((edge, i) => (
+              {drawnEdges.map((edge, i) => (
                 <line
                   key={`${edge.source}-${edge.target}-${edge.type}`}
-                  className={`graph-edge ${EDGE_CLASS[edge.type]}${matchedIds && !(matchedIds.has(edge.source) && matchedIds.has(edge.target)) ? ' graph-edge-dimmed' : ''}`}
+                  className={`graph-edge ${EDGE_CLASS[edge.type]}${isEdgeVisible(edge, mode) ? '' : ' graph-hidden'}${matchedIds && !(matchedIds.has(edge.source) && matchedIds.has(edge.target)) ? ' graph-edge-dimmed' : ''}`}
                   data-edge-type={edge.type}
                   ref={(el) => {
                     edgeElsRef.current[i] = el as SVGLineElement
@@ -505,32 +558,33 @@ export function GraphView() {
               ))}
             </g>
             <g className="graph-nodes">
-              {graph.nodes.map((node) => (
-                <g
-                  key={node.id}
-                  className={`graph-node graph-node-${node.kind}${highlightedIds.includes(node.id) ? ' graph-node-highlighted' : ''}${matchedIds ? (matchedIds.has(node.id) ? ' graph-node-match' : ' graph-node-dimmed') : ''}`}
-                  data-node-id={node.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={node.name}
-                  aria-pressed={selection.selectedNodeId === node.id}
-                  ref={(el) => {
-                    if (el) nodeElsRef.current.set(node.id, el)
-                    else nodeElsRef.current.delete(node.id)
-                  }}
-                >
-                  <title>{node.name}</title>
-                  <circle r={nodeRadius(node)} style={{ fill: nodeColor(node) }} />
-                  <text x={nodeRadius(node) + 4} y={4}>
-                    {labelText(node)}
-                  </text>
-                </g>
-              ))}
+              {drawnNodes.map((node) => {
+                const hub = node.kind === 'office' || node.kind === 'program'
+                const hidden = isNodeVisible(node, mode) ? '' : ' graph-hidden'
+                return (
+                  <g
+                    key={node.id}
+                    className={`${hub ? 'graph-org-node' : 'graph-node'} graph-node-${node.kind}${hidden}${highlightedIds.includes(node.id) ? ' graph-node-highlighted' : ''}${matchedIds ? (matchedIds.has(node.id) ? ' graph-node-match' : ' graph-node-dimmed') : ''}`}
+                    data-node-id={node.id}
+                    {...(hub ? {} : { role: 'button', tabIndex: 0, 'aria-label': node.name, 'aria-pressed': selection.selectedNodeId === node.id })}
+                    ref={(el) => {
+                      if (el) nodeElsRef.current.set(node.id, el)
+                      else nodeElsRef.current.delete(node.id)
+                    }}
+                  >
+                    <title>{node.name}</title>
+                    <circle r={nodeRadius(node)} style={{ fill: nodeColor(node) }} />
+                    <text x={nodeRadius(node) + 4} y={4}>
+                      {labelText(node)}
+                    </text>
+                  </g>
+                )
+              })}
             </g>
           </g>
         </svg>
         <NodeDetailPanel collapsed={panelCollapsed} onToggleCollapsed={() => setPanelCollapsed((c) => !c)} />
-        {legendOpen && <GraphLegend />}
+        {legendOpen && <GraphLegend mode={mode} />}
       </div>
     </section>
   )

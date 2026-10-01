@@ -4,25 +4,26 @@
 import type { GraphEdge } from '../../data/graphSchema'
 import { THEME_LABELS, THEMES } from '../../data/graphSchema'
 import { ROOT_COLOR, THEME_COLORS } from '../../data/themeColors'
-import { EDGE_CLASS, EDGE_TYPE_LABELS } from './graphLayout'
+import { EDGE_CLASS, EDGE_TYPE_LABELS, isEdgeVisible, type LayoutMode } from './graphLayout'
 import './GraphLegend.css'
 
-const EDGE_TYPES: GraphEdge['type'][] = ['root', 'theme', 'shared-id', 'data-flow']
+const EDGE_TYPES: GraphEdge['type'][] = ['root', 'theme', 'org', 'shared-id', 'data-flow']
 
 // Node sizes, halved from nodeRadius so they fit the legend row (#148).
 const NODE_KEYS = [
   { label: 'NOAA, the root everything stems from', radius: 7, color: ROOT_COLOR },
-  { label: 'Theme hub', radius: 5, color: THEME_COLORS.weather },
+  { label: 'Theme hub', radius: 5, color: THEME_COLORS.weather, mode: 'theme' },
+  { label: 'Office or program hub', radius: 5, color: ROOT_COLOR, mode: 'org' },
   { label: 'API or data service', radius: 3, color: THEME_COLORS.weather },
 ]
 
-export function GraphLegend() {
+export function GraphLegend({ mode = 'theme' }: { mode?: LayoutMode }) {
   return (
     <div className="graph-legend" id="graph-legend" aria-label="Legend">
       <div className="graph-legend-group">
         <h3>Nodes</h3>
         <ul className="graph-legend-edges">
-          {NODE_KEYS.map(({ label, radius, color }) => (
+          {NODE_KEYS.filter((key) => !key.mode || key.mode === mode).map(({ label, radius, color }) => (
             <li key={label}>
               <svg className="graph-legend-edge" width="20" height="14" aria-hidden="true">
                 <circle cx="10" cy="7" r={radius} style={{ fill: color }} />
@@ -46,7 +47,7 @@ export function GraphLegend() {
       <div className="graph-legend-group">
         <h3>Links</h3>
         <ul className="graph-legend-edges">
-          {EDGE_TYPES.map((type) => (
+          {EDGE_TYPES.filter((type) => isEdgeVisible({ type }, mode)).map((type) => (
             <li key={type}>
               <svg className="graph-legend-edge" width="20" height="8" aria-hidden="true">
                 <line className={`graph-edge ${EDGE_CLASS[type]}`} x1="0" y1="4" x2="20" y2="4" />
