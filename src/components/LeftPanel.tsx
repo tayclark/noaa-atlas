@@ -6,8 +6,10 @@
 
 import { useState, useSyncExternalStore } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
+import { getCompareSnapshot, subscribeCompare } from '../data/compareStore'
 import { getRequestLogSnapshot, subscribeRequestLog } from '../data/requestLog'
 import { getSelectionSnapshot, subscribeSelection } from '../data/selectionStore'
+import { ComparePanel } from './ComparePanel'
 import { FinderPanel } from './finder/FinderPanel'
 import { GraphView } from './graph/GraphView'
 import { InspectorPanel } from './inspector/InspectorPanel'
@@ -15,11 +17,12 @@ import { SplitPane } from './SplitPane'
 import { useNarrowLayout } from './useNarrowLayout'
 import './LeftPanel.css'
 
-type LeftTab = 'explore' | 'globe' | 'inspector'
+type LeftTab = 'explore' | 'globe' | 'compare' | 'inspector'
 
 const TABS: { id: LeftTab; label: string }[] = [
   { id: 'explore', label: 'Explore' },
   { id: 'globe', label: 'Globe' },
+  { id: 'compare', label: 'Compare' },
   { id: 'inspector', label: 'Inspector' },
 ]
 
@@ -33,6 +36,7 @@ export function LeftPanel({ globe }: LeftPanelProps) {
   const [activeTab, setActiveTab] = useState<LeftTab>('explore')
   // Shown on the Inspector tab (#150), so live calls are discoverable from the Explore tab.
   const requestCount = useSyncExternalStore(subscribeRequestLog, getRequestLogSnapshot).length
+  const compareCount = useSyncExternalStore(subscribeCompare, getCompareSnapshot).length
   // The store hands out a new object per change, so "the selection last seen on the globe" is a
   // plain comparison: the Globe tab gets a dot while a newer selection is waiting there.
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
@@ -83,6 +87,11 @@ export function LeftPanel({ globe }: LeftPanelProps) {
                 {requestCount}
               </span>
             )}
+            {tab.id === 'compare' && compareCount > 0 && (
+              <span className="left-panel-tab-count" aria-label={`${compareCount} selected`}>
+                {compareCount}
+              </span>
+            )}
             {tab.id === 'globe' && globeHasNews && <span className="left-panel-tab-dot" aria-label="updated" />}
           </button>
         ))}
@@ -113,6 +122,7 @@ export function LeftPanel({ globe }: LeftPanelProps) {
             {globe}
           </div>
         )}
+        {activeTab === 'compare' && <ComparePanel />}
         {activeTab === 'inspector' && <InspectorPanel />}
       </div>
     </div>

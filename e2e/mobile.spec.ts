@@ -18,7 +18,7 @@ test('the globe is a full-width tab, with its overlays clear of each other', asy
   await mockSwpc(page)
   await page.goto('/')
 
-  await expect(page.getByRole('tab')).toHaveText(['Explore', 'Globe', /Inspector/])
+  await expect(page.getByRole('tab')).toHaveText(['Explore', 'Globe', 'Compare', /Inspector/])
   // Only the finder/graph divider inside Explore; the panel and the globe aren't split.
   await expect(page.locator('.split-pane-divider')).toHaveCount(1)
 

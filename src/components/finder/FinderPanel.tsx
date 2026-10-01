@@ -6,6 +6,7 @@
 import { useRef, useState } from 'react'
 import graphJson from '../../data/graph.json'
 import { parseGraphFile, type ServiceNode } from '../../data/graphSchema'
+import { addCompare } from '../../data/compareStore'
 import { selectNode, selectTask } from '../../data/selectionStore'
 import { parseTasksFile } from '../../data/taskSchema'
 import tasksJson from '../../data/tasks.json'
@@ -56,23 +57,32 @@ export function FinderPanel() {
       >
         {!selectedTask && <FinderIntro />}
         {selectedTask && (
-          <ol className="finder-node-list" aria-label="Recommended nodes">
-            {selectedTask.nodes.map(({ nodeId, why }, i) => {
-              const node = nodesById.get(nodeId)
-              if (!node) return null
-              return (
-                <li key={nodeId} className="finder-node-item">
-                  <button type="button" className="finder-node-button" onClick={() => selectNode(nodeId)}>
-                    <span className="finder-node-rank">
-                      {i + 1}. {i === 0 ? 'Primary' : 'Also'}
-                    </span>
-                    <span className="finder-node-name">{node.name}</span>
-                    <span className="finder-node-why">{why}</span>
-                  </button>
-                </li>
-              )
-            })}
-          </ol>
+          <>
+            <ol className="finder-node-list" aria-label="Recommended nodes">
+              {selectedTask.nodes.map(({ nodeId, why }, i) => {
+                const node = nodesById.get(nodeId)
+                if (!node) return null
+                return (
+                  <li key={nodeId} className="finder-node-item">
+                    <button type="button" className="finder-node-button" onClick={() => selectNode(nodeId)}>
+                      <span className="finder-node-rank">
+                        {i + 1}. {i === 0 ? 'Primary' : 'Also'}
+                      </span>
+                      <span className="finder-node-name">{node.name}</span>
+                      <span className="finder-node-why">{why}</span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ol>
+            <button
+              type="button"
+              className="finder-compare"
+              onClick={() => addCompare(selectedTask.nodes.map((n) => n.nodeId))}
+            >
+              Compare these
+            </button>
+          </>
         )}
       </div>
     </div>

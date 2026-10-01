@@ -305,3 +305,9 @@
   margin-left: 6px;
   color: var(--color-text-muted);
 }
+
+.node-detail-compare {
+  margin-left: var(--space-2);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}

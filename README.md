@@ -19,11 +19,11 @@ Requires Node 24.21 or newer (`.nvmrc`, `engines`).
 
 ## What you see
 
-The window is split into two resizable panes: the left pane has two tabs, **Explore** and **Inspector**, and the right pane is the globe. Drag a divider to resize, or focus it and use the arrow keys (`Home` and `End` jump to the limits).
+The window is split into two resizable panes: the left pane has three tabs, **Explore**, **Compare** and **Inspector**, and the right pane is the globe. Drag a divider to resize, or focus it and use the arrow keys (`Home` and `End` jump to the limits).
 
 A slim footer under both panes carries the NOAA disclaimer (not an official NOAA product, not endorsed by NOAA, not for life-safety decisions), a link to the data terms below, and the maker's credit.
 
-On a phone (700px wide or less) the panes aren't split: the globe becomes a third tab, **Explore · Globe · Inspector**, at full width. It stays loaded while you use the other tabs, and the Globe tab shows a dot when a selection made elsewhere has changed what it shows. On a narrow globe the alerts box and the Kp readout stack at the bottom, and the map credits start folded behind the ⓘ button. The graph's detail panel starts collapsed to its title bar, so a selection doesn't cover the graph, and the finder gets a larger share of the height.
+On a phone (700px wide or less) the panes aren't split: the globe becomes another tab, **Explore · Globe · Compare · Inspector**, at full width. It stays loaded while you use the other tabs, and the Globe tab shows a dot when a selection made elsewhere has changed what it shows. On a narrow globe the alerts box and the Kp readout stack at the bottom, and the map credits start folded behind the ⓘ button. The graph's detail panel starts collapsed to its title bar, so a selection doesn't cover the graph, and the finder gets a larger share of the height.
 
 ## Explore tab
 
@@ -61,6 +61,10 @@ Selecting a node opens a panel over the graph:
 Selecting a theme hub opens the same panel with a one-line description of the theme, how many of its services are live, and a list of its services. Click a service to jump to it.
 
 Selecting the **NOAA** root opens an overview: how many services there are and how many are live, and every theme with its service count. Click a theme to jump to its hub.
+
+## Compare tab
+
+Pick services to line up side by side: use **Add to compare** in a service's detail panel, or **Compare these** under a task's recommended nodes. With two or more picked, the tab shows a table of auth, formats, coverage, freshness, rate limits and owner, one column per service (up to six). Remove a column with ×, or use **Clear all**. The tab's badge shows how many are picked.
 
 ## Inspector tab
 
@@ -173,7 +177,7 @@ The app does not modify NOAA data and does not use NOAA or NWS logos. Its footer
 ```
 src/
   components/
-    LeftPanel.tsx        Explore / Inspector tabs
+    LeftPanel.tsx        Explore / Compare / Inspector tabs
     SplitPane.tsx        resizable, keyboard-accessible divider
     finder/              "I need..." task finder
     graph/               graph view, search, legend, node detail, sample, relationships

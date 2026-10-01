@@ -5,6 +5,7 @@ import graphJson from '../../data/graph.json'
 import { buildGraph } from '../../data/buildGraph'
 import type { ServiceNode, ThemeNode } from '../../data/graphSchema'
 import { parseGraphFile, THEME_DESCRIPTIONS, THEME_LABELS } from '../../data/graphSchema'
+import { clearCompare, getCompareSnapshot } from '../../data/compareStore'
 import { clearSelection, getSelectionSnapshot, selectNode } from '../../data/selectionStore'
 import { NodeDetailPanel } from './NodeDetailPanel'
 import { RootDetailBody } from './RootDetailBody'
@@ -17,6 +18,7 @@ const panel = <NodeDetailPanel collapsed={false} onToggleCollapsed={() => {}} />
 
 beforeEach(() => {
   clearSelection()
+  clearCompare()
 })
 
 afterEach(cleanup)
@@ -25,6 +27,15 @@ describe('NodeDetailPanel', () => {
   it('renders nothing when no node is selected', () => {
     const { container } = render(panel)
     expect(container.firstChild).toBeNull()
+  })
+
+  it('toggles the node in and out of the compare set', () => {
+    selectNode('nws-api')
+    render(panel)
+    fireEvent.click(screen.getByRole('button', { name: 'Add to compare' }))
+    expect(getCompareSnapshot()).toEqual(['nws-api'])
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from compare' }))
+    expect(getCompareSnapshot()).toEqual([])
   })
 
   it('renders the selected node\'s detail fields', () => {
