@@ -29,6 +29,7 @@ import {
   selectNode,
   subscribeSelection,
 } from '../../data/selectionStore'
+import { getSheetHeight, subscribeSheetHeight } from '../../data/sheetStore'
 import { nodeColor } from '../../data/themeColors'
 import { prefersReducedMotion } from '../prefersReducedMotion'
 import {
@@ -42,8 +43,8 @@ import {
   keyboardViewTransform,
   settleSimulation,
   EDGE_CLASS,
-  NO_INSET,
   nodeRadius,
+  panelInset,
   type FitTransform,
   type Inset,
   type LayoutMode,
@@ -78,8 +79,6 @@ const FIT_ALL_PADDING = 40
 const LABEL_PX = 12
 const LABEL_HEIGHT = 13
 const AUTOFIT_TICK_INTERVAL = 20
-// Clearance between the detail panel and the area a selection is framed into.
-const PANEL_GAP = 8
 
 const tasks = parseTasksFile(tasksJson).tasks
 const searchIndex = buildSearchIndex(graph.nodes, tasks)
@@ -104,21 +103,20 @@ function positionPathEdges(root: Element | null, positions: Map<string, { x: num
   })
 }
 
-/** The node detail panel's box in the SVG's screen space, or null when it isn't shown. */
-function detailPanelBox(svgEl: SVGSVGElement): Box | null {
+/**
+ * What covers part of the canvas, in the SVG's screen space, or null when nothing does: the node
+ * detail card on a wide screen, or the bottom sheet on a phone (#78), whose height comes from
+ * sheetStore because the sheet is a sibling of the whole view, not of the canvas.
+ */
+function detailPanelBox(svgEl: SVGSVGElement, sheetHeight: number): Box | null {
+  if (sheetHeight > 0) {
+    const { clientWidth: width, clientHeight: height } = svgEl
+    return width > 0 && height > 0 ? { x0: 0, y0: Math.max(0, height - sheetHeight), x1: width, y1: height } : null
+  }
   const panelRect = svgEl.parentElement?.querySelector('.node-detail-panel')?.getBoundingClientRect()
   if (!panelRect || panelRect.width === 0 || panelRect.height === 0) return null
   const svgRect = svgEl.getBoundingClientRect()
   return { x0: panelRect.left - svgRect.left, y0: panelRect.top - svgRect.top, x1: panelRect.right - svgRect.left, y1: panelRect.bottom - svgRect.top }
-}
-
-// The panel sits in the top-left corner, so the free area is either the strip to its right or the
-// one below it; framing uses whichever is larger (#141).
-function panelInset(panel: Box | null, width: number, height: number): Inset {
-  if (!panel) return NO_INSET
-  const left = panel.x1 + PANEL_GAP
-  const top = panel.y1 + PANEL_GAP
-  return (width - left) * height >= width * (height - top) ? { ...NO_INSET, left } : { ...NO_INSET, top }
 }
 
 export function GraphView() {
@@ -149,10 +147,14 @@ export function GraphView() {
   const initialSizeRef = useRef(size)
   const [legendOpen, setLegendOpen] = useState(false)
   const [mode, setMode] = useState<LayoutMode>('theme')
-  // Kept across selections, so a user who collapses the panel isn't fighting it on every click. On a
-  // phone it starts collapsed, since the open panel would cover most of the graph (#78).
+  // Kept across selections, so a user who collapses the panel isn't fighting it on every click.
+  // A phone has no floating card: its detail is a bottom sheet, which publishes its height (#78).
   const narrow = useNarrowLayout()
-  const [panelCollapsed, setPanelCollapsed] = useState(narrow)
+  const [panelCollapsed, setPanelCollapsed] = useState(false)
+  const sheetHeight = useSyncExternalStore(subscribeSheetHeight, getSheetHeight)
+  // Read by placeLabelsRef, which runs outside React renders (zoom, ticks), so it's a ref. It is
+  // kept up to date by the first effect below, which runs ahead of the ones that place labels.
+  const sheetHeightRef = useRef(sheetHeight)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const highlightedIds = getHighlightedNodeIds()
   const highlightKey = highlightedIds.join('|')
@@ -161,6 +163,10 @@ export function GraphView() {
   const announcement = selectionAnnouncement(selection, nodeNameById, taskLabelById, highlightedIds.length)
   const [query, setQuery] = useState('')
   const matchedIds = useMemo(() => matchNodeIds(searchIndex, query), [query])
+
+  useEffect(() => {
+    sheetHeightRef.current = sheetHeight
+  }, [sheetHeight])
 
   useEffect(() => {
     const container = containerRef.current
@@ -234,7 +240,7 @@ export function GraphView() {
           overNodes: priority >= 3,
         })
       })
-      const panel = detailPanelBox(svgEl)
+      const panel = detailPanelBox(svgEl, sheetHeightRef.current)
       const obstacles = panel ? [panel] : []
       const bounds = { width: svgEl.clientWidth || initialSizeRef.current.width, height: svgEl.clientHeight || initialSizeRef.current.height }
       const sides = placeLabels(items, bounds, obstacles)
@@ -410,7 +416,7 @@ export function GraphView() {
       if (!svgEl || !zoomBehavior) return false
       // Frames into the part of the canvas the detail panel doesn't cover, so the selection's
       // neighbours (and their labels) aren't hidden under it (#141).
-      const fit = fitInto(panelInset(detailPanelBox(svgEl), size.width, size.height))
+      const fit = fitInto(panelInset(detailPanelBox(svgEl, sheetHeight), size.width, size.height))
       if (!fit) return false
       // d3-transition isn't a dependency here, so the pan/zoom is applied immediately rather
       // than animated (unlike MapLibre's flyTo in the reverse direction, #44).
@@ -454,8 +460,8 @@ export function GraphView() {
     placeLabelsRef.current()
     // Keyed on the joined ids, not the array: highlightedIds is a fresh array every render, so
     // depending on it would reset the user's pan/zoom on each keystroke in the search box.
-    // panelCollapsed changes the area the selection is framed into.
-  }, [selection, size, highlightKey, panelCollapsed])
+    // panelCollapsed and the sheet's height change the area the selection is framed into.
+  }, [selection, size, highlightKey, panelCollapsed, sheetHeight])
 
   // Label priority (#138): what the user asked for wins space first (the selection, task path or
   // globe point, then search matches), then theme hubs, then a single selected node's
@@ -583,7 +589,7 @@ export function GraphView() {
             </g>
           </g>
         </svg>
-        <NodeDetailPanel collapsed={panelCollapsed} onToggleCollapsed={() => setPanelCollapsed((c) => !c)} />
+        {!narrow && <NodeDetailPanel collapsed={panelCollapsed} onToggleCollapsed={() => setPanelCollapsed((c) => !c)} />}
         {legendOpen && <GraphLegend mode={mode} />}
       </div>
     </section>

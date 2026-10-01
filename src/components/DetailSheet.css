@@ -1,0 +1,160 @@
+/* The phone's node detail (#78): a bottom sheet over the view it opens on. Its height is set inline
+   (px), so it can follow a finger and animate between peek and open. */
+.detail-sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  overflow: hidden;
+  border-top: 1px solid var(--color-border);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: var(--color-surface-raised);
+  box-shadow: 0 -6px 20px rgb(0 0 0 / 0.45);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  transition: height 200ms ease-out;
+}
+
+.detail-sheet-dragging {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail-sheet {
+    transition: none;
+  }
+}
+
+/* The handle: dragging anywhere on the header (but not on its buttons) moves the sheet, so the
+   browser must leave touches there alone. */
+.detail-sheet-header {
+  flex: none;
+  padding: 0 var(--space-3) var(--space-2);
+  touch-action: none;
+}
+
+.detail-sheet-grabber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: grab;
+}
+
+.detail-sheet-pill {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-text-muted);
+}
+
+.detail-sheet-title {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.detail-sheet-heading {
+  flex: 1;
+  min-width: 0;
+  padding-top: var(--space-1);
+}
+
+.detail-sheet-heading h3 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-md);
+  overflow-wrap: anywhere;
+}
+
+.detail-sheet-heading .node-detail-live-tag {
+  margin-bottom: 0;
+}
+
+/* Two equal buttons on one row, so the peek stays a header's height. */
+.detail-sheet-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.detail-sheet-actions .detail-sheet-action {
+  flex: 1;
+}
+
+.detail-sheet-action {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.detail-sheet-action[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-muted);
+}
+
+.detail-sheet-close {
+  border-color: transparent;
+  background: none;
+  font-size: var(--font-size-lg);
+}
+
+/* Scrolls on its own, and keeps a scroll that reaches its end from dragging the view behind. */
+.detail-sheet-body {
+  flex: 1;
+  min-height: 0;
+  padding: 0 var(--space-3) var(--space-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* The shared detail sections were sized for the 280px card; on a phone they get readable type, and
+   their own small scrollers give way to the sheet's, so there is one thing to scroll. */
+.detail-sheet dl {
+  margin: 0;
+}
+
+.detail-sheet .node-detail-row dt,
+.detail-sheet .node-sample h4,
+.detail-sheet .node-sample-label,
+.detail-sheet .node-neighbors h4,
+.detail-sheet .node-neighbors h5,
+.detail-sheet .node-detail-theme-services h4,
+.detail-sheet .node-detail-theme-tag,
+.detail-sheet .node-datasets summary {
+  font-size: var(--font-size-xs);
+}
+
+.detail-sheet .node-sample-url,
+.detail-sheet .node-sample-body {
+  font-size: var(--font-size-sm);
+}
+
+.detail-sheet .node-sample-body,
+.detail-sheet .node-datasets ul {
+  max-height: none;
+}
+
+.detail-sheet .node-detail-row {
+  margin-bottom: var(--space-2);
+}
+
+.detail-sheet .node-detail-docs-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}

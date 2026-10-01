@@ -17,7 +17,10 @@ import {
   isNodeVisible,
   largestLinkedGroup,
   nodeRadius,
+  NO_INSET,
   orgTargets,
+  PANEL_GAP,
+  panelInset,
   RING_ORDER,
   settleSimulation,
   themeAnchors,
@@ -382,5 +385,46 @@ describe('layout modes (#58)', () => {
       expect(node.x).toBeCloseTo(targets.get(id)!.x, 0)
       expect(node.y).toBeCloseTo(targets.get(id)!.y, 0)
     }
+  })
+})
+
+describe('panelInset (#141, #78)', () => {
+  const [width, height] = [800, 600]
+
+  it('does not inset for no overlay', () => {
+    expect(panelInset(null, width, height)).toEqual(NO_INSET)
+  })
+
+  it('frames into the strip beside a card in the top-left corner when that is the larger one', () => {
+    const card = { x0: 12, y0: 12, x1: 292, y1: 412 }
+    expect(panelInset(card, width, height)).toEqual({ ...NO_INSET, left: 292 + PANEL_GAP })
+  })
+
+  it('frames into the strip below a wide card across the top', () => {
+    const card = { x0: 12, y0: 12, x1: 700, y1: 112 }
+    expect(panelInset(card, width, height)).toEqual({ ...NO_INSET, top: 112 + PANEL_GAP })
+  })
+
+  it('frames into the area above a sheet along the bottom', () => {
+    const sheet = { x0: 0, y0: 476, x1: width, y1: height }
+    expect(panelInset(sheet, width, height)).toEqual({ ...NO_INSET, bottom: height - 476 + PANEL_GAP })
+  })
+
+  it('frames into the strip left of a sheet docked on the right', () => {
+    const sheet = { x0: 440, y0: 0, x1: width, y1: height }
+    expect(panelInset(sheet, width, height)).toEqual({ ...NO_INSET, right: width - 440 + PANEL_GAP })
+  })
+
+  it('prefers the strip to the right on a tie, as before the sheet existed', () => {
+    const card = { x0: 0, y0: 0, x1: 400, y1: 300 }
+    // Right: (800-408) * 600 = 235200. Below: 800 * (600-308) = 233600. The right strip is larger.
+    expect(panelInset(card, width, height)).toEqual({ ...NO_INSET, left: 408 })
+    const squarer = { x0: 0, y0: 0, x1: 400, y1: 292 }
+    // Right: 235200. Below: 800 * 300 = 240000, now larger.
+    expect(panelInset(squarer, width, height)).toEqual({ ...NO_INSET, top: 300 })
+  })
+
+  it('treats an overlay that covers everything as absent', () => {
+    expect(panelInset({ x0: 0, y0: 0, x1: width, y1: height }, width, height)).toEqual(NO_INSET)
   })
 })
