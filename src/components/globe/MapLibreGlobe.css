@@ -396,6 +396,10 @@
 }
 
 /* The wind overlay's slider and legend (#229) reuse the radar control's box. */
+.wind-control .wind-now {
+  font-size: var(--font-size-sm);
+}
+
 .wind-control .wind-now[aria-pressed='true'] {
   border-color: var(--color-accent);
   color: var(--color-accent);
