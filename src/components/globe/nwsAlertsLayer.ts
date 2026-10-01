@@ -6,6 +6,11 @@ import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec'
 import { NwsHttpError, NwsParseError } from '../../data/nwsClient'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
 
+// The alerts are refreshed this often while the globe is looked at, and a failed first load is
+// retried sooner (#222).
+export const ALERTS_REFRESH_MS = 5 * 60_000
+export const ALERTS_RETRY_MS = 30_000
+
 // Matches the --color-alert-danger/--color-alert-warning tokens in index.css (this module is
 // plain TS, not a component, so it can't read CSS custom properties directly).
 export const ALERT_SEVERITY_COLORS: Record<string, string> = {

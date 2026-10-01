@@ -3,6 +3,8 @@ import { NwsHttpError, NwsParseError } from '../../data/nwsClient'
 import { parseAlertCollection } from '../../data/nwsSchema'
 import { makeAlertCollection, makeAlertFeature } from '../../data/nwsFixtures'
 import {
+  ALERTS_REFRESH_MS,
+  ALERTS_RETRY_MS,
   ALERT_SEVERITY_COLORS,
   alertSeverityColorExpression,
   describeAlertForPopup,
@@ -131,5 +133,11 @@ describe('zoneOnlyAlertsTitle', () => {
   it('counts the alerts, singular and plural', () => {
     expect(zoneOnlyAlertsTitle(1)).toBe('1 alert without a map area')
     expect(zoneOnlyAlertsTitle(468)).toBe('468 alerts without a map area')
+  })
+})
+
+describe('alert refresh timing', () => {
+  it('retries a failed first load sooner than it refreshes', () => {
+    expect(ALERTS_RETRY_MS).toBeLessThan(ALERTS_REFRESH_MS)
   })
 })

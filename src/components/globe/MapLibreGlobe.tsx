@@ -56,6 +56,8 @@ import {
   US_CENTER,
 } from './globeConfig'
 import {
+  ALERTS_REFRESH_MS,
+  ALERTS_RETRY_MS,
   alertSeverityColorExpression,
   describeAlertForPopup,
   describeAlertsFetchOutcome,
@@ -296,6 +298,8 @@ export function MapLibreGlobe() {
   // Space weather is refreshed while the globe is looked at, and at once on return if it is stale.
   const refreshSpaceWeatherRef = useRef<() => void>(() => {})
   const spaceWeatherAtRef = useRef(0)
+  const refreshAlertsRef = useRef<() => void>(() => {})
+  const alertsAtRef = useRef(0)
   // MapLibre enables its own button once it knows the browser can geolocate; ours waits for that.
   const [locateReady, setLocateReady] = useState(false)
 
@@ -536,11 +540,20 @@ export function MapLibreGlobe() {
       }
       refreshSpaceWeatherRef.current()
 
-      getActiveAlerts()
+      let alertsLoaded = false
+      const loadAlerts = () =>
+        getActiveAlerts()
         .then((alerts) => {
           const { mappable, zoneOnly } = splitAlertsByGeometry(alerts)
           setZoneOnlyAlerts(zoneOnly)
           setAlertsStatus(mappable.features.length === 0 && zoneOnly.length === 0 ? 'empty' : 'ok')
+
+          const existing = map.getSource<GeoJSONSource>(ALERTS_SOURCE_ID)
+          if (existing) {
+            existing.setData(mappable)
+            return
+          }
+          alertsLoaded = true
 
           map.addSource(ALERTS_SOURCE_ID, { type: 'geojson', data: mappable })
           map.addLayer({
@@ -570,9 +583,17 @@ export function MapLibreGlobe() {
           })
         })
         .catch((err: unknown) => {
+          // A failed refresh keeps the last good alerts on screen.
+          if (alertsLoaded) return
           setAlertsStatus('error')
           setAlertsErrorMessage(describeAlertsFetchOutcome(err))
         })
+
+      refreshAlertsRef.current = () => {
+        alertsAtRef.current = Date.now()
+        void loadAlerts()
+      }
+      refreshAlertsRef.current()
     })
 
     return () => {
@@ -650,6 +671,20 @@ export function MapLibreGlobe() {
     if (Date.now() - spaceWeatherAtRef.current >= SWPC_REFRESH_MS) refreshSpaceWeatherRef.current()
     return pollWhileVisible(() => refreshSpaceWeatherRef.current(), SWPC_REFRESH_MS)
   }, [mapLoaded, active])
+
+  // The alerts are refreshed on the same terms as space weather (#222), and a failed first load is
+  // retried sooner, until it succeeds.
+  useEffect(() => {
+    if (!mapLoaded || !active) return
+    if (Date.now() - alertsAtRef.current >= ALERTS_REFRESH_MS) refreshAlertsRef.current()
+    return pollWhileVisible(() => refreshAlertsRef.current(), ALERTS_REFRESH_MS)
+  }, [mapLoaded, active])
+
+  const alertsFailed = alertsStatus === 'error'
+  useEffect(() => {
+    if (!mapLoaded || !active || !alertsFailed) return
+    return pollWhileVisible(() => refreshAlertsRef.current(), ALERTS_RETRY_MS)
+  }, [mapLoaded, active, alertsFailed])
 
   // The stations' emphasis (#51), applied once the layer exists (mapLoaded).
   const coopsHighlighted = liveLayers.includes('coops-stations')
