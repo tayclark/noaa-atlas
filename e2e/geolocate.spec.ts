@@ -22,6 +22,19 @@ test.describe('with location allowed', () => {
   })
 })
 
+test.describe('with location allowed outside the US', () => {
+  test.use({ geolocation: { latitude: 48.85, longitude: 2.35 }, permissions: ['geolocation'] })
+
+  test('a point NWS does not cover says forecasts are US-only', async ({ page }) => {
+    await mockAlerts(page, emptyAlertsFixture())
+    await page.route('**/points/**', (route) => route.fulfill({ status: 404, json: { title: 'Not Found' } }))
+    await page.goto('/')
+
+    await page.getByRole('button', { name: 'Find my location' }).click()
+    await expect(page.locator('.maplibregl-popup')).toContainText('US and its territories only')
+  })
+})
+
 test.describe('with location not granted', () => {
   test('a refused request explains how to allow it, and can be dismissed', async ({ page }) => {
     await mockAlerts(page, emptyAlertsFixture())

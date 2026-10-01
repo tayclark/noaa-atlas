@@ -2674,8 +2674,7 @@
         "url": "https://www.ndbc.noaa.gov/data/realtime2/21414.dart",
         "responseExcerpt": "#YY  MM DD hh mm ss T   HEIGHT\n#yr  mo dy hr mn  s -        m\n2026 09 10 18 00 00 1 5421.034\n2026 09 10 17 45 00 1 5421.057\n(abbreviated)"
       },
-      "liveLayer": false,
-      "notLiveReason": "Not wired into the v1 map: per-station text files, and the height series is only meaningful as a time-series chart.",
+      "liveLayer": true,
       "tags": [
         "tsunami",
         "deep-ocean",

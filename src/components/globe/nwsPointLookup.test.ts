@@ -111,7 +111,11 @@ describe('describePointError', () => {
 
   it('describes a forbidden/unknown error as no coverage', () => {
     expect(describePointError(new NwsHttpError(403, 'forbidden', 'forbidden'))).toMatch(/no nws coverage/i)
-    expect(describePointError(new NwsHttpError(404, 'unknown', 'not found'))).toMatch(/no nws coverage/i)
+    expect(describePointError(new NwsHttpError(400, 'unknown', 'bad request'))).toMatch(/no nws coverage/i)
+  })
+
+  it('explains a 404 as a US-only service', () => {
+    expect(describePointError(new NwsHttpError(404, 'unknown', 'not found'))).toMatch(/US and its territories only/)
   })
 
   it('describes a parse error', () => {

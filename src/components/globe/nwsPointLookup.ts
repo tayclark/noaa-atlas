@@ -93,6 +93,7 @@ export function describePointError(err: unknown): string {
   if (err instanceof NwsHttpError) {
     if (err.kind === 'rate-limited') return 'NWS rate limit exceeded — try again shortly.'
     if (err.kind === 'server-error') return 'NWS service error — try again later.'
+    if (err.status === 404) return 'NWS forecasts cover the US and its territories only.'
     return 'No NWS coverage at this location.'
   }
   if (err instanceof NwsParseError) return 'NWS returned an unexpected response for this location.'
