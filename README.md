@@ -59,7 +59,7 @@ Selecting a node opens a panel over the graph. On a phone the same detail is a *
 
 - name and a **Live** or **Available, not live yet** tag;
 - owner (NOAA office and program), base URL, formats, auth requirement, rate limits, coverage summary, freshness, and the date the entry was last verified;
-- **Sample call**: the request URL, **Copy as curl** and **Copy as fetch** buttons, and a static response excerpt. Nodes with a live client (the NWS API and the SWPC planetary K-index) also get **Run sample**, which makes the real call and shows the parsed response;
+- **Sample call**: the request URL, **Copy as curl** and **Copy as fetch** buttons, and a static response excerpt. Nodes with a live client (the NWS API, the SWPC planetary K-index, and the SWPC scales and alerts, solar wind and GOES X-ray nodes) also get **Run sample**, which makes the real call and shows the parsed response (as a table for the SWPC try-its);
 - **Relationships**: neighbours grouped by edge type, with direction, the reason for the link and a link to the source that documents it. Click a neighbour to jump to it;
 - for services that are not on the map yet, the reason why;
 - a link to the official docs.
@@ -168,11 +168,11 @@ The app does not modify NOAA data and does not use NOAA or NWS logos. Its footer
 
 - There are three live integrations, each through a typed client that validates every response with zod and caches successful GETs in memory for 60 seconds (both share `src/data/liveRequest.ts`):
   - `api.weather.gov` (`src/data/nwsClient.ts`). Browsers cannot set the `User-Agent` header NWS asks for, so the client sends the documented `Accept: application/geo+json` header instead. NWS rate limits or 403s surface as readable messages in the alerts overlay, point popup and Inspector.
-  - `services.swpc.noaa.gov` (`src/data/swpcClient.ts`): the OVATION aurora forecast (about 1 MB) and the one-minute planetary Kp. They are static files served with `access-control-allow-origin: *`, so no headers are needed.
+  - `services.swpc.noaa.gov` (`src/data/swpcClient.ts`): the OVATION aurora forecast (about 1 MB), the one-minute planetary Kp, and three try-its that have no map layer and show their result as tables in the node's detail panel: the NOAA scales and latest alerts, the active spacecraft's solar wind (the file is about 3 MB, so it is fetched only when **Run sample** is clicked) and the GOES X-ray flux with its flare class. They are static files served with `access-control-allow-origin: *`, so no headers are needed.
   - `api.tidesandcurrents.noaa.gov` (`src/data/coopsClient.ts`): the water level and hi/lo predictions for a clicked station, with `access-control-allow-origin: *`. CO-OPS answers an unknown station or missing product with HTTP 200 and an `error` body, which the client returns as a message rather than a failure.
 - `nowcoast.noaa.gov` (`src/components/globe/nowcoastRadarLayer.ts`) is a fourth live source with no client: MapLibre requests WMS radar tiles directly (`access-control-allow-origin: *`, about 4 minutes of caching), only while the nowCOAST node is selected. It also fetches GetCapabilities (a raw `fetch`, also not in the Inspector) for the radar's frame list.
 - `noaa-gfs-bdp-pds.s3.amazonaws.com` (`src/data/gfsClient.ts`) is a fifth live source with its own small client (it is binary, so it doesn't use `liveRequest.ts`): Range requests for the GFS 10 m wind messages, only while the GFS (AWS) node is selected. Decoded fields are cached for the session and the latest-cycle lookup for 10 minutes.
-- `src/components/globe/liveLayers.ts` maps each live service to the globe layer it drives; a test keeps it in step with `liveLayer` in `graph.json`.
+- `src/components/globe/liveLayers.ts` maps each live service to the globe layer it drives (or `null` for the panel-only SWPC try-its); a test keeps it in step with `liveLayer` in `graph.json`.
 - Every other service in the graph is reference data only. Its sample is a static excerpt, and it is marked "not live yet" with the reason.
 
 ## Accessibility and performance

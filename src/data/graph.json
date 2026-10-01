@@ -7983,13 +7983,12 @@
         "note": "noaa-scales.json is refreshed every few minutes; alerts.json lists messages from the past few days as they are issued; the 3-day forecast is issued twice daily."
       },
       "docUrl": "https://www.spaceweather.gov/products/alerts-watches-and-warnings",
-      "lastVerified": "2026-09-30",
+      "lastVerified": "2026-10-01",
       "sample": {
         "url": "https://services.swpc.noaa.gov/products/noaa-scales.json",
         "responseExcerpt": "{\n  \"0\": {\n    \"DateStamp\": \"2026-09-24\", \"TimeStamp\": \"23:42:00\",\n    \"R\": { \"Scale\": \"0\", \"Text\": \"none\", \"MinorProb\": null, \"MajorProb\": null },\n    \"S\": { \"Scale\": \"0\", \"Text\": \"none\", \"Prob\": null },\n    \"G\": { \"Scale\": \"0\", \"Text\": \"none\" }\n  },\n  \"1\": {\n    \"DateStamp\": \"2026-09-24\", \"TimeStamp\": \"23:42:00\",\n    \"R\": { \"Scale\": null, \"Text\": null, \"MinorProb\": \"20\", \"MajorProb\": \"1\" },\n    \"S\": { \"Scale\": null, \"Text\": null, \"Prob\": \"1\" },\n    \"G\": { \"Scale\": \"1\", \"Text\": \"minor\" }\n  },\n  ...\n}\n(trimmed: \"0\" is now and \"-1\" the past 24 hours; \"1\" to \"3\" are the next three days)"
       },
-      "liveLayer": false,
-      "notLiveReason": "Not a map layer: planet-wide scale levels and free-text messages with no geometry to draw.",
+      "liveLayer": true,
       "tags": [
         "alerts",
         "noaa-scales",
@@ -8152,16 +8151,15 @@
       },
       "freshness": {
         "cadence": "minutes",
-        "note": "One-minute data, roughly the past week per file (rtsw_wind_1m.json, rtsw_mag_1m.json). The source field names the active spacecraft (SOLAR1 at the time of checking)."
+        "note": "One-minute data, roughly the past day per file (rtsw_wind_1m.json, rtsw_mag_1m.json), newest first, with one row per spacecraft per minute. The active field marks the spacecraft SWPC currently treats as primary (SOLAR1 at the time of checking); ACE and IMAP rows are interleaved and can have null readings."
       },
       "docUrl": "https://www.spaceweather.gov/products/solar-wind",
-      "lastVerified": "2026-09-30",
+      "lastVerified": "2026-10-01",
       "sample": {
         "url": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
         "responseExcerpt": "[\n  {\n    \"time_tag\": \"2026-09-24T23:40:00\",\n    \"active\": true,\n    \"source\": \"SOLAR1\",\n    \"proton_speed\": 432.8,\n    \"proton_temperature\": 129322,\n    \"proton_density\": 7.92,\n    \"proton_vx_gse\": -432.0,\n    ...\n  },\n  ...\n]\n(trimmed: each row also has GSM components, alpha-particle fields and quality flags)"
       },
-      "liveLayer": false,
-      "notLiveReason": "Not a map layer: measured 1.5 million km upstream of Earth, so there is no location on the globe to draw.",
+      "liveLayer": true,
       "tags": [
         "solar-wind",
         "imf",
@@ -8212,13 +8210,12 @@
         "note": "One-minute data; files are grouped by satellite (primary, secondary) and window (6-hour, 1-day, 3-day, 7-day)."
       },
       "docUrl": "https://www.spaceweather.gov/products/goes-x-ray-flux",
-      "lastVerified": "2026-09-30",
+      "lastVerified": "2026-10-01",
       "sample": {
         "url": "https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json",
         "responseExcerpt": "[\n  {\n    \"time_tag\": \"2026-09-24T17:44:00Z\",\n    \"satellite\": 18,\n    \"flux\": 4.546471359390125e-07,\n    \"observed_flux\": 4.6932447617109574e-07,\n    \"electron_correction\": 1.4677340232083225e-08,\n    \"electron_contaminaton\": false,\n    \"energy\": \"0.1-0.8nm\"\n  },\n  ...\n]\n(trimmed: one row per minute for each of the two X-ray bands)"
       },
-      "liveLayer": false,
-      "notLiveReason": "Not a map layer: time series measured at geostationary orbit, not values for places on the globe.",
+      "liveLayer": true,
       "tags": [
         "goes",
         "x-ray",

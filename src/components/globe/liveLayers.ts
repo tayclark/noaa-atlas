@@ -4,7 +4,8 @@
 
 export type LiveLayerKey = 'nws-alerts' | 'aurora' | 'kp' | 'coops-stations' | 'nowcoast-radar' | 'dart-stations' | 'ndbc-stations' | 'wind' | 'spc-outlook'
 
-export const LIVE_LAYERS: Readonly<Record<string, { layer: LiveLayerKey; status: string }>> = {
+// `layer` is null for a node that is live only as a try-it in its detail panel (#240): nothing is drawn.
+export const LIVE_LAYERS: Readonly<Record<string, { layer: LiveLayerKey | null; status: string }>> = {
   'nws-api': { layer: 'nws-alerts', status: 'Its live layer, active alerts, is highlighted.' },
   'swpc-ovation-aurora': { layer: 'aurora', status: 'Its live layer, the aurora forecast glow, is highlighted.' },
   'swpc-geomagnetic-indices': { layer: 'kp', status: 'Its live Kp reading is highlighted in the corner.' },
@@ -14,4 +15,7 @@ export const LIVE_LAYERS: Readonly<Record<string, { layer: LiveLayerKey; status:
   'gfs-aws-open-data': { layer: 'wind', status: 'Its live layers, the 10 m wind forecast and the wave height forecast (switch between them in the bottom control), are drawn on the globe while this is selected and follow the time slider.' },
   'spc-gis-data': { layer: 'spc-outlook', status: 'Its live layer, the Day 1 convective outlook, is drawn on the globe while this is selected.' },
   'ndbc-dart-realtime': { layer: 'dart-stations', status: 'Its live layer, the DART tsunami buoys, is drawn on the globe while this is selected.' },
+  'swpc-alerts-scales': { layer: null, status: 'Live in its detail panel: Run sample fetches the current scales and alerts. Nothing is drawn on the globe.' },
+  'swpc-rtsw-solar-wind': { layer: null, status: 'Live in its detail panel: Run sample fetches the latest solar wind readings. Nothing is drawn on the globe.' },
+  'swpc-goes-space-environment': { layer: null, status: 'Live in its detail panel: Run sample fetches the latest X-ray flux. Nothing is drawn on the globe.' },
 }
