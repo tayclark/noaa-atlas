@@ -357,13 +357,36 @@
   font-size: var(--font-size-sm);
 }
 
+.radar-time {
+  flex-wrap: wrap;
+}
+
 .radar-time input[type='range'] {
   width: 160px;
 }
 
-.radar-time-play {
+.radar-time-play,
+.radar-time-step {
   min-width: 28px;
   min-height: 28px;
+}
+
+.radar-time-step {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.radar-time-step:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+  opacity: 0.5;
 }
 
 .radar-time-label {
@@ -418,7 +441,8 @@
   .globe-bottom {
     left: var(--space-2);
     right: var(--space-2);
-    bottom: calc(var(--space-2) + 24px);
+    /* Clear of MapLibre's credit button: 24px, and 10px from the corner. */
+    bottom: calc(var(--space-2) + 28px);
     flex-direction: column;
     align-items: stretch;
   }
@@ -434,11 +458,22 @@
     min-width: 0;
     width: auto;
   }
+
+  /* The time takes a line of its own, so the slider keeps the room that finger-sized buttons leave. */
+  .radar-time-label {
+    flex: 0 0 100%;
+    text-align: center;
+  }
 }
 
 /* Touch screens (#78): the close button of a popup is a finger-sized target, with its text kept
    clear of it, and MapLibre's ⓘ credit button reaches past its 24px circle without growing it. */
 @media (pointer: coarse) {
+  /* A taller slider is a taller target, whatever the size of the browser's own thumb. */
+  .radar-time input[type='range'] {
+    height: 44px;
+  }
+
   .maplibregl-popup-close-button {
     width: 44px;
     height: 44px;

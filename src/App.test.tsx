@@ -12,6 +12,7 @@ vi.mock('maplibre-gl', () => ({
     remove = vi.fn()
     addControl = vi.fn()
     touchZoomRotate = { disableRotation: vi.fn() }
+    resize = vi.fn()
   },
   GeolocateControl: class {
     on = vi.fn()

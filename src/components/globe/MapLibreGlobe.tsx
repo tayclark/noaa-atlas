@@ -76,6 +76,8 @@ import { parseTasksFile } from '../../data/taskSchema'
 import tasksJson from '../../data/tasks.json'
 import { describeSelectionForGlobe, type GlobeViewContext } from './selectionGlobeView'
 import { subscribeSelection, getSelectionSnapshot, selectPoint } from '../../data/selectionStore'
+import { getViewSnapshot, resolveView, subscribeView } from '../../data/viewStore'
+import { useNarrowLayout } from '../useNarrowLayout'
 
 // `vite build` doesn't discover maplibre's worker on its own; the `maplibreWorker` plugin in
 // vite.config.ts emits it under `maplibre/`. The dev server needs no help (#49).
@@ -280,8 +282,20 @@ export function MapLibreGlobe() {
   const [heldLayers, setHeldLayers] = useState(view.liveLayers)
   if (!selection.selectedPoint && heldLayers !== view.liveLayers) setHeldLayers(view.liveLayers)
   const liveLayers = selection.selectedPoint ? heldLayers : view.liveLayers
+  // On a phone the globe is a tab that stays mounted while another shows (#78). Hidden, it does no
+  // work for nobody: its loops and polling pause, and the camera waits for it to be seen again. A
+  // wide layout shows it always.
+  const compact = useNarrowLayout()
+  const requestedView = useSyncExternalStore(subscribeView, getViewSnapshot)
+  const active = !compact || resolveView(requestedView, true) === 'globe'
   const geolocateRef = useRef<GeolocateControl | null>(null)
   const [locating, setLocating] = useState(false)
+  // Which selection the camera was last moved for, so a tab that is seen again is framed on a
+  // selection made while it was hidden, but is not snapped back over where the reader has panned.
+  const framedViewRef = useRef<typeof view | null>(null)
+  // Space weather is refreshed while the globe is looked at, and at once on return if it is stale.
+  const refreshSpaceWeatherRef = useRef<() => void>(() => {})
+  const spaceWeatherAtRef = useRef(0)
   // MapLibre enables its own button once it knows the browser can geolocate; ours waits for that.
   const [locateReady, setLocateReady] = useState(false)
 
@@ -302,7 +316,6 @@ export function MapLibreGlobe() {
     })
     map.touchZoomRotate.disableRotation()
     mapRef.current = map
-    let stopSwpcPolling: (() => void) | null = null
 
     // "Locate me": the same lookup as a click, at the user's position. MapLibre's control does the
     // positioning, the camera and the user's dot; its own icon-only button is hidden (see the CSS)
@@ -463,8 +476,9 @@ export function MapLibreGlobe() {
         showPointLookup(map, e.lngLat.lng, e.lngLat.lat, ovationRef.current)
       })
 
-      // Both files are re-fetched every few minutes while the tab is visible. A failed refresh
-      // keeps what is already on screen; only a failed first load shows an error.
+      // Both files are re-fetched every few minutes while the globe is looked at (see the effect
+      // below). A failed refresh keeps what is already on screen; only a failed first load shows
+      // an error.
       let auroraCanvas: HTMLCanvasElement | null = null
       let kpLoaded = false
 
@@ -515,12 +529,12 @@ export function MapLibreGlobe() {
             if (!kpLoaded) setKp({ status: 'error', message: describeSwpcFetchOutcome(err) })
           })
 
-      void loadAurora()
-      void loadKp()
-      stopSwpcPolling = pollWhileVisible(() => {
+      refreshSpaceWeatherRef.current = () => {
+        spaceWeatherAtRef.current = Date.now()
         void loadAurora()
         void loadKp()
-      }, SWPC_REFRESH_MS)
+      }
+      refreshSpaceWeatherRef.current()
 
       getActiveAlerts()
         .then((alerts) => {
@@ -565,7 +579,6 @@ export function MapLibreGlobe() {
       readyObserver.disconnect()
       mapRef.current = null
       geolocateRef.current = null
-      stopSwpcPolling?.()
       map.remove()
     }
   }, [])
@@ -593,6 +606,12 @@ export function MapLibreGlobe() {
       )
     }
 
+    // A hidden globe measures as 400x300 (MapLibre's fallback), so a camera move now would frame the
+    // selection for the wrong size. It waits until the tab is seen, and then happens once (#78).
+    if (!active || framedViewRef.current === view) return
+    framedViewRef.current = view
+    map.resize()
+
     // MapLibre's own reduced-motion handling skips `essential` moves, so those are only marked
     // essential while animating; with "reduce motion" on the camera jumps instead of flying (#47).
     const reduceMotion = prefersReducedMotion()
@@ -612,7 +631,7 @@ export function MapLibreGlobe() {
         { padding: 60, maxZoom: 6, essential: !reduceMotion, animate: !reduceMotion },
       )
     }
-  }, [view, mapLoaded, alertsHighlighted])
+  }, [view, mapLoaded, alertsHighlighted, active])
 
   // The aurora's emphasis (#54) lives apart from the effect above so that the layer arriving
   // (auroraCells) re-applies it without re-framing the globe.
@@ -622,6 +641,15 @@ export function MapLibreGlobe() {
     if (!map || auroraCells === null || !map.getLayer(AURORA_LAYER_ID)) return
     map.setPaintProperty(AURORA_LAYER_ID, 'raster-opacity', auroraHighlighted ? AURORA_OPACITY_SELECTED : AURORA_OPACITY)
   }, [auroraHighlighted, auroraCells])
+
+  // The aurora forecast and Kp are refreshed every few minutes while the globe is looked at. Coming
+  // back to it after longer than that refreshes at once, rather than showing a stale readout until
+  // the next tick (#78).
+  useEffect(() => {
+    if (!mapLoaded || !active) return
+    if (Date.now() - spaceWeatherAtRef.current >= SWPC_REFRESH_MS) refreshSpaceWeatherRef.current()
+    return pollWhileVisible(() => refreshSpaceWeatherRef.current(), SWPC_REFRESH_MS)
+  }, [mapLoaded, active])
 
   // The stations' emphasis (#51), applied once the layer exists (mapLoaded).
   const coopsHighlighted = liveLayers.includes('coops-stations')
@@ -643,26 +671,34 @@ export function MapLibreGlobe() {
     map.setLayoutProperty(RADAR_LAYER_ID, 'visibility', radarShown ? 'visible' : 'none')
   }, [radarShown, mapLoaded])
 
-  // The radar's frame list (#74) is fetched while the layer is shown and refreshed as frames age
-  // out. A failed fetch leaves the latest-frame layer without a slider. Leaving resets to latest.
+  // The radar's frame list (#74) is fetched while the layer is shown, and refreshed as frames age
+  // out for as long as the globe is looked at (#78). A failed fetch leaves the latest-frame layer
+  // without a slider. Leaving resets to latest.
+  const loadRadarFrames = useCallback((signal?: AbortSignal) => {
+    fetch(NOWCOAST_CAPABILITIES_URL, signal ? { signal } : undefined)
+      .then((res) => (res.ok ? res.text() : Promise.reject(new Error(String(res.status)))))
+      .then((xml) => setRadarFrames(parseRadarFrames(xml)))
+      .catch(() => {})
+  }, [])
   useEffect(() => {
     if (!radarShown) return
     const controller = new AbortController()
-    const load = () => {
-      fetch(NOWCOAST_CAPABILITIES_URL, { signal: controller.signal })
-        .then((res) => (res.ok ? res.text() : Promise.reject(new Error(String(res.status)))))
-        .then((xml) => setRadarFrames(parseRadarFrames(xml)))
-        .catch(() => {})
-    }
-    load()
-    const stopPolling = pollWhileVisible(load, RADAR_FRAMES_REFRESH_MS)
+    loadRadarFrames(controller.signal)
     return () => {
       controller.abort()
-      stopPolling()
       setRadarFrames([])
       setRadarTime(null)
     }
-  }, [radarShown])
+  }, [radarShown, loadRadarFrames])
+  useEffect(() => {
+    if (!radarShown || !active) return
+    return pollWhileVisible(() => loadRadarFrames(), RADAR_FRAMES_REFRESH_MS)
+  }, [radarShown, active, loadRadarFrames])
+
+  // Seen again after being hidden: MapLibre's own resize observer is throttled, so say so at once.
+  useEffect(() => {
+    if (active) mapRef.current?.resize()
+  }, [active])
 
   // Point the source at the chosen frame. Debounced so dragging the slider doesn't refetch tiles
   // for every frame it passes over.
@@ -757,7 +793,7 @@ export function MapLibreGlobe() {
           column on a narrow one, so they never overlap (#159). */}
       <div className="globe-bottom">
         {radarShown && radarFrames.length > 1 && (
-          <RadarTimeControl frames={radarFrames} index={radarIndex} onChange={chooseRadarFrame} />
+          <RadarTimeControl frames={radarFrames} index={radarIndex} onChange={chooseRadarFrame} paused={!active} />
         )}
         {alertsStatus === 'error' && (
           <div className="zone-only-alerts" role="status" aria-label="Alerts status">
