@@ -5105,7 +5105,7 @@
       "id": "gfs-aws-open-data",
       "name": "GFS global forecast model (AWS Open Data)",
       "shortName": "GFS (AWS)",
-      "summary": "Global Forecast System output from NCEP as GRIB2 files in a public S3 bucket, one prefix per date and cycle (gfs.YYYYMMDD/HH/), with the GDAS analysis and ensemble Kalman filter (enkfgdas) products alongside.",
+      "summary": "Global Forecast System output from NCEP as GRIB2 files in a public S3 bucket, one prefix per date and cycle (gfs.YYYYMMDD/HH/), with the GDAS analysis and ensemble Kalman filter (enkfgdas) products alongside. The globe's wind overlay reads the 10 m wind fields from it with Range requests, using each cycle's .idx file for the byte offsets.",
       "owner": {
         "office": "NWS",
         "program": "NCEP Environmental Modeling Center, Global Forecast System (GFS)",
@@ -5140,11 +5140,10 @@
       },
       "docUrl": "https://registry.opendata.aws/noaa-gfs-bdp-pds/",
       "sample": {
-        "url": "https://noaa-gfs-bdp-pds.s3.amazonaws.com/?list-type=2&prefix=gfs.20260923/&delimiter=/",
-        "responseExcerpt": "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>noaa-gfs-bdp-pds</Name><Prefix>gfs.20260923/</Prefix><KeyCount>4</KeyCount><Delimiter>/</Delimiter><CommonPrefixes><Prefix>gfs.20260923/00/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>gfs.20260923/06/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>gfs.20260923/12/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>gfs.20260923/18/</Prefix></CommonPrefixes></ListBucketResult>"
+        "url": "https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs.20261001/00/atmos/gfs.t00z.pgrb2.1p00.f012.idx",
+        "responseExcerpt": "587:35458391:d=2026100100:TMIN:2 m above ground:6-12 hour min fcst:\n588:35505644:d=2026100100:UGRD:10 m above ground:12 hour fcst:\n589:35584767:d=2026100100:VGRD:10 m above ground:12 hour fcst:"
       },
-      "liveLayer": false,
-      "notLiveReason": "Not wired into the v1 map: GRIB2 model output that needs decoding before it can be drawn, and no tile or image endpoint.",
+      "liveLayer": true,
       "tags": [
         "gfs",
         "forecast-model",

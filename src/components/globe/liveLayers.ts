@@ -2,7 +2,7 @@
 // this says what the globe shows for it, so a selection can emphasise the right layer and the
 // status card can name it. liveLayers.test.ts keeps it in step with graph.json's liveLayer flags.
 
-export type LiveLayerKey = 'nws-alerts' | 'aurora' | 'kp' | 'coops-stations' | 'nowcoast-radar' | 'dart-stations' | 'ndbc-stations'
+export type LiveLayerKey = 'nws-alerts' | 'aurora' | 'kp' | 'coops-stations' | 'nowcoast-radar' | 'dart-stations' | 'ndbc-stations' | 'wind'
 
 export const LIVE_LAYERS: Readonly<Record<string, { layer: LiveLayerKey; status: string }>> = {
   'nws-api': { layer: 'nws-alerts', status: 'Its live layer, active alerts, is highlighted.' },
@@ -11,5 +11,6 @@ export const LIVE_LAYERS: Readonly<Record<string, { layer: LiveLayerKey; status:
   'coops-data-api': { layer: 'coops-stations', status: 'Its live layer, tide stations, is highlighted. Zoom in to see them.' },
   'nowcoast-map-services': { layer: 'nowcoast-radar', status: 'Its live layer, current radar, is drawn on the globe while this is selected.' },
   'ndbc-realtime': { layer: 'ndbc-stations', status: 'Its live layer, the NDBC buoy stations, is drawn on the globe while this is selected.' },
+  'gfs-aws-open-data': { layer: 'wind', status: 'Its live layer, the 10 m wind forecast, is drawn on the globe while this is selected and follows the time slider.' },
   'ndbc-dart-realtime': { layer: 'dart-stations', status: 'Its live layer, the DART tsunami buoys, is drawn on the globe while this is selected.' },
 }
