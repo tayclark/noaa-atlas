@@ -75,6 +75,12 @@ describe('getActiveAlerts', () => {
     vi.useRealTimers()
   })
 
+  it('rounds to the four decimals the NWS wants, which saves it a redirect (#78)', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(makePoint()))
+    await getPoint(39.646343505289536, -93.22003422143757)
+    expect(fetch).toHaveBeenCalledWith('https://api.weather.gov/points/39.6463,-93.22', expect.any(Object))
+  })
+
   it.each([
     [403, 'forbidden'],
     [429, 'rate-limited'],
