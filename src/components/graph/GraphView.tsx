@@ -18,6 +18,7 @@ import './GraphView.css'
 import graphJson from '../../data/graph.json'
 import tasksJson from '../../data/tasks.json'
 import { buildGraph } from '../../data/buildGraph'
+import { buildAccessHierarchy } from '../../data/accessHierarchy'
 import { buildOrgHierarchy } from '../../data/orgHierarchy'
 import { parseGraphFile, THEME_LABELS } from '../../data/graphSchema'
 import { getNeighbors } from '../../data/neighbors'
@@ -67,10 +68,17 @@ import { useNarrowLayout } from '../useNarrowLayout'
 const graphFile = parseGraphFile(graphJson)
 const graph = buildGraph(graphFile)
 const graphNodeById = new Map(graph.nodes.map((node) => [node.id, node]))
-// The org view's hubs (#58) are only drawn: search, neighbours and the detail panel keep reading `graph`.
+// The org (#58) and access-method (#60) hubs are only drawn: search, neighbours and the detail panel keep reading `graph`.
 const orgHierarchy = buildOrgHierarchy(graphFile)
-const drawnNodes: LayoutNode[] = [...graph.nodes, ...orgHierarchy.nodes]
-const drawnEdges = [...graph.edges, ...orgHierarchy.edges]
+const accessHierarchy = buildAccessHierarchy(graphFile)
+const drawnNodes: LayoutNode[] = [...graph.nodes, ...orgHierarchy.nodes, ...accessHierarchy.nodes]
+const drawnEdges = [...graph.edges, ...orgHierarchy.edges, ...accessHierarchy.edges]
+// `short` is the visible text on a phone, where the toolbar is one row; the accessible name stays `label`.
+const LAYOUT_MODES: { mode: LayoutMode; label: string; short: string; title: string }[] = [
+  { mode: 'theme', label: 'Theme view', short: 'Theme', title: 'Group services by theme' },
+  { mode: 'org', label: 'Org view', short: 'Org', title: 'Group services by the NOAA office and program that runs them' },
+  { mode: 'access', label: 'Access view', short: 'Access', title: 'Group services by how the data is reached: REST, OGC, ArcGIS, cloud bucket or file download' },
+]
 // Connectedness breaks label ties between nodes of one size (every service is the same radius).
 const nodeDegree = new Map<string, number>()
 for (const edge of drawnEdges) for (const end of [edge.source, edge.target]) nodeDegree.set(end, (nodeDegree.get(end) ?? 0) + 1)
@@ -477,6 +485,8 @@ export function GraphView() {
       delete svgEl.dataset.layoutSettled
       initialFitDoneRef.current = false
       if (prefersReducedMotion()) {
+        // A settled simulation is below alphaMin, so reheat it or the settle loop runs no ticks.
+        simulation.alpha(1)
         settleSimulation(simulation)
         renderTick()
         requestAnimationFrame(onSettled)
@@ -636,15 +646,21 @@ export function GraphView() {
             Fit
           </button>
         )}
-        <button
-          type="button"
-          className="graph-toolbar-button"
-          aria-pressed={mode === 'org'}
-          title="Group services by the NOAA office and program that runs them"
-          onClick={() => setMode((current) => (current === 'org' ? 'theme' : 'org'))}
-        >
-          Org view
-        </button>
+        <div className="graph-mode-switch" role="group" aria-label="Graph layout">
+          {LAYOUT_MODES.map((option) => (
+            <button
+              key={option.mode}
+              type="button"
+              className="graph-toolbar-button"
+              aria-pressed={mode === option.mode}
+              aria-label={option.label}
+              title={option.title}
+              onClick={() => setMode(option.mode)}
+            >
+              {narrow ? option.short : option.label}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           className="graph-toolbar-button"
@@ -697,12 +713,14 @@ export function GraphView() {
             </g>
             <g className="graph-nodes">
               {drawnNodes.map((node) => {
-                const hub = node.kind === 'office' || node.kind === 'program'
+                const hub = node.kind === 'office' || node.kind === 'program' || node.kind === 'access'
+                // Token-gated services get a ring in the access view (#60); `auth.type` is the source, not a method.
+                const gated = mode === 'access' && node.kind === 'service' && node.auth.type !== 'none'
                 const hidden = isNodeVisible(node, mode) ? '' : ' graph-hidden'
                 return (
                   <g
                     key={node.id}
-                    className={`${hub ? 'graph-org-node' : 'graph-node'} graph-node-${node.kind}${hidden}${highlightedIds.includes(node.id) ? ' graph-node-highlighted' : ''}${matchedIds ? (matchedIds.has(node.id) ? ' graph-node-match' : ' graph-node-dimmed') : ''}`}
+                    className={`${hub ? 'graph-org-node' : 'graph-node'} graph-node-${node.kind}${hidden}${gated ? ' graph-node-gated' : ''}${highlightedIds.includes(node.id) ? ' graph-node-highlighted' : ''}${matchedIds ? (matchedIds.has(node.id) ? ' graph-node-match' : ' graph-node-dimmed') : ''}`}
                     data-node-id={node.id}
                     {...(hub ? {} : { role: 'button', tabIndex: 0, 'aria-label': node.name, 'aria-pressed': selection.selectedNodeId === node.id })}
                     ref={(el) => {

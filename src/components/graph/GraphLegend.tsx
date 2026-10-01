@@ -7,13 +7,14 @@ import { ROOT_COLOR, THEME_COLORS } from '../../data/themeColors'
 import { EDGE_CLASS, EDGE_TYPE_LABELS, isEdgeVisible, type LayoutMode } from './graphLayout'
 import './GraphLegend.css'
 
-const EDGE_TYPES: GraphEdge['type'][] = ['root', 'theme', 'org', 'shared-id', 'data-flow']
+const EDGE_TYPES: GraphEdge['type'][] = ['root', 'theme', 'org', 'access', 'shared-id', 'data-flow']
 
 // Node sizes, halved from nodeRadius so they fit the legend row (#148).
 const NODE_KEYS = [
   { label: 'NOAA, the root everything stems from', radius: 7, color: ROOT_COLOR },
   { label: 'Theme hub', radius: 5, color: THEME_COLORS.weather, mode: 'theme' },
   { label: 'Office or program hub', radius: 5, color: ROOT_COLOR, mode: 'org' },
+  { label: 'Access-method hub', radius: 5, color: ROOT_COLOR, mode: 'access' },
   { label: 'API or data service', radius: 3, color: THEME_COLORS.weather },
 ]
 

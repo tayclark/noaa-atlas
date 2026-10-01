@@ -12,6 +12,7 @@
       },
       "theme": "weather",
       "baseUrl": "https://api.weather.gov",
+      "accessMethod": "rest",
       "formats": [
         "geojson",
         "json",
@@ -334,6 +335,7 @@
       },
       "theme": "weather",
       "baseUrl": "https://mapservices.weather.noaa.gov/vector/rest/services",
+      "accessMethod": "arcgis-rest",
       "formats": [
         "arcgis-rest",
         "json"
@@ -653,6 +655,7 @@
       },
       "theme": "weather",
       "baseUrl": "https://www.spc.noaa.gov/products/",
+      "accessMethod": "file-download",
       "formats": [
         "geojson",
         "kml",
@@ -943,6 +946,7 @@
       },
       "theme": "weather",
       "baseUrl": "https://www.wpc.ncep.noaa.gov/kml/",
+      "accessMethod": "file-download",
       "formats": [
         "kml",
         "shapefile"
@@ -1256,6 +1260,7 @@
       },
       "theme": "weather",
       "baseUrl": "https://www.cpc.ncep.noaa.gov/products/GIS/GIS_DATA/",
+      "accessMethod": "file-download",
       "formats": [
         "shapefile",
         "geotiff"
@@ -1308,6 +1313,7 @@
       },
       "theme": "ocean",
       "baseUrl": "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter",
+      "accessMethod": "rest",
       "formats": [
         "json",
         "xml",
@@ -1648,6 +1654,7 @@
       },
       "theme": "ocean",
       "baseUrl": "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/",
+      "accessMethod": "rest",
       "formats": [
         "json",
         "xml"
@@ -1982,6 +1989,7 @@
       },
       "theme": "ocean",
       "baseUrl": "https://api.tidesandcurrents.noaa.gov/dpapi/prod/webapi/",
+      "accessMethod": "rest",
       "formats": [
         "json",
         "xml",
@@ -2317,6 +2325,7 @@
       },
       "theme": "ocean",
       "baseUrl": "https://www.ndbc.noaa.gov/data/realtime2/",
+      "accessMethod": "file-download",
       "formats": [
         "text"
       ],
@@ -2371,6 +2380,7 @@
       },
       "theme": "ocean",
       "baseUrl": "https://www.ndbc.noaa.gov/data/realtime2/",
+      "accessMethod": "file-download",
       "formats": [
         "text"
       ],
@@ -2699,6 +2709,7 @@
       },
       "theme": "climate",
       "baseUrl": "https://www.ncei.noaa.gov/cdo-web/api/v2/",
+      "accessMethod": "rest",
       "formats": [
         "json"
       ],
@@ -2758,6 +2769,7 @@
       },
       "theme": "climate",
       "baseUrl": "https://www.ncei.noaa.gov/access/services/data/v1",
+      "accessMethod": "rest",
       "formats": [
         "json",
         "csv",
@@ -2811,6 +2823,7 @@
       },
       "theme": "climate",
       "baseUrl": "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/",
+      "accessMethod": "file-download",
       "formats": [
         "csv"
       ],
@@ -3125,6 +3138,7 @@
       },
       "theme": "hazards",
       "baseUrl": "https://www.nhc.noaa.gov/",
+      "accessMethod": "file-download",
       "formats": [
         "json",
         "xml",
@@ -3443,6 +3457,7 @@
       },
       "theme": "hazards",
       "baseUrl": "https://www.tsunami.gov/events/xml/",
+      "accessMethod": "file-download",
       "formats": [
         "xml"
       ],
@@ -3769,6 +3784,7 @@
       },
       "theme": "satellite",
       "baseUrl": "https://noaa-goes19.s3.amazonaws.com/",
+      "accessMethod": "cloud-bucket",
       "formats": [
         "netcdf",
         "xml"
@@ -4034,6 +4050,7 @@
       },
       "theme": "satellite",
       "baseUrl": "https://cdn.star.nesdis.noaa.gov/",
+      "accessMethod": "file-download",
       "formats": [
         "other"
       ],
@@ -4295,6 +4312,7 @@
       },
       "theme": "satellite",
       "baseUrl": "https://unidata-nexrad-level2.s3.amazonaws.com/",
+      "accessMethod": "cloud-bucket",
       "formats": [
         "other",
         "xml"
@@ -4612,6 +4630,7 @@
       },
       "theme": "satellite",
       "baseUrl": "https://noaa-mrms-pds.s3.amazonaws.com/",
+      "accessMethod": "cloud-bucket",
       "formats": [
         "grib2",
         "xml"
@@ -4928,6 +4947,7 @@
       },
       "theme": "satellite",
       "baseUrl": "https://noaa-nesdis-n20-pds.s3.amazonaws.com/",
+      "accessMethod": "cloud-bucket",
       "formats": [
         "netcdf",
         "other",
@@ -4982,6 +5002,7 @@
       },
       "theme": "satellite",
       "baseUrl": "https://coastwatch.pfeg.noaa.gov/erddap/",
+      "accessMethod": "rest",
       "formats": [
         "json",
         "csv",
@@ -5038,6 +5059,7 @@
       },
       "theme": "models",
       "baseUrl": "https://nomads.ncep.noaa.gov/",
+      "accessMethod": "file-download",
       "formats": [
         "grib2",
         "text"
@@ -5091,6 +5113,7 @@
       },
       "theme": "models",
       "baseUrl": "https://noaa-gfs-bdp-pds.s3.amazonaws.com/",
+      "accessMethod": "cloud-bucket",
       "formats": [
         "grib2",
         "xml"
@@ -5144,6 +5167,7 @@
       },
       "theme": "models",
       "baseUrl": "https://noaa-hrrr-bdp-pds.s3.amazonaws.com/",
+      "accessMethod": "cloud-bucket",
       "formats": [
         "grib2",
         "xml"
@@ -5433,6 +5457,7 @@
       },
       "theme": "models",
       "baseUrl": "https://noaa-gefs-pds.s3.amazonaws.com/",
+      "accessMethod": "cloud-bucket",
       "formats": [
         "grib2",
         "xml"
@@ -5486,6 +5511,7 @@
       },
       "theme": "models",
       "baseUrl": "https://noaa-nbm-grib2-pds.s3.amazonaws.com/",
+      "accessMethod": "cloud-bucket",
       "formats": [
         "grib2",
         "xml"
@@ -5776,6 +5802,7 @@
       },
       "theme": "fisheries",
       "baseUrl": "https://apps-st.fisheries.noaa.gov/ods/foss/landings/",
+      "accessMethod": "rest",
       "formats": [
         "json"
       ],
@@ -6112,6 +6139,7 @@
       },
       "theme": "fisheries",
       "baseUrl": "https://maps.fisheries.noaa.gov/server/rest/services",
+      "accessMethod": "arcgis-rest",
       "formats": [
         "arcgis-rest",
         "json"
@@ -6165,6 +6193,7 @@
       },
       "theme": "fisheries",
       "baseUrl": "https://comet.nefsc.noaa.gov/erddap/",
+      "accessMethod": "rest",
       "formats": [
         "json",
         "csv",
@@ -6470,6 +6499,7 @@
       },
       "theme": "geospatial",
       "baseUrl": "https://nowcoast.noaa.gov/geoserver/ows",
+      "accessMethod": "ogc",
       "formats": [
         "xml",
         "tiles"
@@ -6787,6 +6817,7 @@
       },
       "theme": "geospatial",
       "baseUrl": "https://mapservices.weather.noaa.gov/raster/rest/services",
+      "accessMethod": "arcgis-rest",
       "formats": [
         "arcgis-rest",
         "json",
@@ -7105,6 +7136,7 @@
       },
       "theme": "geospatial",
       "baseUrl": "https://gis.charttools.noaa.gov/arcgis/rest/services",
+      "accessMethod": "arcgis-rest",
       "formats": [
         "arcgis-rest",
         "json",
@@ -7445,6 +7477,7 @@
       },
       "theme": "geospatial",
       "baseUrl": "https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination",
+      "accessMethod": "rest",
       "formats": [
         "json"
       ],
@@ -7496,6 +7529,7 @@
       },
       "theme": "geospatial",
       "baseUrl": "https://noaa-cors-pds.s3.amazonaws.com/",
+      "accessMethod": "cloud-bucket",
       "formats": [
         "xml",
         "other"
@@ -7814,6 +7848,7 @@
       },
       "theme": "catalogs",
       "baseUrl": "https://data.noaa.gov/onestop/api/search/",
+      "accessMethod": "rest",
       "formats": [
         "json"
       ],
@@ -7866,6 +7901,7 @@
       },
       "theme": "catalogs",
       "baseUrl": "https://registry.opendata.aws/collab/noaa/",
+      "accessMethod": "cloud-bucket",
       "formats": [
         "other"
       ],
@@ -7919,6 +7955,7 @@
       },
       "theme": "space-weather",
       "baseUrl": "https://services.swpc.noaa.gov/products/",
+      "accessMethod": "rest",
       "formats": [
         "json",
         "text"
@@ -7977,6 +8014,7 @@
       },
       "theme": "space-weather",
       "baseUrl": "https://services.swpc.noaa.gov/products/",
+      "accessMethod": "rest",
       "formats": [
         "json",
         "text"
@@ -8033,6 +8071,7 @@
       },
       "theme": "space-weather",
       "baseUrl": "https://services.swpc.noaa.gov/json/ovation_aurora_latest.json",
+      "accessMethod": "rest",
       "formats": [
         "json",
         "text"
@@ -8088,6 +8127,7 @@
       },
       "theme": "space-weather",
       "baseUrl": "https://services.swpc.noaa.gov/json/rtsw/",
+      "accessMethod": "rest",
       "formats": [
         "json",
         "text"
@@ -8145,6 +8185,7 @@
       },
       "theme": "space-weather",
       "baseUrl": "https://services.swpc.noaa.gov/json/goes/",
+      "accessMethod": "rest",
       "formats": [
         "json"
       ],
@@ -8202,6 +8243,7 @@
       },
       "theme": "space-weather",
       "baseUrl": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/",
+      "accessMethod": "file-download",
       "formats": [
         "netcdf"
       ],

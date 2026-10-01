@@ -148,8 +148,10 @@ describe('GraphView', () => {
   it('toggles the org view, which hides the theme hubs and shows the office hubs (#58)', () => {
     const { container } = render(<GraphView />)
     const toggle = screen.getByRole('button', { name: 'Org view' })
+    const themeToggle = screen.getByRole('button', { name: 'Theme view' })
     const hidden = (selector: string) => container.querySelector(selector)?.classList.contains('graph-hidden')
     expect(toggle.getAttribute('aria-pressed')).toBe('false')
+    expect(themeToggle.getAttribute('aria-pressed')).toBe('true')
     expect(hidden('[data-node-id="office-nws"]')).toBe(true)
     expect(hidden('[data-node-id="theme-weather"]')).toBe(false)
     fireEvent.click(toggle)
@@ -157,8 +159,26 @@ describe('GraphView', () => {
     expect(hidden('[data-node-id="office-nws"]')).toBe(false)
     expect(hidden('[data-node-id="theme-weather"]')).toBe(true)
     expect(container.querySelectorAll('.graph-edge-theme:not(.graph-hidden)')).toHaveLength(0)
-    fireEvent.click(toggle)
+    fireEvent.click(themeToggle)
     expect(hidden('[data-node-id="theme-weather"]')).toBe(false)
+  })
+
+  it('switches to the access view, which shows the access hubs and rings token-gated services (#60)', () => {
+    const { container } = render(<GraphView />)
+    const hidden = (selector: string) => container.querySelector(selector)?.classList.contains('graph-hidden')
+    expect(hidden('[data-node-id="access-rest"]')).toBe(true)
+    expect(container.querySelectorAll('.graph-node-gated')).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Access view' }))
+    expect(screen.getByRole('button', { name: 'Access view' }).getAttribute('aria-pressed')).toBe('true')
+    expect(hidden('[data-node-id="access-rest"]')).toBe(false)
+    expect(hidden('[data-node-id="theme-weather"]')).toBe(true)
+    expect(hidden('[data-node-id="office-nws"]')).toBe(true)
+    expect(container.querySelectorAll('.graph-edge-theme:not(.graph-hidden), .graph-edge-org:not(.graph-hidden)')).toHaveLength(0)
+    const gated = [...container.querySelectorAll('.graph-node-gated')].map((el) => el.getAttribute('data-node-id'))
+    expect(gated.sort()).toEqual(['cdo-web-api', 'ncei-wmm-declination-api'])
+    fireEvent.click(screen.getByRole('button', { name: 'Theme view' }))
+    expect(hidden('[data-node-id="access-rest"]')).toBe(true)
+    expect(container.querySelectorAll('.graph-node-gated')).toHaveLength(0)
   })
 
   it('draws office hubs as plain labels: not focusable, not selectable (#58)', () => {

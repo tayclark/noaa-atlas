@@ -33,7 +33,8 @@ test('the org view shows office hubs instead of theme hubs, and toggles back', a
   await page.keyboard.press('Enter')
   await expect(page.getByRole('heading', { name: 'NWS API', exact: false }).first()).toBeVisible()
 
-  await toggle.click()
+  const themeToggle = page.getByRole('button', { name: 'Theme view' })
+  await themeToggle.click()
   await expect(toggle).toHaveAttribute('aria-pressed', 'false')
   await expect(page.locator('[data-node-id="theme-weather"]')).toBeVisible()
   await expect(page.locator('[data-node-id="office-nws"]')).toBeHidden()

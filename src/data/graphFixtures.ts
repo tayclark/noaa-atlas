@@ -18,6 +18,7 @@ export function makeNode(overrides: Record<string, unknown> = {}): Record<string
     owner: { office: 'NWS', program: 'api.weather.gov' },
     theme: 'weather',
     baseUrl: 'https://api.weather.gov',
+    accessMethod: 'rest',
     formats: ['json', 'geojson'],
     auth: { type: 'none', note: 'User-Agent header required' },
     rateLimits: { text: 'Not published; requests may be blocked with 403 when abused.' },
