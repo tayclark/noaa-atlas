@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { clearSelection, getHighlightedNodeIds, getSelectionSnapshot } from '../../data/selectionStore'
+import { clearCompare, getCompareSnapshot } from '../../data/compareStore'
+import { clearSelection, getHighlightedNodeIds, getSelectionSnapshot, selectNode } from '../../data/selectionStore'
+import { getViewSnapshot, resetView } from '../../data/viewStore'
+import { mockNarrowLayout, unmockNarrowLayout } from '../narrowLayoutTestUtils'
 import tasksJson from '../../data/tasks.json'
 import { parseTasksFile } from '../../data/taskSchema'
 import { FinderPanel } from './FinderPanel'
@@ -10,9 +13,14 @@ const tasks = parseTasksFile(tasksJson).tasks
 
 beforeEach(() => {
   clearSelection()
+  clearCompare()
+  resetView()
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  unmockNarrowLayout()
+})
 
 describe('FinderPanel', () => {
   it('lists every authored task', () => {
@@ -116,5 +124,72 @@ describe('FinderPanel', () => {
     for (const { why } of other.nodes) {
       expect(screen.getByText(why)).toBeTruthy()
     }
+  })
+})
+
+describe('FinderPanel on a phone (#78)', () => {
+  const task = tasks[0]!
+  const other = tasks[1]!
+
+  beforeEach(() => {
+    mockNarrowLayout(true)
+  })
+
+  it('opens on the task list with a note on how to read the app, and no steps', () => {
+    render(<FinderPanel />)
+    for (const { label } of tasks) expect(screen.getByText(label)).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'How to read NOAA Atlas' }).textContent).toContain('Graph tab')
+    expect(screen.queryByRole('list', { name: 'Recommended nodes' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Back|Tasks/ })).toBeNull()
+  })
+
+  it('drills into the picked task, replacing the list with its steps', () => {
+    render(<FinderPanel />)
+    fireEvent.click(screen.getByText(task.label))
+
+    expect(screen.getByRole('heading', { name: task.label })).toBeTruthy()
+    for (const { why } of task.nodes) expect(screen.getByText(why)).toBeTruthy()
+    expect(screen.queryByText(other.label)).toBeNull()
+    expect(getSelectionSnapshot().selectedTaskId).toBe(task.id)
+  })
+
+  it('goes back to the list, clearing the selection', () => {
+    render(<FinderPanel />)
+    fireEvent.click(screen.getByText(task.label))
+    fireEvent.click(screen.getByRole('button', { name: /Tasks/ }))
+
+    expect(screen.getByText(other.label)).toBeTruthy()
+    expect(screen.queryByRole('list', { name: 'Recommended nodes' })).toBeNull()
+    expect(getSelectionSnapshot()).toMatchObject({ selectedTaskId: null, selectedNodeId: null })
+  })
+
+  it('keeps the task page when a step narrows the selection to one node', () => {
+    const step = task.nodes[0]!
+    render(<FinderPanel />)
+    fireEvent.click(screen.getByText(task.label))
+    fireEvent.click(screen.getByText(step.why))
+
+    expect(getSelectionSnapshot()).toMatchObject({ selectedNodeId: step.nodeId, selectedTaskId: null })
+    expect(screen.getByRole('heading', { name: task.label })).toBeTruthy()
+  })
+
+  it('puts the whole task back and goes to the graph or the globe', () => {
+    render(<FinderPanel />)
+    fireEvent.click(screen.getByText(task.label))
+    selectNode(task.nodes[0]!.nodeId)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show on graph' }))
+    expect(getSelectionSnapshot()).toMatchObject({ selectedTaskId: task.id, selectedNodeId: null })
+    expect(getViewSnapshot()).toBe('graph')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show on globe' }))
+    expect(getViewSnapshot()).toBe('globe')
+  })
+
+  it('adds the whole path to the comparison', () => {
+    render(<FinderPanel />)
+    fireEvent.click(screen.getByText(task.label))
+    fireEvent.click(screen.getByRole('button', { name: 'Compare these' }))
+    expect(getCompareSnapshot()).toEqual(task.nodes.map((n) => n.nodeId))
   })
 })

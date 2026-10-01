@@ -1,5 +1,6 @@
 import { forceCenter, type ForceLink, forceCollide, forceX, forceY, forceLink, forceManyBody, forceSimulation, type Simulation, type SimulationLinkDatum, type SimulationNodeDatum } from 'd3-force'
 import { programNodeId } from '../../data/orgHierarchy'
+import type { Box } from './labelPlacement'
 import { ROOT_NODE_ID, type GraphEdge, type GraphNode, type OrgNode, type Theme } from '../../data/graphSchema'
 
 /** Everything the view draws: the graph's nodes plus the render-only org hubs (#58). */
@@ -102,6 +103,28 @@ export interface Inset {
 }
 
 export const NO_INSET: Inset = { left: 0, top: 0, right: 0, bottom: 0 }
+
+/** Clearance between an overlay and the area a selection is framed into. */
+export const PANEL_GAP = 8
+
+/**
+ * The part of a `width` x `height` viewport an overlay (`panel`, in the viewport's own pixels)
+ * leaves free, as the inset to frame into (#141): the largest of the strips right of, below, left
+ * of and above it, so a card in the top-left corner and a sheet along the bottom both work (#78).
+ * An overlay that leaves no room frames as though it were not there.
+ */
+export function panelInset(panel: Box | null, width: number, height: number, gap = PANEL_GAP): Inset {
+  if (!panel) return NO_INSET
+  const strips: { inset: Inset; area: number }[] = [
+    { inset: { ...NO_INSET, left: panel.x1 + gap }, area: (width - panel.x1 - gap) * height },
+    { inset: { ...NO_INSET, top: panel.y1 + gap }, area: width * (height - panel.y1 - gap) },
+    { inset: { ...NO_INSET, right: width - panel.x0 + gap }, area: (panel.x0 - gap) * height },
+    { inset: { ...NO_INSET, bottom: height - panel.y0 + gap }, area: width * (panel.y0 - gap) },
+  ]
+  // The first of equal strips wins, which keeps the right-hand strip ahead of the one below.
+  const best = strips.reduce((a, b) => (b.area > a.area ? b : a))
+  return best.area > 0 ? best.inset : NO_INSET
+}
 
 const FIT_SCALE_EXTENT: [number, number] = [0.25, 4]
 

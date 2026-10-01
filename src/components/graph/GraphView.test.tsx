@@ -9,13 +9,17 @@ import { clearSelection, getHighlightedNodeIds, getSelectionSnapshot, selectNode
 import { parseTasksFile } from '../../data/taskSchema'
 import tasksJson from '../../data/tasks.json'
 import { nodeColor } from '../../data/themeColors'
+import { mockNarrowLayout, unmockNarrowLayout } from '../narrowLayoutTestUtils'
 import { EDGE_CLASS } from './graphLayout'
 
 beforeEach(() => {
   clearSelection()
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  unmockNarrowLayout()
+})
 
 const expectedGraph = buildGraph(parseGraphFile(graphJson))
 const tasks = parseTasksFile(tasksJson).tasks
@@ -65,6 +69,14 @@ describe('GraphView', () => {
     expect(screen.getByRole('button', { name: 'Expand details' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Expand details' }))
     expect(container.querySelector('.node-detail-panel-collapsed')).toBeNull()
+  })
+
+  it('leaves the detail to the bottom sheet on a phone, with no floating card (#78)', () => {
+    mockNarrowLayout(true)
+    const { container } = render(<GraphView />)
+    act(() => selectNode('nws-api'))
+    expect(container.querySelector('.node-detail-panel')).toBeNull()
+    expect(container.querySelector('.graph-node[aria-pressed="true"]')?.getAttribute('data-node-id')).toBe('nws-api')
   })
 
   it('colors each node circle by its theme (the root is neutral)', () => {

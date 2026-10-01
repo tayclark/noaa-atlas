@@ -2,15 +2,15 @@
 // a theme summary when a theme hub is selected (#145), or the atlas overview for the NOAA root (#148).
 // Reads the shared selectionStore via useSyncExternalStore (#43's convention, same as
 // InspectorPanel.tsx) rather than taking a prop, so it works regardless of what selects a node.
+// The panel is the floating card of a wide screen; `NodeDetailContent` is the body it shares with
+// the phone's bottom sheet (DetailSheet.tsx, #78).
 
 import { useSyncExternalStore } from 'react'
-import graphJson from '../../data/graph.json'
-import { buildGraph } from '../../data/buildGraph'
 import { getCompareSnapshot, subscribeCompare, toggleCompare } from '../../data/compareStore'
 import { summarizeCoverage } from '../../data/coverageSummary'
 import type { ServiceNode } from '../../data/graphSchema'
-import { parseGraphFile } from '../../data/graphSchema'
 import { getSelectionSnapshot, subscribeSelection } from '../../data/selectionStore'
+import { findGraphNode, type DetailNode } from './graphNodes'
 import { formatAuth, formatFormats, formatFreshness, formatOwner, formatRateLimits, liveStatusLabel } from './nodeDetailFormat'
 import { NodeDatasetsSection } from './NodeDatasetsSection'
 import { NodeNeighborsSection } from './NodeNeighborsSection'
@@ -18,8 +18,6 @@ import { NodeSampleSection } from './NodeSampleSection'
 import { RootDetailBody } from './RootDetailBody'
 import { ThemeDetailBody } from './ThemeDetailBody'
 import './NodeDetailPanel.css'
-
-const graphNodes = buildGraph(parseGraphFile(graphJson)).nodes
 
 interface NodeDetailPanelProps {
   /** Collapsed to its title bar so it covers less of the graph (#141). Owned by GraphView, which re-frames on change. */
@@ -29,7 +27,7 @@ interface NodeDetailPanelProps {
 
 export function NodeDetailPanel({ collapsed, onToggleCollapsed }: NodeDetailPanelProps) {
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
-  const node = selection.selectedNodeId ? graphNodes.find((n) => n.id === selection.selectedNodeId) : undefined
+  const node = findGraphNode(selection.selectedNodeId)
 
   if (!node) return null
 
@@ -47,23 +45,35 @@ export function NodeDetailPanel({ collapsed, onToggleCollapsed }: NodeDetailPane
           {collapsed ? '▸' : '▾'}
         </button>
       </div>
-      {!collapsed && node.kind === 'root' && <RootDetailBody />}
-      {!collapsed && node.kind === 'theme' && <ThemeDetailBody node={node} />}
-      {!collapsed && node.kind === 'service' && <NodeDetailBody node={node} />}
+      {!collapsed && <NodeDetailContent node={node} />}
     </div>
   )
 }
 
-function NodeDetailBody({ node }: { node: ServiceNode }) {
+/**
+ * What the detail shows for a node, under whatever title bar the host draws. `inSheet` leaves out
+ * the live tag and the compare button, which the sheet keeps in its header.
+ */
+export function NodeDetailContent({ node, inSheet = false }: { node: DetailNode; inSheet?: boolean }) {
+  if (node.kind === 'root') return <RootDetailBody />
+  if (node.kind === 'theme') return <ThemeDetailBody node={node} />
+  return <NodeDetailBody node={node as ServiceNode} inSheet={inSheet} />
+}
+
+function NodeDetailBody({ node, inSheet }: { node: ServiceNode; inSheet: boolean }) {
   const compared = useSyncExternalStore(subscribeCompare, getCompareSnapshot).includes(node.id)
   return (
     <>
-      <span className={`node-detail-live-tag ${node.liveLayer ? 'node-detail-live' : 'node-detail-not-live'}`}>
-        {liveStatusLabel(node)}
-      </span>
-      <button type="button" className="node-detail-compare" aria-pressed={compared} onClick={() => toggleCompare(node.id)}>
-        {compared ? 'Remove from compare' : 'Add to compare'}
-      </button>
+      {!inSheet && (
+        <>
+          <span className={`node-detail-live-tag ${node.liveLayer ? 'node-detail-live' : 'node-detail-not-live'}`}>
+            {liveStatusLabel(node)}
+          </span>
+          <button type="button" className="node-detail-compare" aria-pressed={compared} onClick={() => toggleCompare(node.id)}>
+            {compared ? 'Remove from compare' : 'Add to compare'}
+          </button>
+        </>
+      )}
       <dl>
         <div className="node-detail-row">
           <dt>Owner</dt>

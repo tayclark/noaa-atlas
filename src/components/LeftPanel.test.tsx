@@ -104,6 +104,13 @@ describe('LeftPanel', () => {
     expect(screen.queryByRole('tab', { name: /Globe/ })).toBeNull()
   })
 
+  it('shows a selected node on the floating card, never the phone sheet', () => {
+    render(<LeftPanel />)
+    act(() => selectNode('nws-api'))
+    expect(document.querySelector('.node-detail-panel')).not.toBeNull()
+    expect(document.querySelector('.detail-sheet')).toBeNull()
+  })
+
   it('folds a request for the phone-only views back into Explore on a wide screen', () => {
     showView('graph')
     render(<LeftPanel />)
@@ -172,6 +179,36 @@ describe('LeftPanel', () => {
       expect(screen.getByRole('tab', { name: 'Compare', selected: true })).toBeTruthy()
       fireEvent.keyDown(screen.getByRole('tab', { name: 'Compare' }), { key: 'Home' })
       expect(screen.getByRole('tab', { name: 'Tasks', selected: true })).toBeTruthy()
+    })
+
+    it('shows the selected node as a bottom sheet on Tasks and Graph, and nowhere else', () => {
+      render(<LeftPanel globe={globe} />)
+      expect(screen.queryByLabelText('Node detail')).toBeNull()
+
+      act(() => selectNode('nws-api'))
+      expect(screen.getByLabelText('Node detail').classList.contains('detail-sheet')).toBe(true)
+      fireEvent.click(screen.getByRole('tab', { name: /Graph/ }))
+      expect(screen.getByLabelText('Node detail').classList.contains('detail-sheet')).toBe(true)
+      fireEvent.click(screen.getByRole('tab', { name: /Globe/ }))
+      expect(screen.queryByLabelText('Node detail')).toBeNull()
+      fireEvent.click(screen.getByRole('tab', { name: 'Compare' }))
+      expect(screen.queryByLabelText('Node detail')).toBeNull()
+      fireEvent.click(screen.getByRole('tab', { name: /Tasks/ }))
+      expect(screen.getByLabelText('Node detail')).toBeTruthy()
+    })
+
+    it('opens the sheet for a step picked on Tasks, but only peeks on Graph', () => {
+      render(<LeftPanel globe={globe} />)
+      act(() => selectNode('nws-api'))
+      expect(screen.getByRole('button', { name: 'Collapse details' })).toBeTruthy()
+
+      fireEvent.click(screen.getByRole('tab', { name: /Graph/ }))
+      expect(screen.getByRole('button', { name: 'Expand details' })).toBeTruthy()
+
+      act(() => clearSelection())
+      expect(screen.queryByLabelText('Node detail')).toBeNull()
+      act(() => selectNode('coops-data-api'))
+      expect(screen.getByRole('button', { name: 'Expand details' })).toBeTruthy()
     })
 
     it('can be sent to a view from outside, as a Show on globe button will', () => {

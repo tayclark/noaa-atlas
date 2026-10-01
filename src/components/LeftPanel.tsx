@@ -16,8 +16,10 @@ import { getRequestLogSnapshot, subscribeRequestLog } from '../data/requestLog'
 import { getSelectionSnapshot, subscribeSelection, type Selection } from '../data/selectionStore'
 import { getViewSnapshot, resolveView, showView, subscribeView, tabsFor, type ViewId } from '../data/viewStore'
 import { ComparePanel } from './ComparePanel'
+import { DetailSheet } from './DetailSheet'
 import { FinderPanel } from './finder/FinderPanel'
 import { GraphView } from './graph/GraphView'
+import { findGraphNode } from './graph/graphNodes'
 import { InspectorPanel } from './inspector/InspectorPanel'
 import { SplitPane } from './SplitPane'
 import { useNarrowLayout } from './useNarrowLayout'
@@ -102,6 +104,10 @@ export function LeftPanel({ globe }: LeftPanelProps) {
   const [seen, setSeen] = useState<Partial<Record<ViewId, Selection>>>({ graph: selection, globe: selection })
   if (SELECTION_VIEWS.includes(activeTab) && seen[activeTab] !== selection) setSeen({ ...seen, [activeTab]: selection })
   const hasNews = (view: ViewId) => compact && SELECTION_VIEWS.includes(view) && activeTab !== view && seen[view] !== selection
+
+  // The selected node's detail is a bottom sheet on the views it belongs to (#78). Elsewhere the
+  // Globe has its own status card, and Compare and Inspector have nothing to say about a node.
+  const sheetView = compact && (activeTab === 'tasks' || activeTab === 'graph') && findGraphNode(selection.selectedNodeId) ? activeTab : null
 
   // Mounted the first time a view shows (see the header comment).
   const [mounted, setMounted] = useState<ViewId[]>([activeTab])
@@ -204,6 +210,8 @@ export function LeftPanel({ globe }: LeftPanelProps) {
             {panelBody(view)}
           </div>
         ))}
+        {/* A step picked in the finder asked for the detail, so the sheet opens; a graph tap only peeks. */}
+        {sheetView && <DetailSheet view={sheetView} startOpen={sheetView === 'tasks'} />}
       </div>
     </div>
   )
