@@ -188,9 +188,79 @@
   cursor: pointer;
 }
 
-/* Compact layout (#78): the tab is the whole screen, so the task list takes what the picked task's
-   steps leave instead of its desktop 8rem (flex-basis auto lets all of it compete for the height,
-   and the large shrink factor above still makes the list give way first). */
-.app[data-layout='compact'] .finder-task-list {
-  flex-basis: auto;
+/* Compact layout (#78): the finder is the whole Tasks tab, so its list, and then the picked task's
+   page, scroll as one rather than sharing the pane. The bottom padding lets the last step scroll
+   clear of the detail sheet when it peeks. */
+.finder-compact {
+  display: block;
+  padding-bottom: 9rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.finder-compact .finder-heading,
+.finder-page-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface);
+}
+
+.finder-compact .finder-task-list {
+  overflow: visible;
+  border-bottom: 0;
+}
+
+.finder-compact .finder-task-item {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  font-size: var(--font-size-md);
+}
+
+.finder-page-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.finder-back {
+  flex: none;
+  min-height: 44px;
+  padding: 0 var(--space-2) 0 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.finder-page-title {
+  margin: 0;
+  font-size: var(--font-size-md);
+}
+
+.finder-compact .finder-node-button {
+  min-height: 56px;
+  padding: var(--space-3);
+}
+
+.finder-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+.finder-page-actions button {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
 }
