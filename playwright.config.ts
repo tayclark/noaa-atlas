@@ -4,7 +4,10 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['html', { open: 'never' }], ['github']] : 'html',
+  // A 4-vCPU runner gets 2 workers by default, which left half of it idle.
+  workers: process.env.CI ? 4 : undefined,
+  // `list` puts each test's duration in the CI log, so a slow spec can be found without the report.
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }], ['github']] : 'html',
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
