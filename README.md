@@ -43,6 +43,7 @@ A force-directed graph of the curated services.
 
 - **Nodes** form one tree: **NOAA** sits at the centre, each theme hub links to it, and every service links to its theme hub. Services are coloured by theme; the root is neutral and the largest, and theme hubs are larger than services.
 - **Links** come in four types (see the **Legend** button): *NOAA → theme* and *Theme → service* (both derived automatically), *Shared identifiers* (services that use the same identifiers) and *Data flows into* (one service republishes or feeds another). The last two only exist where a source documents the relationship.
+- **Org view** (toolbar toggle) swaps the theme layout for a tree of who runs what: NOAA, then the line office, then the program, then the service. A program hub appears only where two or more services in one office share an `owner.programGroup`; other services hang straight off their office. The hubs are drawn labels, not selectable. Toggling back restores the theme layout.
 - **Navigate** by dragging the background to pan, scrolling or pinching to zoom (0.25x to 4x), and dragging a node to rearrange it. **Fit** re-frames the whole graph. The graph frames itself automatically until you pan or zoom.
 - **Search** filters as you type. Every word must match somewhere in a node's name, summary, tags, formats, owner office or program, theme label, or the label of a task that uses it. Non-matches are dimmed and the match count is announced. `Esc` clears the box.
 - **Select** a node by clicking it, or by focusing it with `Tab` and pressing `Enter` or `Space`. The view frames the node with its neighbours.
@@ -109,11 +110,11 @@ The graph is authored as JSON and validated with [zod](https://zod.dev) at load 
 | `src/data/tasks.json` | "I need..." tasks, each an ordered list of node ids with a one-line reason. |
 | `src/data/graphSchema.ts`, `taskSchema.ts` | The schemas and the list of themes. |
 
-The NOAA root, the theme hubs and the edges linking them are derived in `buildGraph.ts`, never authored; the id `noaa` and the `theme-` prefix are reserved.
+The NOAA root, the theme hubs and the edges linking them are derived in `buildGraph.ts`, never authored; the id `noaa` and the `theme-` prefix are reserved. The org view's office and program hubs are derived the same way in `orgHierarchy.ts` (reserved prefixes `office-` and `program-`).
 
 Themes: Weather & forecast, Climate & historical, Ocean & coastal, Satellite & radar, Space weather, Models & gridded data, Hazards, Fisheries & ecosystem, Geospatial services, Catalogs & meta. A theme with no services yet still appears in the legend.
 
-A service node records: `id`, `name`, `summary`, `owner` (office and program), `theme`, `baseUrl`, `formats`, `auth` (`none`, `token` or `key`), `coverage` (a GeoJSON Polygon or MultiPolygon), `freshness` (cadence such as realtime, hourly, daily), `docUrl`, `lastVerified`, `liveLayer`, optional `rateLimits`, `sample` (URL, headers, real response excerpt) and `tags`. A node that is not a live map layer must give a `notLiveReason`. Every edge needs a `sourceUrl` documenting the relationship.
+A service node records: `id`, `name`, `summary`, `owner` (office, program and an optional short `programGroup` that names a program hub in the org view), `theme`, `baseUrl`, `formats`, `auth` (`none`, `token` or `key`), `coverage` (a GeoJSON Polygon or MultiPolygon), `freshness` (cadence such as realtime, hourly, daily), `docUrl`, `lastVerified`, `liveLayer`, optional `rateLimits`, `sample` (URL, headers, real response excerpt) and `tags`. A node that is not a live map layer must give a `notLiveReason`. Every edge needs a `sourceUrl` documenting the relationship.
 
 ### Adding or editing services
 
