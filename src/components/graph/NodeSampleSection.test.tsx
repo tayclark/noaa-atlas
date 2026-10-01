@@ -7,13 +7,16 @@ import { parseGraphFile } from '../../data/graphSchema'
 import { getPoint } from '../../data/nwsClient'
 import { getPlanetaryKp } from '../../data/swpcClient'
 import { NodeSampleSection } from './NodeSampleSection'
+import { SWPC_TRY_ITS } from './swpcTryIt'
 
 vi.mock('../../data/nwsClient', () => ({ getPoint: vi.fn() }))
 vi.mock('../../data/swpcClient', () => ({ getPlanetaryKp: vi.fn() }))
+vi.mock('./swpcTryIt', () => ({ SWPC_TRY_ITS: { 'swpc-rtsw-solar-wind': vi.fn() } }))
 
 const nodes = parseGraphFile(graphJson).nodes as ServiceNode[]
 const nwsApi = nodes.find((n) => n.id === 'nws-api') as ServiceNode
 const kpNode = nodes.find((n) => n.id === 'swpc-geomagnetic-indices') as ServiceNode
+const windNode = nodes.find((n) => n.id === 'swpc-rtsw-solar-wind') as ServiceNode
 const notLive = nodes.find((n) => !n.liveLayer) as ServiceNode
 
 const writeText = vi.fn().mockResolvedValue(undefined)
@@ -84,5 +87,25 @@ describe('NodeSampleSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Run sample' }))
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('boom'))
     expect(screen.getByText('Static sample')).toBeTruthy()
+  })
+
+  it('renders a try-it result as a table (#240)', async () => {
+    vi.mocked(SWPC_TRY_ITS['swpc-rtsw-solar-wind'] as () => Promise<never>).mockResolvedValue([
+      { caption: 'Solar wind', columns: ['Time', 'Speed'], rows: [['17:44', '430']] },
+    ] as never)
+    render(<NodeSampleSection node={windNode} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Run sample' }))
+    await waitFor(() => expect(screen.getByText('Live response (parsed)')).toBeTruthy())
+    expect(screen.getByRole('table', { name: 'Solar wind' })).toBeTruthy()
+    expect(screen.getByRole('cell', { name: '430' })).toBeTruthy()
+    expect(screen.queryByLabelText('Sample response')).toBeNull()
+  })
+
+  it('reports a failed try-it and keeps the static sample (#240)', async () => {
+    vi.mocked(SWPC_TRY_ITS['swpc-rtsw-solar-wind'] as () => Promise<never>).mockRejectedValue(new Error('SWPC request failed (503).'))
+    render(<NodeSampleSection node={windNode} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Run sample' }))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('503'))
+    expect(screen.getByLabelText('Sample response')).toBeTruthy()
   })
 })

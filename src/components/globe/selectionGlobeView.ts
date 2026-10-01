@@ -124,7 +124,7 @@ export function describeSelectionForGlobe(selection: Selection, context: GlobeVi
 }
 
 function liveLayersOf(services: readonly ServiceNode[]): LiveLayerKey[] {
-  const layers = services.flatMap((n) => (n.liveLayer && LIVE_LAYERS[n.id] ? [LIVE_LAYERS[n.id].layer] : []))
+  const layers = services.flatMap((n) => (n.liveLayer ? [LIVE_LAYERS[n.id]?.layer ?? null] : [])).filter((layer) => layer !== null)
   return [...new Set(layers)]
 }
 

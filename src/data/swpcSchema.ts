@@ -35,3 +35,69 @@ export function parseOvation(raw: unknown): SwpcOvation {
 export function parseKp1m(raw: unknown): SwpcKp1m {
   return kp1mSchema.parse(raw)
 }
+
+// noaa-scales.json: "-1" is the past 24 hours, "0" now and "1" to "3" the next three days. Observed
+// periods carry a Scale and Text; forecast days carry probabilities instead, so every field is nullable.
+const scaleCellSchema = z.object({
+  Scale: z.string().nullable(),
+  Text: z.string().nullable(),
+  MinorProb: z.string().nullable().optional(),
+  MajorProb: z.string().nullable().optional(),
+  Prob: z.string().nullable().optional(),
+})
+const scalesSchema = z.record(
+  z.string(),
+  z.object({ DateStamp: z.string(), TimeStamp: z.string(), R: scaleCellSchema, S: scaleCellSchema, G: scaleCellSchema }),
+)
+export type SwpcScales = z.infer<typeof scalesSchema>
+export type SwpcScaleCell = z.infer<typeof scaleCellSchema>
+
+// alerts.json: issue_datetime is UTC with no zone designator ("2026-10-01 14:30:29.700").
+const alertsSchema = z.array(z.object({ product_id: z.string(), issue_datetime: z.string(), message: z.string() }))
+export type SwpcAlerts = z.infer<typeof alertsSchema>
+
+// rtsw_wind_1m.json is about 3 MB: one row per minute for each of several spacecraft over roughly a
+// day, newest first, with nulls where a spacecraft reports nothing. Keep only the active spacecraft's
+// recent readings so the cached copy stays small.
+const SOLAR_WIND_ROWS = 120
+const solarWindRowSchema = z.object({
+  time_tag: z.iso.datetime({ local: true }),
+  active: z.boolean(),
+  source: z.string(),
+  proton_speed: z.number().nullable(),
+  proton_density: z.number().nullable(),
+  proton_temperature: z.number().nullable(),
+})
+const solarWindSchema = z.array(solarWindRowSchema).transform((rows) =>
+  rows
+    .filter((row) => row.active && row.proton_speed !== null)
+    .sort((a, b) => b.time_tag.localeCompare(a.time_tag))
+    .slice(0, SOLAR_WIND_ROWS),
+)
+export type SwpcSolarWind = z.output<typeof solarWindSchema>
+
+// GOES X-ray flux: one row per minute for each of two wavelength bands, which `energy` names.
+const xrayRowSchema = z.object({
+  time_tag: z.iso.datetime(),
+  satellite: z.number(),
+  flux: z.number().nullable(),
+  energy: z.string(),
+})
+const xraysSchema = z.array(xrayRowSchema)
+export type SwpcXrays = z.infer<typeof xraysSchema>
+
+export function parseScales(raw: unknown): SwpcScales {
+  return scalesSchema.parse(raw)
+}
+
+export function parseAlerts(raw: unknown): SwpcAlerts {
+  return alertsSchema.parse(raw)
+}
+
+export function parseSolarWind(raw: unknown): SwpcSolarWind {
+  return solarWindSchema.parse(raw)
+}
+
+export function parseXrays(raw: unknown): SwpcXrays {
+  return xraysSchema.parse(raw)
+}
