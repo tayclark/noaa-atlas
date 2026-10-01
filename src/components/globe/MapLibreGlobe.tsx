@@ -45,7 +45,9 @@ import {
   radarTileUrl,
 } from './nowcoastRadarLayer'
 import { RadarTimeControl } from './RadarTimeControl'
-import { NOWCOAST_CAPABILITIES_URL, parseRadarFrames } from './radarTimes'
+import { NOWCOAST_CAPABILITIES_URL, frameForTime, parseRadarFrames } from './radarTimes'
+import { ForecastTimeline } from './ForecastTimeline'
+import { getTimeSnapshot, setTime, subscribeTime } from '../../data/timeStore'
 import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePopup'
 import { hitBox, hitPadding, nearestCandidate } from './hitPick'
 import { describeGeolocationError, GEOLOCATE_MAX_ZOOM, GEOLOCATE_POSITION_OPTIONS } from './geolocation'
@@ -272,9 +274,11 @@ export function MapLibreGlobe() {
   const [kp, setKp] = useState<{ status: 'loading' } | { status: 'ok'; readout: KpReadout } | { status: 'error'; message: string }>({
     status: 'loading',
   })
-  // Radar time (#74): the frame list and the chosen frame (null follows the latest one).
+  // Radar time (#74): the frame list. The chosen frame comes from the shared time (#228), so the
+  // radar and the point forecast timeline scrub together; null follows the latest frame.
   const [radarFrames, setRadarFrames] = useState<string[]>([])
-  const [radarTime, setRadarTime] = useState<string | null>(null)
+  const sharedTime = useSyncExternalStore(subscribeTime, getTimeSnapshot).time
+  const radarTime = useMemo(() => frameForTime(radarFrames, sharedTime), [radarFrames, sharedTime])
   const radarUrlRef = useRef(NOWCOAST_RADAR_TILE_URL)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const view = useMemo(() => describeSelectionForGlobe(selection, globeViewContext), [selection])
@@ -722,7 +726,6 @@ export function MapLibreGlobe() {
     return () => {
       controller.abort()
       setRadarFrames([])
-      setRadarTime(null)
     }
   }, [radarShown, loadRadarFrames])
   useEffect(() => {
@@ -751,7 +754,7 @@ export function MapLibreGlobe() {
 
   const radarIndex = radarTime === null ? radarFrames.length - 1 : Math.max(0, radarFrames.indexOf(radarTime))
   const chooseRadarFrame = useCallback(
-    (i: number) => setRadarTime(i >= radarFrames.length - 1 ? null : (radarFrames[i] ?? null)),
+    (i: number) => setTime(i >= radarFrames.length - 1 ? null : Date.parse(radarFrames[i])),
     [radarFrames],
   )
 
@@ -827,6 +830,13 @@ export function MapLibreGlobe() {
       {/* The bottom overlays share one flex box: a row on a wide globe (alerts left, Kp right), a
           column on a narrow one, so they never overlap (#159). */}
       <div className="globe-bottom">
+        {selection.selectedPoint && (
+          <ForecastTimeline
+            key={selection.selectedPoint.join(',')}
+            point={selection.selectedPoint}
+            paused={!active}
+          />
+        )}
         {radarShown && radarFrames.length > 1 && (
           <RadarTimeControl frames={radarFrames} index={radarIndex} onChange={chooseRadarFrame} paused={!active} />
         )}

@@ -33,3 +33,17 @@ export function formatFrameOffset(frame: string, latest: string): string {
   const rest = minutes % 60
   return `${Math.floor(minutes / 60)} h${rest ? ` ${rest} min` : ''} earlier`
 }
+
+/**
+ * The frame to show for the shared time (#228): null follows the latest frame, as does any time at
+ * or after it; an earlier time snaps to the nearest frame (the oldest, when before them all).
+ */
+export function frameForTime(frames: string[], time: number | null): string | null {
+  if (time === null || frames.length === 0) return null
+  if (time >= Date.parse(frames[frames.length - 1])) return null
+  let best = frames[0]
+  for (const frame of frames) {
+    if (Math.abs(Date.parse(frame) - time) < Math.abs(Date.parse(best) - time)) best = frame
+  }
+  return best
+}

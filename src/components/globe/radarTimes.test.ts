@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatFrameOffset, parseRadarFrames } from './radarTimes'
+import { formatFrameOffset, frameForTime, parseRadarFrames } from './radarTimes'
 
 const CAPABILITIES = `
 <Layer queryable="1"><Name>base_reflectivity_mosaic</Name><Title>Group</Title>
@@ -41,5 +41,29 @@ describe('formatFrameOffset', () => {
     ['2026-10-01T00:00:00.000Z', '3 h earlier'],
   ])('%s reads %s', (frame, label) => {
     expect(formatFrameOffset(frame, latest)).toBe(label)
+  })
+})
+
+describe('frameForTime', () => {
+  const frames = ['2026-10-01T02:40:00Z', '2026-10-01T02:50:00Z', '2026-10-01T03:00:00Z']
+  const at = (iso: string) => Date.parse(iso)
+
+  it('follows the latest frame for now, for the latest time and for the future', () => {
+    expect(frameForTime(frames, null)).toBeNull()
+    expect(frameForTime(frames, at('2026-10-01T03:00:00Z'))).toBeNull()
+    expect(frameForTime(frames, at('2026-10-02T00:00:00Z'))).toBeNull()
+  })
+
+  it('snaps an earlier time to the nearest frame', () => {
+    expect(frameForTime(frames, at('2026-10-01T02:44:00Z'))).toBe(frames[0])
+    expect(frameForTime(frames, at('2026-10-01T02:47:00Z'))).toBe(frames[1])
+  })
+
+  it('uses the oldest frame for a time before them all', () => {
+    expect(frameForTime(frames, at('2026-09-30T00:00:00Z'))).toBe(frames[0])
+  })
+
+  it('has no frame without frames', () => {
+    expect(frameForTime([], at('2026-10-01T02:44:00Z'))).toBeNull()
   })
 })
