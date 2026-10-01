@@ -42,6 +42,7 @@ export default defineConfig({
       exclude: [
         'src/main.tsx',
         'src/components/globe/MapLibreGlobe.tsx',
+        'src/components/globe/windOverlay.ts',
         'src/components/graph/GraphView.tsx',
         'src/**/*.test.{ts,tsx}',
         'src/**/*.d.ts',

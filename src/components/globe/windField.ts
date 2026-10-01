@@ -102,7 +102,7 @@ export function renderSpeedShading(
   height: number,
   windAt: (lat: number, lon: number) => Wind,
   alpha = 90,
-): Uint8ClampedArray {
+): Uint8ClampedArray<ArrayBuffer> {
   const out = new Uint8ClampedArray(width * height * 4)
   for (let y = 0; y < height; y++) {
     const lat = mercatorRowLat((y + 0.5) / height)

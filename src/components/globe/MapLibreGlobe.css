@@ -395,6 +395,40 @@
   white-space: nowrap;
 }
 
+/* The wind overlay's slider and legend (#229) reuse the radar control's box. */
+.wind-control .wind-now[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.wind-legend {
+  flex-basis: 100%;
+  display: grid;
+  gap: 2px;
+}
+
+.wind-legend-bar {
+  height: 8px;
+  border-radius: var(--radius-sm);
+}
+
+.wind-legend-ticks {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+.wind-legend-source {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+.wind-error {
+  flex-basis: 100%;
+  color: var(--color-text-muted);
+}
+
 /* The point forecast timeline (#228): wind, waves and tide for the tapped point. */
 .forecast-timeline {
   /* Its own row above the others: the chart is unreadable squeezed beside the alerts. */

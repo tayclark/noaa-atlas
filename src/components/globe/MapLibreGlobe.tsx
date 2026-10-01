@@ -45,6 +45,9 @@ import {
   radarTileUrl,
 } from './nowcoastRadarLayer'
 import { RadarTimeControl } from './RadarTimeControl'
+import { createWindOverlay, type WindOverlay } from './windOverlay'
+import { useWindForecast } from './useWindForecast'
+import { WindControl } from './WindControl'
 import { NOWCOAST_CAPABILITIES_URL, frameForTime, parseRadarFrames } from './radarTimes'
 import { ForecastTimeline } from './ForecastTimeline'
 import { getTimeSnapshot, setTime, subscribeTime } from '../../data/timeStore'
@@ -280,6 +283,7 @@ export function MapLibreGlobe() {
   const sharedTime = useSyncExternalStore(subscribeTime, getTimeSnapshot).time
   const radarTime = useMemo(() => frameForTime(radarFrames, sharedTime), [radarFrames, sharedTime])
   const radarUrlRef = useRef(NOWCOAST_RADAR_TILE_URL)
+  const windRef = useRef<WindOverlay | null>(null)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const view = useMemo(() => describeSelectionForGlobe(selection, globeViewContext), [selection])
   // A tap on the globe selects a point, which replaces the service whose radar or buoys were on
@@ -391,6 +395,9 @@ export function MapLibreGlobe() {
         layout: { visibility: 'none' },
         paint: { 'raster-opacity': NOWCOAST_RADAR_OPACITY, 'raster-fade-duration': 0 },
       })
+      // The wind overlay (#229) draws over the radar and under the stations and alerts; it stays
+      // hidden, and requests nothing, until the GFS node is selected.
+      windRef.current = createWindOverlay(map, prefersReducedMotion())
       // Under the alerts, which are added later. Stations are static, so the layer needs no fetch.
       map.addSource(COOPS_SOURCE_ID, { type: 'geojson', data: stationsToGeoJSON(COOPS_STATIONS) })
       map.addLayer({
@@ -758,6 +765,22 @@ export function MapLibreGlobe() {
     [radarFrames],
   )
 
+  // The wind overlay (#229) loads and draws only while the GFS node is selected, and follows the
+  // shared time like the radar.
+  const windShown = liveLayers.includes('wind')
+  const wind = useWindForecast(windShown, sharedTime)
+  const windField = wind.status === 'idle' ? null : wind.field
+  useEffect(() => {
+    if (mapLoaded) windRef.current?.setVisible(windShown)
+  }, [windShown, mapLoaded])
+  useEffect(() => {
+    if (mapLoaded) windRef.current?.setField(windField)
+  }, [windField, mapLoaded])
+  useEffect(() => {
+    windRef.current?.setPaused(!active)
+  }, [active, mapLoaded])
+  const windCycle = wind.status === 'idle' ? null : wind.cycle
+
   // The DART buoys (#80) are shown only while their node is selected, once the layer exists.
   const dartShown = liveLayers.includes('dart-stations')
   useEffect(() => {
@@ -784,6 +807,7 @@ export function MapLibreGlobe() {
         data-dart-stations={mapLoaded ? (dartShown ? DART_STATIONS.length : 0) : undefined}
         data-ndbc-stations={mapLoaded ? (ndbcShown ? NDBC_STATIONS.length : 0) : undefined}
         data-nowcoast-radar={mapLoaded ? (radarShown ? 'visible' : 'hidden') : undefined}
+        data-wind={mapLoaded ? (windShown ? (windField ? 'visible' : 'loading') : 'hidden') : undefined}
         data-radar-time={radarShown ? (radarTime ?? 'latest') : undefined}
         data-aurora-cells={auroraCells ?? undefined}
         style={{ width: '100%', height: '100%' }}
@@ -839,6 +863,20 @@ export function MapLibreGlobe() {
         )}
         {radarShown && radarFrames.length > 1 && (
           <RadarTimeControl frames={radarFrames} index={radarIndex} onChange={chooseRadarFrame} paused={!active} />
+        )}
+        {windShown && windCycle !== null && (
+          <WindControl
+            cycle={windCycle}
+            time={sharedTime}
+            onChange={setTime}
+            paused={!active}
+            error={wind.status === 'error' ? wind.message : null}
+          />
+        )}
+        {windShown && windCycle === null && wind.status === 'error' && (
+          <div className="zone-only-alerts" role="status" aria-label="Wind status">
+            {wind.message}
+          </div>
         )}
         {alertsStatus === 'error' && (
           <div className="zone-only-alerts" role="status" aria-label="Alerts status">

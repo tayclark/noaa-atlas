@@ -11,7 +11,7 @@ const BASE_URL = 'https://noaa-gfs-bdp-pds.s3.amazonaws.com'
 const CYCLE_MS = 6 * 3_600_000
 /** A cycle is usually complete about 4.5 hours after its nominal time. */
 const PUBLISH_DELAY_MS = 4.5 * 3_600_000
-const STEP_HOURS = 3
+export const STEP_HOURS = 3
 export const MAX_FORECAST_HOUR = 120
 const CYCLE_TTL_MS = 10 * 60_000
 const FIELD_CACHE_SIZE = 8
