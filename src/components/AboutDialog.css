@@ -1,0 +1,42 @@
+.about-dialog {
+  width: min(90vw, 26rem);
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.about-dialog::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+
+.about-dialog-body {
+  padding: var(--space-4);
+}
+
+.about-dialog h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-md);
+}
+
+.about-dialog p {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.about-dialog a {
+  color: var(--color-accent);
+}
+
+.about-dialog-close {
+  min-height: 44px;
+  padding: 0 var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}

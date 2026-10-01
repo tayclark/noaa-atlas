@@ -46,13 +46,63 @@ body,
   margin: 0;
 }
 
+html {
+  /* Phones: don't rescale text when the device rotates (#78). */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   overflow: hidden;
+  /* The app is one fixed-height screen, so a pull-down must not refresh the page or rubber-band it. */
+  overscroll-behavior: none;
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
   font-size: var(--font-size-md);
   line-height: 1.5;
+}
+
+/* No 300ms double-tap-zoom wait on controls; pinch zoom of the page still works. */
+a,
+button,
+summary,
+input,
+select,
+[role='button'],
+[role='tab'] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:active,
+summary:active,
+[role='button']:active {
+  opacity: 0.75;
+}
+
+/* Touch screens (#78): controls get a finger-sized target (WCAG 2.2 asks for 24px at least, and
+   Apple's guidance is 44px), and a text field is 16px, since iOS zooms the page into any smaller
+   one on focus. Nothing here applies to a mouse. */
+@media (pointer: coarse) {
+  /* MapLibre's own controls are sized with the globe's touch work. */
+  button:not(.maplibregl-ctrl button),
+  summary,
+  [role='tab'],
+  input[type='search'],
+  input[type='text'] {
+    min-height: 44px;
+  }
+
+  button:not(.maplibregl-ctrl button),
+  [role='tab'] {
+    min-width: 44px;
+  }
+
+  input[type='search'],
+  input[type='text'] {
+    font-size: 1rem;
+  }
 }
 
 :focus-visible {
