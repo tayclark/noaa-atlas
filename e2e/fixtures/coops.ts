@@ -30,6 +30,18 @@ export function predictionsFixture() {
   }
 }
 
+/** The hourly curve behind the point timeline (#228): a day of tide around the clock. */
+export function hourlyPredictionsFixture() {
+  const hour = 3_600_000
+  const start = Math.floor(Date.now() / hour) * hour - 24 * hour
+  return {
+    predictions: Array.from({ length: 96 }, (_, i) => ({
+      t: new Date(start + i * hour).toISOString().slice(0, 16).replace('T', ' '),
+      v: (0.4 + 0.3 * Math.sin(i / 2)).toFixed(3),
+    })),
+  }
+}
+
 /** Mocks the station list and both data calls; `waterLevelError` makes water_level answer with CO-OPS's HTTP 200 error body. */
 export async function mockCoops(page: Page, { waterLevelError }: { waterLevelError?: string } = {}) {
   await mockCoopsStations(page)
@@ -37,6 +49,9 @@ export async function mockCoops(page: Page, { waterLevelError }: { waterLevelErr
     const product = new URL(route.request().url()).searchParams.get('product')
     if (product === 'water_level') {
       return route.fulfill({ json: waterLevelError ? { error: { message: waterLevelError } } : waterLevelFixture() })
+    }
+    if (new URL(route.request().url()).searchParams.get('interval') === 'h') {
+      return route.fulfill({ json: hourlyPredictionsFixture() })
     }
     return route.fulfill({ json: predictionsFixture() })
   })
