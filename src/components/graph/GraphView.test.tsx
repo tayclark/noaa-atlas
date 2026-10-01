@@ -96,6 +96,30 @@ describe('GraphView', () => {
     expect(screen.queryByLabelText('Legend')).toBeNull()
   })
 
+  it('toggles the org view, which hides the theme hubs and shows the office hubs (#58)', () => {
+    const { container } = render(<GraphView />)
+    const toggle = screen.getByRole('button', { name: 'Org view' })
+    const hidden = (selector: string) => container.querySelector(selector)?.classList.contains('graph-hidden')
+    expect(toggle.getAttribute('aria-pressed')).toBe('false')
+    expect(hidden('[data-node-id="office-nws"]')).toBe(true)
+    expect(hidden('[data-node-id="theme-weather"]')).toBe(false)
+    fireEvent.click(toggle)
+    expect(toggle.getAttribute('aria-pressed')).toBe('true')
+    expect(hidden('[data-node-id="office-nws"]')).toBe(false)
+    expect(hidden('[data-node-id="theme-weather"]')).toBe(true)
+    expect(container.querySelectorAll('.graph-edge-theme:not(.graph-hidden)')).toHaveLength(0)
+    fireEvent.click(toggle)
+    expect(hidden('[data-node-id="theme-weather"]')).toBe(false)
+  })
+
+  it('draws office hubs as plain labels: not focusable, not selectable (#58)', () => {
+    const { container } = render(<GraphView />)
+    const hub = container.querySelector('[data-node-id="office-nws"]')!
+    expect(hub.getAttribute('tabindex')).toBeNull()
+    expect(hub.getAttribute('role')).toBeNull()
+    expect(container.querySelectorAll('.graph-node')).toHaveLength(expectedGraph.nodes.length)
+  })
+
   it('has a Fit control in the toolbar that does not throw before the layout has settled', () => {
     render(<GraphView />)
     fireEvent.click(screen.getByRole('button', { name: 'Fit' }))

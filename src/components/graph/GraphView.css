@@ -55,6 +55,18 @@
   opacity: 0.45;
 }
 
+/* Org edges (#58): the NOAA -> office -> program -> service tree, solid like the root spine. */
+.graph-edge-org {
+  stroke: var(--color-text-muted);
+  stroke-width: 1.5;
+  opacity: 0.6;
+}
+
+/* What the other layout mode owns is hidden, and drops out of the tab order with it. */
+.graph-hidden {
+  display: none;
+}
+
 /* Theme edges (service -> theme hub) are a loose structural ring, not a direct relationship —
    dashed and muted to read as background scaffolding behind the more meaningful edges below. */
 .graph-edge-theme {
@@ -91,6 +103,11 @@
   stroke-width: 1.5;
 }
 
+.graph-org-node circle {
+  stroke: var(--color-text);
+  stroke-width: 2;
+}
+
 .graph-node-theme circle {
   stroke: var(--color-text);
   stroke-width: 2.5;
@@ -113,7 +130,8 @@
   outline-offset: 3px;
 }
 
-.graph-node text {
+.graph-node text,
+.graph-org-node text {
   fill: var(--color-text-muted);
   font-family: var(--font-sans);
   font-size: var(--font-size-xs);
@@ -134,11 +152,18 @@
 
 /* Label decluttering (#138): labels keep a constant on-screen size (the zoom handler sets
    --graph-label-px to 12 / scale), and ones that would overlap are hidden until hover/focus. */
-.graph-node text {
+.graph-node text,
+.graph-org-node text {
   font-size: calc(var(--graph-label-px, 12) * 1px);
   paint-order: stroke;
   stroke: var(--color-surface);
   stroke-width: calc(var(--graph-label-px, 12) * 0.25px);
+}
+
+.graph-org-node text {
+  fill: var(--color-text);
+  font-weight: 600;
+  pointer-events: none;
 }
 
 .graph-label-hidden {

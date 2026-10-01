@@ -43,10 +43,24 @@ export const THEME_DESCRIPTIONS: Record<Theme, string> = {
 }
 
 export const THEME_ID_PREFIX = 'theme-'
+export const OFFICE_ID_PREFIX = 'office-'
+export const PROGRAM_ID_PREFIX = 'program-'
 /** Id of the generated NOAA root node that every theme hub links to (#148). */
 export const ROOT_NODE_ID = 'noaa'
 
 const OFFICES = ['NWS', 'NOS', 'NESDIS', 'OAR', 'NMFS', 'OMAO', 'other'] as const
+export type Office = (typeof OFFICES)[number]
+
+/** Full names for the line-office tier of the org view (#58). */
+export const OFFICE_LABELS: Record<Office, string> = {
+  NWS: 'National Weather Service',
+  NOS: 'National Ocean Service',
+  NESDIS: 'Satellite & Information Service',
+  OAR: 'Oceanic & Atmospheric Research',
+  NMFS: 'NOAA Fisheries',
+  OMAO: 'Marine & Aviation Operations',
+  other: 'Other',
+}
 const FORMATS = ['json', 'geojson', 'csv', 'xml', 'netcdf', 'grib2', 'geotiff', 'kml', 'shapefile', 'arcgis-rest', 'tiles', 'text', 'other'] as const
 const CADENCES = ['realtime', 'minutes', 'hourly', 'daily', 'periodic', 'static'] as const
 
@@ -75,6 +89,8 @@ const slug = z
   .string()
   .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'must be a lowercase slug (a-z, 0-9, hyphens)')
   .refine((id) => !id.startsWith(THEME_ID_PREFIX), `ids starting with "${THEME_ID_PREFIX}" are reserved for theme hubs`)
+  .refine((id) => !id.startsWith(OFFICE_ID_PREFIX), `ids starting with "${OFFICE_ID_PREFIX}" are reserved for office hubs`)
+  .refine((id) => !id.startsWith(PROGRAM_ID_PREFIX), `ids starting with "${PROGRAM_ID_PREFIX}" are reserved for program hubs`)
   .refine((id) => id !== ROOT_NODE_ID, `"${ROOT_NODE_ID}" is reserved for the root node`)
 
 const nonEmpty = z.string().trim().min(1)
@@ -87,7 +103,12 @@ export const serviceNodeSchema = z
     /** Graph label when the full name is too long to place (#141); the name is still shown elsewhere. */
     shortName: nonEmpty.max(24).optional(),
     summary: nonEmpty,
-    owner: z.strictObject({ office: z.enum(OFFICES), program: nonEmpty }),
+    owner: z.strictObject({
+      office: z.enum(OFFICES),
+      program: nonEmpty,
+      /** Short program name; services sharing it within an office get a program hub in the org view (#58). */
+      programGroup: nonEmpty.max(24).optional(),
+    }),
     theme: z.enum(THEMES),
     baseUrl: z.url(),
     formats: z.array(z.enum(FORMATS)).min(1),
@@ -169,12 +190,28 @@ export interface RootNode {
   kind: 'root'
   name: string
 }
+/** Line-office hub of the org view (#58). */
+export interface OfficeNode {
+  id: string
+  kind: 'office'
+  name: string
+  office: Office
+}
+/** Program hub of the org view, shared by two or more services in one office (#58). */
+export interface ProgramNode {
+  id: string
+  kind: 'program'
+  name: string
+  office: Office
+}
 export type GraphNode = ServiceNode | ThemeNode | RootNode
+/** Org-view hubs are render-only: they stay out of `Graph`, so search, neighbours and the panel never see them. */
+export type OrgNode = OfficeNode | ProgramNode
 
 export interface GraphEdge {
   source: string
   target: string
-  type: 'root' | 'theme' | 'shared-id' | 'data-flow'
+  type: 'root' | 'theme' | 'org' | 'shared-id' | 'data-flow'
   label: string
   sourceUrl?: string
 }

@@ -1,20 +1,27 @@
 import { describe, expect, it } from 'vitest'
 import graphJson from '../../data/graph.json'
 import { buildGraph } from '../../data/buildGraph'
-import { parseGraphFile, THEMES, type GraphEdge, type ServiceNode, type ThemeNode } from '../../data/graphSchema'
+import { makeFile, makeNode } from '../../data/graphFixtures'
+import { buildOrgHierarchy } from '../../data/orgHierarchy'
+import { parseGraphFile, ROOT_NODE_ID, THEMES, type GraphEdge, type ServiceNode, type ThemeNode } from '../../data/graphSchema'
 import {
   keyboardViewTransform,
   computeFitTransform,
   computeLabelledFitTransform,
   computePathFitTransform,
+  applyLayoutMode,
   createGraphSimulation,
   EDGE_CLASS,
   EDGE_TYPE_LABELS,
+  isEdgeVisible,
+  isNodeVisible,
   largestLinkedGroup,
   nodeRadius,
+  orgTargets,
   RING_ORDER,
   settleSimulation,
   themeAnchors,
+  type LayoutNode,
   type SimEdge,
   type SimNode,
 } from './graphLayout'
@@ -320,5 +327,60 @@ describe('keyboardViewTransform', () => {
 
   it('ignores other keys', () => {
     expect(keyboardViewTransform(start, 'a', 800, 600)).toBeNull()
+  })
+})
+
+describe('layout modes (#58)', () => {
+  const file = parseGraphFile(
+    makeFile([
+      makeNode({ id: 'one', owner: { office: 'NOS', program: 'p', programGroup: 'Group' } }),
+      makeNode({ id: 'two', owner: { office: 'NOS', program: 'p', programGroup: 'Group' } }),
+      makeNode({ id: 'lone', owner: { office: 'NWS', program: 'p' } }),
+    ]),
+  )
+  const nodes: LayoutNode[] = [...buildGraph(file).nodes, ...buildOrgHierarchy(file).nodes]
+
+  it('hides each mode’s hubs in the other', () => {
+    const visible = (mode: 'theme' | 'org') => nodes.filter((n) => isNodeVisible(n, mode)).map((n) => n.kind)
+    expect(visible('theme')).not.toContain('office')
+    expect(visible('theme')).toContain('theme')
+    expect(visible('org')).not.toContain('theme')
+    expect(visible('org')).toEqual(expect.arrayContaining(['root', 'office', 'program', 'service']))
+    expect(isEdgeVisible({ type: 'theme' }, 'org')).toBe(false)
+    expect(isEdgeVisible({ type: 'org' }, 'theme')).toBe(false)
+    expect(isEdgeVisible({ type: 'shared-id' }, 'org')).toBe(true)
+  })
+
+  it('places the tree in columns: root, office, program, service', () => {
+    const targets = orgTargets(nodes, 600, 400)
+    const x = (id: string) => targets.get(id)!.x
+    expect(x(ROOT_NODE_ID)).toBeLessThan(x('office-nos'))
+    expect(x('office-nos')).toBeLessThan(x('program-nos-group'))
+    expect(x('program-nos-group')).toBeLessThan(x('one'))
+    expect(x('office-nws')).toBe(x('office-nos'))
+  })
+
+  it('centres a parent on its children and never stacks two leaves', () => {
+    const targets = orgTargets(nodes, 600, 400)
+    const y = (id: string) => targets.get(id)!.y
+    expect(y('program-nos-group')).toBeCloseTo((y('one') + y('two')) / 2)
+    expect(y('office-nos')).toBeCloseTo(y('program-nos-group'))
+    expect(new Set(['one', 'two', 'lone'].map(y)).size).toBe(3)
+  })
+
+  it('settles the org mode onto its targets and back to the theme layout', () => {
+    const simNodes: SimNode[] = nodes.map((n) => ({ ...n }))
+    const simEdges: SimEdge[] = [...buildGraph(file).edges, ...buildOrgHierarchy(file).edges].map((e) => ({ ...e }))
+    const simulation = createGraphSimulation(simNodes, simEdges, 600, 400)
+    settleSimulation(simulation)
+    applyLayoutMode(simulation, simNodes, 'org', 600, 400)
+    simulation.alpha(1)
+    settleSimulation(simulation)
+    const targets = orgTargets(nodes, 600, 400)
+    for (const id of ['one', 'program-nos-group', 'office-nws']) {
+      const node = simNodes.find((n) => n.id === id)!
+      expect(node.x).toBeCloseTo(targets.get(id)!.x, 0)
+      expect(node.y).toBeCloseTo(targets.get(id)!.y, 0)
+    }
   })
 })
