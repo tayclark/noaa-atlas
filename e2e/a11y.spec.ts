@@ -79,9 +79,20 @@ test('the Inspector tab has no serious axe violations', async ({ page }) => {
   expect(await seriousViolations(page)).toEqual([])
 })
 
-test('the phone layout has no serious axe violations', async ({ page }) => {
+test('the phone layout has no serious axe violations on the Tasks, Graph and Globe tabs', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await openApp(page)
+  await mockAlerts(page, emptyAlertsFixture())
+  await mockSwpc(page)
+  await page.goto('/')
+  await expect(page.getByRole('tab', { name: 'Tasks', selected: true })).toBeVisible()
+  expect(await seriousViolations(page)).toEqual([])
+
+  await page.getByRole('tab', { name: 'Graph' }).click()
+  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
+  expect(await seriousViolations(page)).toEqual([])
+
+  await page.getByRole('tab', { name: 'Globe' }).click()
+  await expect(page.locator('.maplibregl-canvas')).toBeVisible()
   expect(await seriousViolations(page)).toEqual([])
 })
 
