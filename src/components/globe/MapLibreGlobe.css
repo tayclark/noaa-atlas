@@ -697,3 +697,23 @@
     max-height: 70cqh;
   }
 }
+
+.spc-legend ul {
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.spc-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.spc-legend-swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}

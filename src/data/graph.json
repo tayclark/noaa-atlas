@@ -917,7 +917,7 @@
         "note": "Update schedule is not documented on the data page; files follow each outlook issuance. Days 4-8 outlooks are experimental."
       },
       "docUrl": "https://www.spc.noaa.gov/gis/",
-      "lastVerified": "2026-09-30",
+      "lastVerified": "2026-10-01",
       "sample": {
         "url": "https://www.spc.noaa.gov/products/outlook/day1otlk_cat.nolyr.geojson",
         "headers": {
@@ -925,8 +925,7 @@
         },
         "responseExcerpt": "{\n  \"type\": \"FeatureCollection\",\n  \"features\": [\n    {\n      \"type\": \"Feature\",\n      \"properties\": {\n        \"VALID_ISO\": \"2026-09-23T16:30:00+00:00\",\n        \"EXPIRE_ISO\": \"2026-09-24T12:00:00+00:00\",\n        \"LABEL\": \"TSTM\",\n        \"LABEL2\": \"General Thunderstorms Risk\",\n        \"stroke\": \"#55BB55\",\n        \"fill\": \"#C1E9C1\"\n      },\n      \"geometry\": { \"type\": \"MultiPolygon\", \"coordinates\": [ ... ] }\n    }\n  ]\n}\n(abbreviated)"
       },
-      "liveLayer": false,
-      "notLiveReason": "Deferred: v1 live layers are limited to NWS alerts and NWS point forecast/observations. The GeoJSON feeds send access-control-allow-origin: * (checked 2026-09-21), so they are a candidate for a later layer.",
+      "liveLayer": true,
       "tags": [
         "convective outlook",
         "tornado",

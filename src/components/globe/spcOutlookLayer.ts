@@ -22,7 +22,6 @@ export const SPC_CATEGORIES: readonly SpcCategory[] = [
 ]
 
 export const SPC_FILL_OPACITY = 0.45
-export const SPC_RETRY_MS = 30_000
 
 /** The categories present in an outlook, lowest risk first, for a legend that matches the map. */
 export function categoriesInOutlook(outlook: SpcOutlook): SpcCategory[] {
