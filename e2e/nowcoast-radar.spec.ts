@@ -76,7 +76,7 @@ test('the radar still draws, without a slider, when the frame list fails', async
 })
 
 test('fetches a real radar tile @live', async ({ page }) => {
-  const tile = page.waitForResponse((res) => res.url().includes('/geoserver/weather_radar/wms'), { timeout: 30_000 })
+  const tile = page.waitForResponse((res) => res.url().includes('/geoserver/weather_radar/wms') && res.url().includes('request=GetMap'), { timeout: 30_000 })
   await page.route(RADAR_TILES, (route) => route.continue())
   await page.goto('/')
   await selectByKeyboard(page, NODE)
