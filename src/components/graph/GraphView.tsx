@@ -60,7 +60,7 @@ import { selectionAnnouncement } from './a11yAnnouncements'
 import { GraphLegend } from './GraphLegend'
 import { GraphSearch, type SearchResult } from './GraphSearch'
 import { buildSearchIndex, matchNodeIds } from './searchMatch'
-import { DIAGONAL_OFFSET, LABEL_GAP, placeLabels, type Box, type LabelItem } from './labelPlacement'
+import { DIAGONAL_OFFSET, LABEL_GAP, labelBudget, placeLabels, type Box, type LabelItem } from './labelPlacement'
 import { NodeDetailPanel } from './NodeDetailPanel'
 import { useNarrowLayout } from '../useNarrowLayout'
 
@@ -71,6 +71,9 @@ const graphNodeById = new Map(graph.nodes.map((node) => [node.id, node]))
 const orgHierarchy = buildOrgHierarchy(graphFile)
 const drawnNodes: LayoutNode[] = [...graph.nodes, ...orgHierarchy.nodes]
 const drawnEdges = [...graph.edges, ...orgHierarchy.edges]
+// Connectedness breaks label ties between nodes of one size (every service is the same radius).
+const nodeDegree = new Map<string, number>()
+for (const edge of drawnEdges) for (const end of [edge.source, edge.target]) nodeDegree.set(end, (nodeDegree.get(end) ?? 0) + 1)
 const drawnNodeById = new Map(drawnNodes.map((node) => [node.id, node]))
 // A selected node is framed together with its neighbors, at a scale capped so labels stay legible.
 const SELECTION_MAX_SCALE = 1.25
@@ -326,6 +329,7 @@ export function GraphView() {
           width: labelWidthsRef.current.get(id) ?? 0,
           height: LABEL_HEIGHT,
           priority,
+          rank: nodeRadius(node) * 100 + (nodeDegree.get(id) ?? 0),
           // Hubs, matches and the selection may cover other nodes' dots (never another label).
           overNodes: priority >= 3,
         })
@@ -333,7 +337,7 @@ export function GraphView() {
       const panel = detailPanelBox(svgEl, sheetRef.current)
       const obstacles = panel ? [panel] : []
       const bounds = { width: svgEl.clientWidth || initialSizeRef.current.width, height: svgEl.clientHeight || initialSizeRef.current.height }
-      const sides = placeLabels(items, bounds, obstacles)
+      const sides = placeLabels(items, bounds, obstacles, labelBudget(t.k, items.length))
       nodeElsRef.current.forEach((el, id) => {
         const text = el.querySelector('text')
         const node = nodeById.get(id)

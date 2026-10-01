@@ -17,6 +17,8 @@ export interface LabelItem {
   height: number
   /** Higher places first and wins contested space. */
   priority: number
+  /** Breaks ties within a priority (larger or better connected first), before falling back to id. */
+  rank?: number
   /** May cover other nodes' circles (still never another label). */
   overNodes?: boolean
 }
@@ -37,6 +39,18 @@ const LABEL_MARGIN = 2
  * collision box shrinks to this fraction of its radius, so only a label reaching a dot's core is refused (#176).
  */
 export const DOT_OVERLAP_TOLERANCE = 0.5
+
+/** Priority from which a label is always eligible, whatever the budget: the selection, search matches and theme hubs. */
+export const BUDGET_EXEMPT_PRIORITY = 3
+/** Labels allowed at the least zoom: the root and a handful of hubs. */
+const MIN_LABEL_BUDGET = 8
+/** Labels allowed at zoom 1; the budget grows with the screen area, so with k squared. */
+const LABELS_AT_UNIT_ZOOM = 16
+
+/** How many labels the graph may show at zoom level k, so a zoomed-out view keeps only its biggest nodes' labels. */
+export function labelBudget(k: number, total: number): number {
+  return Math.min(total, Math.max(MIN_LABEL_BUDGET, Math.round(LABELS_AT_UNIT_ZOOM * k * k)))
+}
 
 export interface Box {
   x0: number
@@ -76,6 +90,8 @@ export function placeLabels(
   bounds: Bounds,
   /** Screen areas no label may enter, such as a panel drawn over the graph. */
   obstacles: readonly Box[] = [],
+  /** At most this many labels are eligible, highest priority first; priority BUDGET_EXEMPT_PRIORITY and up never counts against it. */
+  maxLabels = Infinity,
 ): Map<string, LabelSide | null> {
   const dotBoxes = (scale: number) =>
     items.map((item) => {
@@ -86,7 +102,10 @@ export function placeLabels(
   const softDots = dotBoxes(DOT_OVERLAP_TOLERANCE)
   const placed: Box[] = [...obstacles]
   const result = new Map<string, LabelSide | null>()
-  const ordered = [...items].sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id))
+  const sorted = [...items].sort((a, b) => b.priority - a.priority || (b.rank ?? 0) - (a.rank ?? 0) || a.id.localeCompare(b.id))
+  let budgeted = 0
+  const ordered = sorted.filter((item) => item.priority >= BUDGET_EXEMPT_PRIORITY || budgeted++ < maxLabels)
+  for (const item of sorted) if (!ordered.includes(item)) result.set(item.id, null)
 
   const place = (item: LabelItem, dots: typeof strictDots) => {
     const side = SIDES.find((candidate) => {

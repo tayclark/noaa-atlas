@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { placeLabels, type LabelItem } from './labelPlacement'
+import { labelBudget, placeLabels, type LabelItem } from './labelPlacement'
 
 const item = (id: string, x: number, y: number, priority = 0, width = 60): LabelItem => ({
   id,
@@ -80,5 +80,32 @@ describe('placeLabels', () => {
   it('is deterministic for equal priorities regardless of input order', () => {
     const items = [item('b', 100, 50), item('a', 100, 52), item('c', 100, 54)]
     expect([...placeLabels(items, bounds)].sort()).toEqual([...placeLabels([...items].reverse(), bounds)].sort())
+  })
+})
+
+describe('label budget', () => {
+  const spread = (priorities: number[], ranks: number[] = []) =>
+    priorities.map((priority, i) => ({ ...item(`n${i}`, 20 + i * 70, 50, priority), rank: ranks[i] }))
+
+  it('shows only the highest-ranked labels within the cap', () => {
+    const items = spread([0, 0, 0, 0], [1, 4, 3, 2])
+    const result = placeLabels(items, { width: 400, height: 100 }, [], 2)
+    expect([...result].filter(([, side]) => side).map(([id]) => id).sort()).toEqual(['n1', 'n2'])
+  })
+
+  it('lets priority beat rank, and never caps the selection, search matches or hubs', () => {
+    const items = spread([0, 5, 4, 3], [9, 0, 0, 0])
+    const result = placeLabels(items, { width: 400, height: 100 }, [], 0)
+    expect(result.get('n1')).toBeTruthy()
+    expect(result.get('n2')).toBeTruthy()
+    expect(result.get('n3')).toBeTruthy()
+    expect(result.get('n0')).toBeNull()
+  })
+
+  it('grows the budget with zoom and never exceeds the node count', () => {
+    expect(labelBudget(0.2, 100)).toBeLessThan(labelBudget(1, 100))
+    expect(labelBudget(1, 100)).toBeLessThan(labelBudget(2, 100))
+    expect(labelBudget(5, 40)).toBe(40)
+    expect(labelBudget(0.01, 100)).toBeGreaterThan(0)
   })
 })
