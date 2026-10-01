@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import idx from './fixtures/gfs-1p00-f012.idx?raw'
 import grib from './fixtures/gfs-ugrd10m-f012.grib2.b64?raw'
-import { clearGfsCache, cycleAtOrBefore, cycleCandidates, forecastHourFor, getLatestCycle, getWindField, GfsHttpError } from './gfsClient'
+import waveIdx from './fixtures/gfswave-0p25-f024.idx?raw'
+import waveGrib from './fixtures/gfswave-htsgw-f024.grib2.b64?raw'
+import { clearGfsCache, cycleAtOrBefore, cycleCandidates, forecastHourFor, getLatestCycle, getWaveField, getWindField, GfsHttpError } from './gfsClient'
 import { getRequestLogSnapshot } from './requestLog'
 
 const bytes = Uint8Array.from(atob(grib.trim()), (c) => c.charCodeAt(0))
@@ -87,5 +89,45 @@ describe('gfs client', () => {
     await expect(getWindField(cycle, 3)).rejects.toBeInstanceOf(GfsHttpError)
     serve()
     await expect(getWindField(cycle, 3)).resolves.toBeDefined()
+  })
+
+  describe('wave field', () => {
+    const waveBytes = Uint8Array.from(atob(waveGrib.trim()), (c) => c.charCodeAt(0))
+    const serveWaves = (missing: (url: string) => boolean = () => false) =>
+      fetchMock.mockImplementation(async (url: string) => {
+        if (missing(url)) return new Response('', { status: 404 })
+        return new Response(url.endsWith('.idx') ? waveIdx : waveBytes)
+      })
+
+    it('probes the wave files for the cycle, separately from the atmos files', async () => {
+      serveWaves((url) => url.includes('/gfs.20261001/00/'))
+      const cycle = await getLatestCycle(T('2026-10-01T08:19:00Z'), 'wave')
+      expect(new Date(cycle).toISOString()).toBe('2026-09-30T18:00:00.000Z')
+      expect(fetchMock.mock.calls[0][0]).toBe(
+        'https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs.20261001/00/wave/gridded/gfswave.t00z.global.0p25.f000.grib2.idx',
+      )
+      serve()
+      const atmos = await getLatestCycle(T('2026-10-01T08:19:00Z'))
+      expect(new Date(atmos).toISOString()).toBe('2026-10-01T00:00:00.000Z')
+    })
+
+    it('reads HTSGW with one Range request, decodes it and caches the result', async () => {
+      serveWaves()
+      const cycle = T('2026-09-30T00:00:00Z')
+      const field = await getWaveField(cycle, 24)
+      expect([field.ni, field.nj]).toEqual([1440, 721])
+      expect(fetchMock.mock.calls[0][0]).toMatch(/gfs\.20260930\/00\/wave\/gridded\/gfswave\.t00z\.global\.0p25\.f024\.grib2\.idx$/)
+      expect(fetchMock.mock.calls[1][1].headers.Range).toBe('bytes=3085809-3520678')
+      expect(await getWaveField(cycle, 24)).toBe(field)
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not cache a failed wave load', async () => {
+      fetchMock.mockResolvedValue(new Response('', { status: 503 }))
+      const cycle = T('2026-09-30T00:00:00Z')
+      await expect(getWaveField(cycle, 3)).rejects.toBeInstanceOf(GfsHttpError)
+      serveWaves()
+      await expect(getWaveField(cycle, 3)).resolves.toBeDefined()
+    })
   })
 })

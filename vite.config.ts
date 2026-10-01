@@ -44,6 +44,7 @@ export default defineConfig({
         'src/components/globe/MapLibreGlobe.tsx',
         'src/components/globe/windOverlay.ts',
         'src/components/graph/GraphView.tsx',
+        'src/data/jpx/**',
         'src/**/*.test.{ts,tsx}',
         'src/**/*.d.ts',
       ],

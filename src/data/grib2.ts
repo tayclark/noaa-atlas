@@ -1,7 +1,8 @@
 // A small GRIB2 reader for one lat/lon field (#229). It handles the grid definition template 3.0
-// (regular lat/lon) and the data template 5.3 (complex packing with spatial differencing), which is
-// what the GFS 1 degree atmospheric fields use. Other templates (for example 5.40, JPEG 2000, used
-// by the GFS-Wave files) throw `Grib2Error` so a caller can fall back rather than draw garbage.
+// (regular lat/lon) and two data templates: 5.3 (complex packing with spatial differencing, the GFS
+// 1 degree atmospheric fields, `decodeGribField`) and 5.40 (JPEG 2000 with an optional land bitmap,
+// the GFS-Wave fields, `decodeGribFieldAsync`, which loads the decoder lazily). Other templates
+// throw `Grib2Error` so a caller can fall back rather than draw garbage.
 
 export class Grib2Error extends Error {
   constructor(message: string) {
@@ -64,7 +65,17 @@ function signMagnitude(value: number, bytes: number): number {
   return value >= sign ? -(value - sign) : value
 }
 
-export function decodeGribField(data: ArrayBuffer | Uint8Array): GribField {
+interface Sections {
+  bytes: Uint8Array
+  view: DataView
+  grid: Omit<GribField, 'values'>
+  sec5: number
+  sec6: number | null
+  sec7: number
+  sec7Len: number
+}
+
+function readSections(data: ArrayBuffer | Uint8Array): Sections {
   const bytes = data instanceof Uint8Array ? data : new Uint8Array(data)
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   const u32 = (at: number) => view.getUint32(at)
@@ -77,6 +88,7 @@ export function decodeGribField(data: ArrayBuffer | Uint8Array): GribField {
 
   let grid: Omit<GribField, 'values'> | null = null
   let sec5: number | null = null
+  let sec6: number | null = null
   let sec7: number | null = null
   let sec7Len = 0
 
@@ -102,6 +114,8 @@ export function decodeGribField(data: ArrayBuffer | Uint8Array): GribField {
       if (bytes[at + 71] & 0x80) throw new Grib2Error('Unsupported scanning direction (west to east only)')
     } else if (num === 5) {
       sec5 = at
+    } else if (num === 6) {
+      sec6 = at
     } else if (num === 7) {
       sec7 = at
       sec7Len = len
@@ -109,6 +123,13 @@ export function decodeGribField(data: ArrayBuffer | Uint8Array): GribField {
     at += len
   }
   if (!grid || sec5 === null || sec7 === null) throw new Grib2Error('GRIB2 message is missing a required section')
+  return { bytes, view, grid, sec5, sec6, sec7, sec7Len }
+}
+
+export function decodeGribField(data: ArrayBuffer | Uint8Array): GribField {
+  const { bytes, view, grid, sec5, sec7, sec7Len } = readSections(data)
+  const u32 = (at: number) => view.getUint32(at)
+  const smag = (at: number, n: 2 | 4) => signMagnitude(n === 2 ? view.getUint16(at) : u32(at), n)
 
   const template = view.getUint16(sec5 + 9)
   if (template !== 3) throw new Grib2Error(`Unsupported data template 5.${template}`)
@@ -184,4 +205,52 @@ export function decodeGribField(data: ArrayBuffer | Uint8Array): GribField {
   const values = new Float32Array(npts)
   for (let i = 0; i < npts; i++) values[i] = missing[i] ? NaN : (ref + ints[i] * scale) / divisor
   return { ...grid, values }
+}
+
+/** Like `decodeGribField`, and also reads template 5.40 (JPEG 2000), with or without a bitmap. */
+export async function decodeGribFieldAsync(data: ArrayBuffer | Uint8Array): Promise<GribField> {
+  const sections = readSections(data)
+  const { bytes, view, grid, sec5, sec6, sec7, sec7Len } = sections
+  const template = view.getUint16(sec5 + 9)
+  if (template !== 40) return decodeGribField(bytes)
+
+  const npts = view.getUint32(sec5 + 5)
+  const ref = view.getFloat32(sec5 + 11)
+  const binary = signMagnitude(view.getUint16(sec5 + 15), 2)
+  const decimal = signMagnitude(view.getUint16(sec5 + 17), 2)
+  const total = grid.ni * grid.nj
+
+  // Section 6: indicator 0 is a bitmap (one bit per grid point, 1 = present), 255 means no bitmap.
+  let present: Uint8Array | null = null
+  if (sec6 !== null && bytes[sec6 + 5] !== 255) {
+    if (bytes[sec6 + 5] !== 0) throw new Grib2Error('Unsupported GRIB2 bitmap indicator')
+    if (sec6 + 6 + Math.ceil(total / 8) > sec6 + view.getUint32(sec6)) throw new Grib2Error('GRIB2 bitmap section ended early')
+    present = new Uint8Array(total)
+    let count = 0
+    for (let i = 0; i < total; i++) {
+      if ((bytes[sec6 + 6 + (i >> 3)] >> (7 - (i & 7))) & 1) {
+        present[i] = 1
+        count++
+      }
+    }
+    if (count !== npts) throw new Grib2Error('GRIB2 bitmap does not match the packed point count')
+  } else if (npts !== total) {
+    throw new Grib2Error('GRIB2 point count does not match the grid')
+  }
+
+  const { decodeJpeg2000 } = await import('./jpeg2000Decode')
+  const ints = bitsPerValue(bytes, sec5) === 0 ? new Float32Array(npts) : decodeJpeg2000(bytes.subarray(sec7 + 5, sec7 + sec7Len))
+  if (ints.length !== npts) throw new Grib2Error('GRIB2 JPEG 2000 sample count does not match the point count')
+
+  const scale = 2 ** binary
+  const divisor = 10 ** decimal
+  const values = new Float32Array(total)
+  let k = 0
+  for (let i = 0; i < total; i++) values[i] = present && !present[i] ? NaN : (ref + ints[k++] * scale) / divisor
+  return { ...grid, values }
+}
+
+/** Template 5.40 packs a constant field as zero bits per value, with no codestream to decode. */
+function bitsPerValue(bytes: Uint8Array, sec5: number): number {
+  return bytes[sec5 + 19]
 }

@@ -396,13 +396,28 @@
 }
 
 /* The wind overlay's slider and legend (#229) reuse the radar control's box. */
-.wind-control .wind-now {
+.wind-control .wind-now,
+.wind-control .wind-layer-button {
   font-size: var(--font-size-sm);
 }
 
-.wind-control .wind-now[aria-pressed='true'] {
+.wind-control .wind-now[aria-pressed='true'],
+.wind-control .wind-layer-button[aria-pressed='true'] {
   border-color: var(--color-accent);
   color: var(--color-accent);
+}
+
+.wind-status-action {
+  pointer-events: auto;
+  margin-top: var(--space-2);
+  align-self: flex-start;
+}
+
+.wind-layer-toggle {
+  /* Its own row, so the slider keeps its width on a phone. */
+  flex-basis: 100%;
+  display: flex;
+  gap: var(--space-1);
 }
 
 .wind-legend {
