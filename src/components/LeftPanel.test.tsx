@@ -2,17 +2,23 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { LeftPanel } from './LeftPanel'
+import { mockNarrowLayout, unmockNarrowLayout } from './narrowLayoutTestUtils'
 import { addCompare, clearCompare } from '../data/compareStore'
 import { clearRequestLog, pushLogEntry } from '../data/requestLog'
 import { clearSelection, selectNode } from '../data/selectionStore'
+import { resetView, showView } from '../data/viewStore'
 
 beforeEach(() => {
   clearRequestLog()
   clearSelection()
   clearCompare()
+  resetView()
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  unmockNarrowLayout()
+})
 
 describe('LeftPanel', () => {
   it('defaults to the Explore tab, showing the finder and the graph together', () => {
@@ -29,6 +35,15 @@ describe('LeftPanel', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Explore' }))
     expect(screen.getByText("Get today's local forecast")).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Graph' })).toBeTruthy()
+  })
+
+  it('keeps Explore mounted, so the graph is not rebuilt, while another tab shows', () => {
+    render(<LeftPanel />)
+    const graph = screen.getByRole('region', { name: 'Graph' })
+    fireEvent.click(screen.getByRole('tab', { name: 'Inspector' }))
+    expect(screen.queryByRole('region', { name: 'Graph' })).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'Explore' }))
+    expect(screen.getByRole('region', { name: 'Graph' })).toBe(graph)
   })
 
   it('counts logged requests on the Inspector tab (#150)', () => {
@@ -54,7 +69,7 @@ describe('LeftPanel', () => {
     expect(screen.getAllByRole('columnheader')).toHaveLength(2)
   })
 
-  it('wires tabs to the panel and keeps only the active tab in the Tab order', () => {
+  it('wires each tab to its own panel and keeps only the active tab in the Tab order', () => {
     render(<LeftPanel />)
     const explore = screen.getByRole('tab', { name: 'Explore' })
     const panel = screen.getByRole('tabpanel')
@@ -62,6 +77,9 @@ describe('LeftPanel', () => {
     expect(panel.getAttribute('aria-labelledby')).toBe(explore.id)
     expect(explore.tabIndex).toBe(0)
     expect(screen.getByRole('tab', { name: 'Inspector' }).tabIndex).toBe(-1)
+    // The panels of the other tabs exist, hidden, so a tab's aria-controls always points somewhere.
+    const inspector = screen.getByRole('tab', { name: 'Inspector' })
+    expect(document.getElementById(inspector.getAttribute('aria-controls') ?? '')?.hidden).toBe(true)
   })
 
   it('moves between tabs with the arrow, Home and End keys', () => {
@@ -86,37 +104,80 @@ describe('LeftPanel', () => {
     expect(screen.queryByRole('tab', { name: /Globe/ })).toBeNull()
   })
 
-  describe('with the globe as a tab (phone width, #78)', () => {
+  it('folds a request for the phone-only views back into Explore on a wide screen', () => {
+    showView('graph')
+    render(<LeftPanel />)
+    expect(screen.getByRole('tab', { name: 'Explore', selected: true })).toBeTruthy()
+  })
+
+  describe('compact layout (a phone, #78)', () => {
     const globe = <div data-testid="globe">globe</div>
 
-    it('adds a Globe tab and keeps the globe mounted while another tab shows', () => {
+    beforeEach(() => {
+      mockNarrowLayout(true)
+    })
+
+    it('splits Explore into Tasks and Graph and adds a Globe tab', () => {
       render(<LeftPanel globe={globe} />)
-      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Explore', 'Globe', 'Compare', 'Inspector'])
-      const wrapper = screen.getByTestId('globe').parentElement!
-      expect(wrapper.hidden).toBe(true)
+      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Tasks', 'Graph', 'Globe', 'Compare', 'Inspector'])
+      expect(screen.getByRole('tab', { name: 'Tasks', selected: true })).toBeTruthy()
+      expect(screen.getByText("Get today's local forecast")).toBeTruthy()
+    })
+
+    it('mounts the graph and the globe when first opened, then keeps them while another tab shows', () => {
+      render(<LeftPanel globe={globe} />)
+      expect(screen.queryByRole('region', { name: 'Graph', hidden: true })).toBeNull()
+      expect(screen.queryByTestId('globe')).toBeNull()
+
+      fireEvent.click(screen.getByRole('tab', { name: 'Graph' }))
+      expect(screen.getByRole('region', { name: 'Graph' })).toBeTruthy()
+      expect(screen.queryByTestId('globe')).toBeNull()
 
       fireEvent.click(screen.getByRole('tab', { name: 'Globe' }))
-      expect(wrapper.hidden).toBe(false)
+      const panel = screen.getByTestId('globe').closest<HTMLElement>('[role="tabpanel"]')!
+      expect(panel.hidden).toBe(false)
       expect(screen.queryByRole('region', { name: 'Graph' })).toBeNull()
 
       fireEvent.click(screen.getByRole('tab', { name: 'Inspector' }))
-      expect(screen.getByTestId('globe').parentElement!.hidden).toBe(true)
+      expect(screen.getByTestId('globe').closest<HTMLElement>('[role="tabpanel"]')!.hidden).toBe(true)
+      expect(screen.getByRole('region', { name: 'Graph', hidden: true })).toBeTruthy()
     })
 
-    it('marks the Globe tab when the selection changes elsewhere, until the globe is opened', () => {
+    it('marks Graph and Globe when the selection changes elsewhere, until each is opened', () => {
       render(<LeftPanel globe={globe} />)
       expect(screen.queryByLabelText('updated')).toBeNull()
 
       act(() => selectNode('nws-api'))
-      expect(screen.getByLabelText('updated')).toBeTruthy()
+      expect(screen.getAllByLabelText('updated')).toHaveLength(2)
 
+      fireEvent.click(screen.getByRole('tab', { name: /Graph/ }))
+      expect(screen.getAllByLabelText('updated')).toHaveLength(1)
       fireEvent.click(screen.getByRole('tab', { name: /Globe/ }))
       expect(screen.queryByLabelText('updated')).toBeNull()
 
-      // A change made while looking at the globe (a globe click) is already seen on leaving it.
+      // A change made while looking at the globe (a globe click) is already seen on leaving it, but
+      // the graph hasn't seen it.
       act(() => selectNode('ndbc-realtime'))
-      fireEvent.click(screen.getByRole('tab', { name: 'Explore' }))
+      fireEvent.click(screen.getByRole('tab', { name: /Tasks/ }))
+      expect(screen.getAllByLabelText('updated')).toHaveLength(1)
+      fireEvent.click(screen.getByRole('tab', { name: /Graph/ }))
       expect(screen.queryByLabelText('updated')).toBeNull()
+    })
+
+    it('moves through all five tabs with Home and End', () => {
+      render(<LeftPanel globe={globe} />)
+      fireEvent.keyDown(screen.getByRole('tab', { name: 'Tasks' }), { key: 'End' })
+      expect(screen.getByRole('tab', { name: 'Inspector', selected: true })).toBeTruthy()
+      fireEvent.keyDown(screen.getByRole('tab', { name: 'Inspector' }), { key: 'ArrowLeft' })
+      expect(screen.getByRole('tab', { name: 'Compare', selected: true })).toBeTruthy()
+      fireEvent.keyDown(screen.getByRole('tab', { name: 'Compare' }), { key: 'Home' })
+      expect(screen.getByRole('tab', { name: 'Tasks', selected: true })).toBeTruthy()
+    })
+
+    it('can be sent to a view from outside, as a Show on globe button will', () => {
+      render(<LeftPanel globe={globe} />)
+      act(() => showView('globe'))
+      expect(screen.getByRole('tab', { name: 'Globe', selected: true })).toBeTruthy()
     })
   })
 })
