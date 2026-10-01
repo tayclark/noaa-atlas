@@ -107,6 +107,50 @@ export const NO_INSET: Inset = { left: 0, top: 0, right: 0, bottom: 0 }
 /** Clearance between an overlay and the area a selection is framed into. */
 export const PANEL_GAP = 8
 
+/** A node's centre and radius, in layout units, for hit testing. */
+export interface HitNode {
+  id: string
+  x: number
+  y: number
+  radius: number
+}
+
+/**
+ * The node a touch at `point` (screen px, from the graph's top-left corner) means (#78): the one
+ * whose dot is nearest, counting only dots within `slop` px of the touch. A fingertip covers about
+ * 40px, but a dot is only a few px across at the default zoom and its neighbours are closer than
+ * that, so a touch has to resolve to the nearest dot rather than the one it lands on. Dots sit
+ * under the zoom `transform`, so a node is `k * radius` px across on screen.
+ */
+export function nearestNodeWithin(
+  nodes: readonly HitNode[],
+  point: { x: number; y: number },
+  transform: FitTransform,
+  slop: number,
+): string | null {
+  let best: { id: string; gap: number; distance: number } | null = null
+  for (const node of nodes) {
+    const distance = Math.hypot(transform.x + transform.k * node.x - point.x, transform.y + transform.k * node.y - point.y)
+    const gap = distance - transform.k * node.radius
+    if (gap > slop) continue
+    if (!best || gap < best.gap || (gap === best.gap && distance < best.distance)) best = { id: node.id, gap, distance }
+  }
+  return best?.id ?? null
+}
+
+// A quarter of the free area, never less than this: room to keep a selection off the edges.
+const FRAMING_PADDING_SHARE = 0.25
+const FRAMING_PADDING_MIN = 16
+
+/**
+ * The padding (px) kept clear around a framed selection: `max` on a roomy canvas, and a share of
+ * the free area on a short one, where a fixed 60px each side left almost nothing to fit into and
+ * pinned the scale to its minimum (#78).
+ */
+export function framingPadding(areaWidth: number, areaHeight: number, max: number): number {
+  return Math.max(Math.min(max, Math.min(areaWidth, areaHeight) * FRAMING_PADDING_SHARE), FRAMING_PADDING_MIN)
+}
+
 /**
  * The part of a `width` x `height` viewport an overlay (`panel`, in the viewport's own pixels)
  * leaves free, as the inset to frame into (#141): the largest of the strips right of, below, left

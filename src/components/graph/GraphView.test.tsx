@@ -79,6 +79,43 @@ describe('GraphView', () => {
     expect(container.querySelector('.graph-node[aria-pressed="true"]')?.getAttribute('data-node-id')).toBe('nws-api')
   })
 
+  it('has zoom and fit buttons over the canvas on a phone, in place of the toolbar Fit (#78)', () => {
+    mockNarrowLayout(true)
+    render(<GraphView />)
+    expect(screen.getByRole('group', { name: 'Zoom' })).toBeTruthy()
+    for (const name of ['Zoom in', 'Zoom out', 'Fit graph']) expect(screen.getByRole('button', { name })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Fit' })).toBeNull()
+  })
+
+  it('keeps the toolbar Fit and has no zoom buttons on a wide screen', () => {
+    render(<GraphView />)
+    expect(screen.getByRole('button', { name: 'Fit' })).toBeTruthy()
+    expect(screen.queryByRole('group', { name: 'Zoom' })).toBeNull()
+  })
+
+  it('does not throw when the phone Fit button is pressed before the layout has settled (#78)', () => {
+    mockNarrowLayout(true)
+    render(<GraphView />)
+    fireEvent.click(screen.getByRole('button', { name: 'Fit graph' }))
+  })
+
+  it('lists matches by name under the search box on a phone, and selecting one selects the node (#78)', () => {
+    mockNarrowLayout(true)
+    render(<GraphView />)
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search graph' }), { target: { value: 'tsunami' } })
+    const list = screen.getByRole('list', { name: 'Matching services' })
+    const first = list.querySelector('button')!
+    fireEvent.click(first)
+    expect(getSelectionSnapshot().selectedNodeId).not.toBeNull()
+    expect((screen.getByRole('searchbox', { name: 'Search graph' }) as HTMLInputElement).value).toBe('')
+  })
+
+  it('lists no matches on a wide screen, which dims the graph instead', () => {
+    render(<GraphView />)
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search graph' }), { target: { value: 'tsunami' } })
+    expect(screen.queryByRole('list', { name: 'Matching services' })).toBeNull()
+  })
+
   it('colors each node circle by its theme (the root is neutral)', () => {
     const { container } = render(<GraphView />)
     for (const node of expectedGraph.nodes) {

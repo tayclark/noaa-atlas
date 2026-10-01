@@ -10,6 +10,8 @@ import {
   computeLabelledFitTransform,
   computePathFitTransform,
   applyLayoutMode,
+  framingPadding,
+  nearestNodeWithin,
   createGraphSimulation,
   EDGE_CLASS,
   EDGE_TYPE_LABELS,
@@ -426,5 +428,66 @@ describe('panelInset (#141, #78)', () => {
 
   it('treats an overlay that covers everything as absent', () => {
     expect(panelInset({ x0: 0, y0: 0, x1: width, y1: height }, width, height)).toEqual(NO_INSET)
+  })
+})
+
+describe('nearestNodeWithin (#78)', () => {
+  const nodes = [
+    { id: 'a', x: 100, y: 100, radius: 8 },
+    { id: 'b', x: 140, y: 100, radius: 8 },
+    { id: 'far', x: 400, y: 400, radius: 8 },
+  ]
+  const identity = { x: 0, y: 0, k: 1 }
+
+  it('picks the dot a touch lands on', () => {
+    expect(nearestNodeWithin(nodes, { x: 101, y: 99 }, identity, 22)).toBe('a')
+  })
+
+  it('reaches a dot from beside it, within the slop of its edge', () => {
+    // 8px radius, so the edge is 8px from the centre: a touch 24px away is 16px from the edge.
+    expect(nearestNodeWithin(nodes, { x: 76, y: 100 }, identity, 22)).toBe('a')
+    expect(nearestNodeWithin(nodes, { x: 69, y: 100 }, identity, 22)).toBeNull()
+  })
+
+  it('resolves to the nearer of two dots, by the gap to their edges', () => {
+    expect(nearestNodeWithin(nodes, { x: 117, y: 100 }, identity, 22)).toBe('a')
+    expect(nearestNodeWithin(nodes, { x: 123, y: 100 }, identity, 22)).toBe('b')
+  })
+
+  it('prefers a dot that is touched over a smaller one equally far from the centre', () => {
+    const mixed = [
+      { id: 'big', x: 100, y: 100, radius: 20 },
+      { id: 'small', x: 130, y: 100, radius: 3 },
+    ]
+    // 15px from both centres: inside the big dot (5px within its edge), 12px outside the small one.
+    expect(nearestNodeWithin(mixed, { x: 115, y: 100 }, identity, 22)).toBe('big')
+  })
+
+  it('reads positions through the zoom transform, so the reach follows the dot on screen', () => {
+    // At 0.5x the dot is 4px across and sits at (x/2 + 10, y/2 + 20) = (60, 70).
+    const zoomedOut = { x: 10, y: 20, k: 0.5 }
+    expect(nearestNodeWithin(nodes, { x: 60, y: 70 }, zoomedOut, 22)).toBe('a')
+    expect(nearestNodeWithin(nodes, { x: 60, y: 99 }, zoomedOut, 22)).toBeNull()
+  })
+
+  it('finds nothing when there are no nodes, or none close enough', () => {
+    expect(nearestNodeWithin([], { x: 0, y: 0 }, identity, 22)).toBeNull()
+    expect(nearestNodeWithin(nodes, { x: 250, y: 250 }, identity, 22)).toBeNull()
+  })
+})
+
+describe('framingPadding (#78)', () => {
+  it('keeps the full padding on a roomy canvas', () => {
+    expect(framingPadding(640, 334, 60)).toBe(60)
+    expect(framingPadding(390, 313, 60)).toBe(60)
+  })
+
+  it('shrinks with the free area on a short canvas, so there is still room to fit into', () => {
+    expect(framingPadding(390, 160, 60)).toBe(40)
+    expect(framingPadding(422, 109, 60)).toBeCloseTo(27.25)
+  })
+
+  it('never goes below a small floor', () => {
+    expect(framingPadding(100, 20, 60)).toBe(16)
   })
 })
