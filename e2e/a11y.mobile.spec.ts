@@ -69,3 +69,19 @@ test('the detail sheet, open and folded, has no serious violations', async ({ pa
   await expect(page.locator('.detail-sheet-body')).toHaveAttribute('inert', '')
   expect(await seriousViolations(page)).toEqual([])
 })
+
+test('the Graph tab, with the search results and the legend open, has no serious violations', async ({ page }) => {
+  await openApp(page)
+  await page.getByRole('tab', { name: 'Graph' }).tap()
+  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
+  expect(await seriousViolations(page)).toEqual([])
+
+  await page.getByRole('searchbox', { name: 'Search graph' }).fill('tsunami')
+  await expect(page.getByRole('list', { name: 'Matching services' })).toBeVisible()
+  expect(await seriousViolations(page)).toEqual([])
+
+  await page.getByRole('list', { name: 'Matching services' }).getByRole('button').first().tap()
+  await page.getByRole('button', { name: 'Legend' }).tap()
+  await expect(page.getByLabel('Legend', { exact: true })).toBeVisible()
+  expect(await seriousViolations(page)).toEqual([])
+})
