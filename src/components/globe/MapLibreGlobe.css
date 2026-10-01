@@ -265,6 +265,32 @@
   box-shadow: 0 0 0 1px var(--color-accent);
 }
 
+/* The radar's time slider (#74), at the left of the bottom row. */
+.radar-time {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.radar-time input[type='range'] {
+  width: 160px;
+}
+
+.radar-time-play {
+  min-width: 28px;
+  min-height: 28px;
+}
+
+.radar-time-label {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
 /* Narrow globe (#159): the zone-alerts box stacks above the Kp readout, both full width, and the
    selection card keeps clear of the locate-me button. */
 @container globe (max-width: 480px) {
@@ -286,5 +312,11 @@
   .space-weather-readout {
     max-width: none;
     margin-left: 0;
+  }
+
+  .radar-time input[type='range'] {
+    flex: 1;
+    min-width: 0;
+    width: auto;
   }
 }

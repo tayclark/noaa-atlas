@@ -4,6 +4,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { emptyAlertsFixture, mappableAlertsFixture, mockAlerts, zoneOnlyAlertsFixture } from './fixtures/nwsAlerts'
+import { mockRadar } from './fixtures/nowcoast'
 import { mockSwpc } from './fixtures/swpc'
 
 async function openApp(page: Page) {
@@ -120,5 +121,14 @@ test('the expanded zone-only alerts overlay has no serious axe violations (#86)'
   await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
   await page.getByRole('button', { name: 'Expand zone alerts' }).click()
   await expect(page.getByLabel('Alerts without a mapped area').getByRole('listitem')).toHaveCount(5)
+  expect(await seriousViolations(page)).toEqual([])
+})
+
+test('the radar time slider has no serious axe violations (#74)', async ({ page }) => {
+  await mockRadar(page)
+  await openApp(page)
+  await page.locator('.graph-node[data-node-id="nowcoast-map-services"]').focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('slider', { name: 'Radar frame' })).toBeVisible()
   expect(await seriousViolations(page)).toEqual([])
 })
