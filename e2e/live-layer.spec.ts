@@ -69,3 +69,32 @@ test('renders live NWS alerts @live', async ({ page }) => {
   const errorBanner = page.locator('[aria-label="Alerts status"]', { hasText: /error|failed|exceeded|rejected/i })
   await expect(errorBanner).toHaveCount(0)
 })
+
+test('a failed first alerts load is retried, and a failed refresh keeps the alerts (#222)', async ({ page }) => {
+  let calls = 0
+  await page.route(/api\.weather\.gov\/alerts\/active/, (route) => {
+    calls += 1
+    // The first call fails, the retry succeeds, and the refresh after that fails again.
+    if (calls === 1 || calls === 3) return route.fulfill({ status: 503, body: 'down' })
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/geo+json',
+      body: JSON.stringify(zoneOnlyAlertsFixture(2)),
+    })
+  })
+  await page.clock.install()
+  await page.goto('/')
+
+  const status = page.getByLabel('Alerts status')
+  await expect(status).toBeVisible()
+  const overlay = page.getByLabel('Alerts without a mapped area')
+
+  await page.clock.fastForward(31_000)
+  await expect(overlay.getByText('2 alerts without a map area')).toBeVisible()
+  await expect(status).toHaveCount(0)
+
+  await page.clock.fastForward(5 * 60_000 + 1000)
+  await expect.poll(() => calls).toBeGreaterThanOrEqual(3)
+  await expect(overlay.getByText('2 alerts without a map area')).toBeVisible()
+  await expect(status).toHaveCount(0)
+})
