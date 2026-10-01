@@ -396,13 +396,20 @@
 }
 
 /* The wind overlay's slider and legend (#229) reuse the radar control's box. */
-.wind-control .wind-now {
+.wind-control .wind-now,
+.wind-control .wind-layer-button {
   font-size: var(--font-size-sm);
 }
 
-.wind-control .wind-now[aria-pressed='true'] {
+.wind-control .wind-now[aria-pressed='true'],
+.wind-control .wind-layer-button[aria-pressed='true'] {
   border-color: var(--color-accent);
   color: var(--color-accent);
+}
+
+.wind-layer-toggle {
+  display: flex;
+  gap: var(--space-1);
 }
 
 .wind-legend {

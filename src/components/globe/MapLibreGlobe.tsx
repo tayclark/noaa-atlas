@@ -45,9 +45,11 @@ import {
   radarTileUrl,
 } from './nowcoastRadarLayer'
 import { RadarTimeControl } from './RadarTimeControl'
+import { createWaveOverlay, type WaveOverlay } from './waveOverlay'
 import { createWindOverlay, type WindOverlay } from './windOverlay'
+import { useWaveForecast } from './useWaveForecast'
 import { useWindForecast } from './useWindForecast'
-import { WindControl } from './WindControl'
+import { WindControl, type ForecastLayer } from './WindControl'
 import { NOWCOAST_CAPABILITIES_URL, frameForTime, parseRadarFrames } from './radarTimes'
 import { ForecastTimeline } from './ForecastTimeline'
 import { getTimeSnapshot, setTime, subscribeTime } from '../../data/timeStore'
@@ -284,6 +286,7 @@ export function MapLibreGlobe() {
   const radarTime = useMemo(() => frameForTime(radarFrames, sharedTime), [radarFrames, sharedTime])
   const radarUrlRef = useRef(NOWCOAST_RADAR_TILE_URL)
   const windRef = useRef<WindOverlay | null>(null)
+  const waveRef = useRef<WaveOverlay | null>(null)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const view = useMemo(() => describeSelectionForGlobe(selection, globeViewContext), [selection])
   // A tap on the globe selects a point, which replaces the service whose radar or buoys were on
@@ -398,6 +401,7 @@ export function MapLibreGlobe() {
       // The wind overlay (#229) draws over the radar and under the stations and alerts; it stays
       // hidden, and requests nothing, until the GFS node is selected.
       windRef.current = createWindOverlay(map, prefersReducedMotion())
+      waveRef.current = createWaveOverlay(map)
       // Under the alerts, which are added later. Stations are static, so the layer needs no fetch.
       map.addSource(COOPS_SOURCE_ID, { type: 'geojson', data: stationsToGeoJSON(COOPS_STATIONS) })
       map.addLayer({
@@ -765,11 +769,16 @@ export function MapLibreGlobe() {
     [radarFrames],
   )
 
-  // The wind overlay (#229) loads and draws only while the GFS node is selected, and follows the
-  // shared time like the radar.
-  const windShown = liveLayers.includes('wind')
+  // The wind and wave overlays (#229) load and draw only while the GFS node is selected, one at a
+  // time (chosen in the control), and follow the shared time like the radar.
+  const gfsShown = liveLayers.includes('wind')
+  const [forecastLayer, setForecastLayer] = useState<ForecastLayer>('wind')
+  const windShown = gfsShown && forecastLayer === 'wind'
+  const wavesShown = gfsShown && forecastLayer === 'waves'
   const wind = useWindForecast(windShown, sharedTime)
+  const waves = useWaveForecast(wavesShown, sharedTime)
   const windField = wind.status === 'idle' ? null : wind.field
+  const waveField = waves.status === 'idle' ? null : waves.field
   useEffect(() => {
     if (mapLoaded) windRef.current?.setVisible(windShown)
   }, [windShown, mapLoaded])
@@ -779,7 +788,15 @@ export function MapLibreGlobe() {
   useEffect(() => {
     windRef.current?.setPaused(!active)
   }, [active, mapLoaded])
-  const windCycle = wind.status === 'idle' ? null : wind.cycle
+  useEffect(() => {
+    if (mapLoaded) waveRef.current?.setVisible(wavesShown)
+  }, [wavesShown, mapLoaded])
+  useEffect(() => {
+    if (mapLoaded) waveRef.current?.setField(waveField)
+  }, [waveField, mapLoaded])
+  const forecast = forecastLayer === 'wind' ? wind : waves
+  const forecastCycle = forecast.status === 'idle' ? null : forecast.cycle
+  const forecastLabel = forecastLayer === 'wind' ? 'Wind' : 'Wave'
 
   // The DART buoys (#80) are shown only while their node is selected, once the layer exists.
   const dartShown = liveLayers.includes('dart-stations')
@@ -808,6 +825,7 @@ export function MapLibreGlobe() {
         data-ndbc-stations={mapLoaded ? (ndbcShown ? NDBC_STATIONS.length : 0) : undefined}
         data-nowcoast-radar={mapLoaded ? (radarShown ? 'visible' : 'hidden') : undefined}
         data-wind={mapLoaded ? (windShown ? (windField ? 'visible' : 'loading') : 'hidden') : undefined}
+        data-waves={mapLoaded ? (wavesShown ? (waveField ? 'visible' : 'loading') : 'hidden') : undefined}
         data-radar-time={radarShown ? (radarTime ?? 'latest') : undefined}
         data-aurora-cells={auroraCells ?? undefined}
         style={{ width: '100%', height: '100%' }}
@@ -864,18 +882,23 @@ export function MapLibreGlobe() {
         {radarShown && radarFrames.length > 1 && (
           <RadarTimeControl frames={radarFrames} index={radarIndex} onChange={chooseRadarFrame} paused={!active} />
         )}
-        {windShown && windCycle !== null && (
+        {gfsShown && forecastCycle !== null && (
           <WindControl
-            cycle={windCycle}
+            layer={forecastLayer}
+            onLayerChange={setForecastLayer}
+            cycle={forecastCycle}
             time={sharedTime}
             onChange={setTime}
             paused={!active}
-            error={wind.status === 'error' ? wind.message : null}
+            error={forecast.status === 'error' ? forecast.message : null}
           />
         )}
-        {windShown && windCycle === null && wind.status === 'error' && (
-          <div className="zone-only-alerts" role="status" aria-label="Wind status">
-            {wind.message}
+        {gfsShown && forecastCycle === null && forecast.status === 'error' && (
+          <div className="zone-only-alerts" role="status" aria-label={`${forecastLabel} status`}>
+            {forecast.message}
+            <button type="button" className="radar-time-step" onClick={() => setForecastLayer(forecastLayer === 'wind' ? 'waves' : 'wind')}>
+              Show {forecastLayer === 'wind' ? 'waves' : 'wind'} instead
+            </button>
           </div>
         )}
         {alertsStatus === 'error' && (

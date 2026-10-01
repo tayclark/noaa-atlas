@@ -19,7 +19,7 @@ const WEB_MERCATOR_MAX_LAT = 85.0511
 
 export const METERS_PER_DEGREE = 111_320
 
-function sampleField(f: GribField, lat: number, lon: number): number {
+export function sampleField(f: GribField, lat: number, lon: number): number {
   // Row 0 is the first latitude; rows step by `dj` toward the south unless `southToNorth`.
   const rowF = (f.southToNorth ? lat - f.lat1 : f.lat1 - lat) / f.dj
   const colF = (((lon - f.lon1) % 360) + 360) % 360 / f.di

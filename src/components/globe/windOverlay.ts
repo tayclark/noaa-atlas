@@ -47,7 +47,7 @@ export interface WindOverlay {
   setPaused: (paused: boolean) => void
 }
 
-function pushCanvas(map: MapLibreMap, id: string): void {
+export function pushCanvas(map: MapLibreMap, id: string): void {
   // A non-animated canvas source only uploads its texture on load; play() then pause() uploads once.
   const source = map.getSource(id) as CanvasSource | undefined
   source?.play()
