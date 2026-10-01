@@ -6,6 +6,7 @@
 import { useSyncExternalStore } from 'react'
 import graphJson from '../../data/graph.json'
 import { buildGraph } from '../../data/buildGraph'
+import { getCompareSnapshot, subscribeCompare, toggleCompare } from '../../data/compareStore'
 import { summarizeCoverage } from '../../data/coverageSummary'
 import type { ServiceNode } from '../../data/graphSchema'
 import { parseGraphFile } from '../../data/graphSchema'
@@ -54,11 +55,15 @@ export function NodeDetailPanel({ collapsed, onToggleCollapsed }: NodeDetailPane
 }
 
 function NodeDetailBody({ node }: { node: ServiceNode }) {
+  const compared = useSyncExternalStore(subscribeCompare, getCompareSnapshot).includes(node.id)
   return (
     <>
       <span className={`node-detail-live-tag ${node.liveLayer ? 'node-detail-live' : 'node-detail-not-live'}`}>
         {liveStatusLabel(node)}
       </span>
+      <button type="button" className="node-detail-compare" aria-pressed={compared} onClick={() => toggleCompare(node.id)}>
+        {compared ? 'Remove from compare' : 'Add to compare'}
+      </button>
       <dl>
         <div className="node-detail-row">
           <dt>Owner</dt>

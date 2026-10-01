@@ -1,0 +1,43 @@
+.compare-panel {
+  height: 100%;
+  overflow: auto;
+  padding: var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.compare-empty {
+  color: var(--color-text-muted);
+}
+
+.compare-toolbar {
+  margin-bottom: var(--space-2);
+}
+
+.compare-table {
+  border-collapse: collapse;
+  min-width: 100%;
+}
+
+.compare-table th,
+.compare-table td {
+  min-width: 9rem;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.compare-table tbody th {
+  min-width: 5rem;
+  color: var(--color-text-muted);
+  font-weight: normal;
+}
+
+.compare-name {
+  margin-right: var(--space-1);
+}
+
+.compare-chip {
+  display: inline-block;
+  margin-right: var(--space-2);
+}

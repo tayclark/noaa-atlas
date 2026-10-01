@@ -175,3 +175,9 @@
     margin-top: 0;
   }
 }
+
+.finder-compare {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}

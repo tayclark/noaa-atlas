@@ -2,12 +2,14 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { LeftPanel } from './LeftPanel'
+import { addCompare, clearCompare } from '../data/compareStore'
 import { clearRequestLog, pushLogEntry } from '../data/requestLog'
 import { clearSelection, selectNode } from '../data/selectionStore'
 
 beforeEach(() => {
   clearRequestLog()
   clearSelection()
+  clearCompare()
 })
 
 afterEach(cleanup)
@@ -44,6 +46,14 @@ describe('LeftPanel', () => {
     expect(screen.getByRole('tab', { name: /^Inspector\s*1 request$/ })).toBeTruthy()
   })
 
+  it('shows how many services are picked on the Compare tab', () => {
+    addCompare(['nws-api', 'swpc-alerts-scales'])
+    render(<LeftPanel />)
+    expect(screen.getByRole('tab', { name: /^Compare\s*2 selected$/ })).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: /Compare/ }))
+    expect(screen.getAllByRole('columnheader')).toHaveLength(2)
+  })
+
   it('wires tabs to the panel and keeps only the active tab in the Tab order', () => {
     render(<LeftPanel />)
     const explore = screen.getByRole('tab', { name: 'Explore' })
@@ -58,6 +68,9 @@ describe('LeftPanel', () => {
     render(<LeftPanel />)
     const explore = screen.getByRole('tab', { name: 'Explore' })
     fireEvent.keyDown(explore, { key: 'ArrowRight' })
+    const compare = screen.getByRole('tab', { name: 'Compare', selected: true })
+    expect(document.activeElement).toBe(compare)
+    fireEvent.keyDown(compare, { key: 'ArrowRight' })
     const inspector = screen.getByRole('tab', { name: 'Inspector', selected: true })
     expect(document.activeElement).toBe(inspector)
     fireEvent.keyDown(inspector, { key: 'ArrowRight' })
@@ -78,7 +91,7 @@ describe('LeftPanel', () => {
 
     it('adds a Globe tab and keeps the globe mounted while another tab shows', () => {
       render(<LeftPanel globe={globe} />)
-      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Explore', 'Globe', 'Inspector'])
+      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Explore', 'Globe', 'Compare', 'Inspector'])
       const wrapper = screen.getByTestId('globe').parentElement!
       expect(wrapper.hidden).toBe(true)
 

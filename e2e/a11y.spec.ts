@@ -46,8 +46,20 @@ test('the tabs move with the arrow keys', async ({ page }) => {
   await openApp(page)
   await page.getByRole('tab', { name: 'Explore' }).focus()
   await page.keyboard.press('ArrowRight')
-  await expect(page.getByRole('tab', { name: 'Inspector' })).toBeFocused()
-  await expect(page.getByRole('tab', { name: 'Inspector' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tab', { name: 'Compare' })).toBeFocused()
+  await expect(page.getByRole('tab', { name: 'Compare' })).toHaveAttribute('aria-selected', 'true')
+})
+
+test('the Compare tab has no serious axe violations, empty or filled', async ({ page }) => {
+  await openApp(page)
+  await page.getByRole('tab', { name: 'Compare' }).click()
+  expect(await seriousViolations(page)).toEqual([])
+  await page.getByRole('tab', { name: 'Explore' }).click()
+  await page.getByRole('button', { name: 'See severe thunderstorm or tornado risk' }).click()
+  await page.getByRole('button', { name: 'Compare these' }).click()
+  await page.getByRole('tab', { name: /Compare/ }).click()
+  await expect(page.getByRole('columnheader')).toHaveCount(2)
+  expect(await seriousViolations(page)).toEqual([])
 })
 
 test('with reduced motion the graph is laid out before the first frame settles', async ({ page }) => {
