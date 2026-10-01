@@ -1303,7 +1303,8 @@
       "summary": "Observed and predicted water levels, tides, currents and meteorological readings from US coastal and Great Lakes stations, as JSON, XML or CSV.",
       "owner": {
         "office": "NOS",
-        "program": "CO-OPS (Tides & Currents)"
+        "program": "CO-OPS (Tides & Currents)",
+        "programGroup": "CO-OPS"
       },
       "theme": "ocean",
       "baseUrl": "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter",
@@ -1642,7 +1643,8 @@
       "summary": "Station metadata for CO-OPS water level, tide prediction and current stations: details, sensors, datums, flood levels, harmonic constituents and nearby stations.",
       "owner": {
         "office": "NOS",
-        "program": "CO-OPS (Tides & Currents)"
+        "program": "CO-OPS (Tides & Currents)",
+        "programGroup": "CO-OPS"
       },
       "theme": "ocean",
       "baseUrl": "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/",
@@ -1975,7 +1977,8 @@
       "summary": "Analysis products built from CO-OPS water level records: sea level trends, high tide flooding, extreme water levels and monthly mean sea level.",
       "owner": {
         "office": "NOS",
-        "program": "CO-OPS (Tides & Currents)"
+        "program": "CO-OPS (Tides & Currents)",
+        "programGroup": "CO-OPS"
       },
       "theme": "ocean",
       "baseUrl": "https://api.tidesandcurrents.noaa.gov/dpapi/prod/webapi/",
@@ -2309,7 +2312,8 @@
       "summary": "Latest 45 days of buoy and C-MAN station observations (winds, waves, pressure, air and sea temperature) as plain-text files per station.",
       "owner": {
         "office": "NWS",
-        "program": "National Data Buoy Center (NDBC)"
+        "program": "National Data Buoy Center (NDBC)",
+        "programGroup": "NDBC"
       },
       "theme": "ocean",
       "baseUrl": "https://www.ndbc.noaa.gov/data/realtime2/",
@@ -2362,7 +2366,8 @@
       "summary": "Deep-ocean bottom-pressure water column heights from NOAA's DART tsunami detection stations, as per-station real-time text files.",
       "owner": {
         "office": "NWS",
-        "program": "NDBC DART® (National Tsunami Hazard Mitigation Program)"
+        "program": "NDBC DART® (National Tsunami Hazard Mitigation Program)",
+        "programGroup": "NDBC"
       },
       "theme": "ocean",
       "baseUrl": "https://www.ndbc.noaa.gov/data/realtime2/",
@@ -2689,7 +2694,8 @@
       "summary": "Token-gated REST API over NCEI's Climate Data Online holdings: browse datasets, data categories, data types, locations and stations, then pull daily, monthly and annual climate observations such as GHCN-Daily and Global Summary of the Month.",
       "owner": {
         "office": "NESDIS",
-        "program": "NCEI (Climate Data Online)"
+        "program": "NCEI (Climate Data Online)",
+        "programGroup": "NCEI"
       },
       "theme": "climate",
       "baseUrl": "https://www.ncei.noaa.gov/cdo-web/api/v2/",
@@ -2747,7 +2753,8 @@
       "summary": "Tokenless REST API that subsets NCEI datasets by station, date range, data type and bounding box. Includes GHCN-Daily (dataset daily-summaries, 100,000+ stations in 180 countries) and monthly summaries, as JSON, CSV or NetCDF.",
       "owner": {
         "office": "NESDIS",
-        "program": "NCEI (Access Data Service)"
+        "program": "NCEI (Access Data Service)",
+        "programGroup": "NCEI"
       },
       "theme": "climate",
       "baseUrl": "https://www.ncei.noaa.gov/access/services/data/v1",
@@ -2799,7 +2806,8 @@
       "summary": "Bulk gzipped CSV files of US storm and weather events since 1950 (details, locations and fatalities tables), one file per year. Files are downloads, not a query API.",
       "owner": {
         "office": "NESDIS",
-        "program": "NCEI (Storm Events Database)"
+        "program": "NCEI (Storm Events Database)",
+        "programGroup": "NCEI"
       },
       "theme": "climate",
       "baseUrl": "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/",
@@ -3756,7 +3764,8 @@
       "summary": "Full GOES-East and GOES-West ABI imagery and derived products (cloud and moisture imagery, sea surface temperature, fire and lightning) as NetCDF files in public S3 buckets, organised by product, year, day-of-year and hour. Files are downloads listed through the S3 API, not a query API.",
       "owner": {
         "office": "NESDIS",
-        "program": "GOES-R Series (NOAA Open Data Dissemination)"
+        "program": "GOES-R Series (NOAA Open Data Dissemination)",
+        "programGroup": "GOES"
       },
       "theme": "satellite",
       "baseUrl": "https://noaa-goes19.s3.amazonaws.com/",
@@ -4020,7 +4029,8 @@
       "summary": "Pre-rendered GOES-East and GOES-West JPEG imagery (GeoColor, infrared, water vapor and other bands) for the CONUS, full disk and regional sectors, at several resolutions, from a plain directory-listing CDN. Includes a stable latest image per sector and band.",
       "owner": {
         "office": "NESDIS",
-        "program": "Center for Satellite Applications and Research (STAR), GOES Image Viewer"
+        "program": "Center for Satellite Applications and Research (STAR), GOES Image Viewer",
+        "programGroup": "GOES"
       },
       "theme": "satellite",
       "baseUrl": "https://cdn.star.nesdis.noaa.gov/",
@@ -4597,7 +4607,8 @@
       "summary": "Multi-Radar Multi-Sensor (MRMS) gridded products for the contiguous US, Alaska, Hawaii, the Caribbean and Guam, blending radar, satellite, lightning and model data (radar mosaics, precipitation rate and accumulations, echo tops, hail size), as GRIB2 files in a public S3 bucket, one prefix per product.",
       "owner": {
         "office": "NWS",
-        "program": "NCEP Central Operations / NSSL, Multi-Radar Multi-Sensor (MRMS)"
+        "program": "NCEP Central Operations / NSSL, Multi-Radar Multi-Sensor (MRMS)",
+        "programGroup": "NCEP"
       },
       "theme": "satellite",
       "baseUrl": "https://noaa-mrms-pds.s3.amazonaws.com/",
@@ -5022,7 +5033,8 @@
       "summary": "NOAA Operational Model Archive and Distribution System: NCEP model output (GFS, GDAS, GEFS and others) as GRIB2 files, with a GRIB filter that returns only the chosen variables, levels and sub-region. The OpenDAP service has been retired.",
       "owner": {
         "office": "NWS",
-        "program": "NCEP Central Operations, NOMADS"
+        "program": "NCEP Central Operations, NOMADS",
+        "programGroup": "NCEP"
       },
       "theme": "models",
       "baseUrl": "https://nomads.ncep.noaa.gov/",
@@ -5074,7 +5086,8 @@
       "summary": "Global Forecast System output from NCEP as GRIB2 files in a public S3 bucket, one prefix per date and cycle (gfs.YYYYMMDD/HH/), with the GDAS analysis and ensemble Kalman filter (enkfgdas) products alongside.",
       "owner": {
         "office": "NWS",
-        "program": "NCEP Environmental Modeling Center, Global Forecast System (GFS)"
+        "program": "NCEP Environmental Modeling Center, Global Forecast System (GFS)",
+        "programGroup": "NCEP"
       },
       "theme": "models",
       "baseUrl": "https://noaa-gfs-bdp-pds.s3.amazonaws.com/",
@@ -5126,7 +5139,8 @@
       "summary": "High-Resolution Rapid Refresh 3 km forecasts for the contiguous US as GRIB2 files in a public S3 bucket (hrrr.YYYYMMDD/conus/hrrr.tHHz.wrfsfcfNN.grib2), each with a .idx sidecar for byte-range reads of single variables.",
       "owner": {
         "office": "NWS",
-        "program": "NCEP Environmental Modeling Center, High-Resolution Rapid Refresh (HRRR)"
+        "program": "NCEP Environmental Modeling Center, High-Resolution Rapid Refresh (HRRR)",
+        "programGroup": "NCEP"
       },
       "theme": "models",
       "baseUrl": "https://noaa-hrrr-bdp-pds.s3.amazonaws.com/",
@@ -5414,7 +5428,8 @@
       "summary": "Global Ensemble Forecast System output from NCEP as GRIB2 files in a public S3 bucket, one prefix per date and cycle (gefs.YYYYMMDD/HH/) with atmos, chem and wave sub-folders.",
       "owner": {
         "office": "NWS",
-        "program": "NCEP Environmental Modeling Center, Global Ensemble Forecast System (GEFS)"
+        "program": "NCEP Environmental Modeling Center, Global Ensemble Forecast System (GEFS)",
+        "programGroup": "NCEP"
       },
       "theme": "models",
       "baseUrl": "https://noaa-gefs-pds.s3.amazonaws.com/",
@@ -6450,7 +6465,8 @@
       "summary": "NOAA's OGC web map services (WMS and WMTS on a GeoServer) serving near-real-time and forecast map layers: radar, NDFD forecast grids, watches and warnings, observations and marine guidance, for the US and territories.",
       "owner": {
         "office": "NOS",
-        "program": "nowCOAST (Office of Coast Survey)"
+        "program": "nowCOAST (Office of Coast Survey)",
+        "programGroup": "Office of Coast Survey"
       },
       "theme": "geospatial",
       "baseUrl": "https://nowcoast.noaa.gov/geoserver/ows",
@@ -7084,7 +7100,8 @@
       "summary": "Office of Coast Survey ArcGIS REST server for nautical chart products, with OGC WMTS and WMS endpoints for NOAA raster charts and ENC display, plus folders for maritime boundaries, navigation services, hydrographic services and precision navigation.",
       "owner": {
         "office": "NOS",
-        "program": "Office of Coast Survey"
+        "program": "Office of Coast Survey",
+        "programGroup": "Office of Coast Survey"
       },
       "theme": "geospatial",
       "baseUrl": "https://gis.charttools.noaa.gov/arcgis/rest/services",
@@ -7423,7 +7440,8 @@
       "summary": "NCEI geomagnetic calculator web service returning magnetic declination and related field values for a latitude and longitude, computed from the World Magnetic Model.",
       "owner": {
         "office": "NESDIS",
-        "program": "NCEI Geomagnetism"
+        "program": "NCEI Geomagnetism",
+        "programGroup": "NCEI"
       },
       "theme": "geospatial",
       "baseUrl": "https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination",
@@ -7791,7 +7809,8 @@
       "summary": "JSON search API behind data.noaa.gov/onestop, NCEI's dataset discovery system. POST a JSON body (e.g. a queryText query with page max/offset) to /search/collection; each hit is a collection with title, date range and download or service links (FTP, THREDDS and others). It finds datasets and points to where to get them; it does not serve the data itself.",
       "owner": {
         "office": "NESDIS",
-        "program": "NCEI OneStop"
+        "program": "NCEI OneStop",
+        "programGroup": "NCEI"
       },
       "theme": "catalogs",
       "baseUrl": "https://data.noaa.gov/onestop/api/search/",
@@ -7895,7 +7914,8 @@
       "summary": "Current and forecast NOAA space weather scale levels (R radio blackouts, S solar radiation storms, G geomagnetic storms), the issued alerts, watches and warnings, and the 3-day forecast text, as JSON and plain-text files.",
       "owner": {
         "office": "NWS",
-        "program": "Space Weather Prediction Center (SWPC)"
+        "program": "Space Weather Prediction Center (SWPC)",
+        "programGroup": "SWPC"
       },
       "theme": "space-weather",
       "baseUrl": "https://services.swpc.noaa.gov/products/",
@@ -7952,7 +7972,8 @@
       "summary": "The estimated 3-hour planetary Kp index observed over the past week and forecast for the next three days, plus the Boulder K index and Kyoto Dst, as JSON. Kp is derived from a network of ground-based magnetometers and maps directly onto the NOAA G scale.",
       "owner": {
         "office": "NWS",
-        "program": "Space Weather Prediction Center (SWPC)"
+        "program": "Space Weather Prediction Center (SWPC)",
+        "programGroup": "SWPC"
       },
       "theme": "space-weather",
       "baseUrl": "https://services.swpc.noaa.gov/products/",
@@ -8007,7 +8028,8 @@
       "summary": "A 30 to 90 minute forecast of aurora location and intensity from the OVATION model, as a global 1-degree grid of [longitude, latitude, aurora] values in one JSON file.",
       "owner": {
         "office": "NWS",
-        "program": "Space Weather Prediction Center (SWPC)"
+        "program": "Space Weather Prediction Center (SWPC)",
+        "programGroup": "SWPC"
       },
       "theme": "space-weather",
       "baseUrl": "https://services.swpc.noaa.gov/json/ovation_aurora_latest.json",
@@ -8061,7 +8083,8 @@
       "summary": "One-minute solar wind plasma (speed, density, temperature) and interplanetary magnetic field (Bt, Bx/By/Bz in GSE and GSM) from whichever spacecraft at the L1 point is active, as JSON.",
       "owner": {
         "office": "NWS",
-        "program": "Space Weather Prediction Center (SWPC)"
+        "program": "Space Weather Prediction Center (SWPC)",
+        "programGroup": "SWPC"
       },
       "theme": "space-weather",
       "baseUrl": "https://services.swpc.noaa.gov/json/rtsw/",
@@ -8117,7 +8140,8 @@
       "summary": "Real-time GOES X-ray flux and flare events, proton and electron flux, magnetometer and EUV data from the primary and secondary GOES satellites, as JSON files covering the past 6 hours to 7 days.",
       "owner": {
         "office": "NWS",
-        "program": "Space Weather Prediction Center (SWPC)"
+        "program": "Space Weather Prediction Center (SWPC)",
+        "programGroup": "SWPC"
       },
       "theme": "space-weather",
       "baseUrl": "https://services.swpc.noaa.gov/json/goes/",
@@ -8173,7 +8197,8 @@
       "summary": "The long-term archive of GOES-R space weather instrument data (EXIS X-ray and EUV, SEISS particles, MAG magnetometer, SUVI solar imagery) as daily Level 2 NetCDF files in a browsable HTTPS directory tree, by satellite, product, year and month.",
       "owner": {
         "office": "NESDIS",
-        "program": "National Centers for Environmental Information (NCEI)"
+        "program": "National Centers for Environmental Information (NCEI)",
+        "programGroup": "NCEI"
       },
       "theme": "space-weather",
       "baseUrl": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/",
