@@ -7,6 +7,9 @@
 import { expect, test } from '@playwright/test'
 import { mappableAlertsFixture, mockAlerts, zoneOnlyAlertsFixture } from './fixtures/nwsAlerts'
 
+// These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
+test.use({ reducedMotion: 'reduce' })
+
 const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
 
 test('renders the NWS alerts layer from a mocked response', async ({ page }) => {

@@ -4,6 +4,9 @@ import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 
+// These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
+test.use({ reducedMotion: 'reduce' })
+
 test('logs the alerts request collapsed, and expands and folds it on demand', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await mockSwpc(page)

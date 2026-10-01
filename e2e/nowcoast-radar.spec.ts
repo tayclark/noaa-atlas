@@ -6,6 +6,9 @@ import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockRadar, RADAR_FRAMES, RADAR_TILES } from './fixtures/nowcoast'
 import { mockSwpc } from './fixtures/swpc'
 
+// These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
+test.use({ reducedMotion: 'reduce' })
+
 const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
 const NODE = 'nowcoast-map-services'
 

@@ -7,6 +7,9 @@ import { parseTasksFile } from '../src/data/taskSchema'
 import tasksJson from '../src/data/tasks.json' with { type: 'json' }
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 
+// These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
+test.use({ reducedMotion: 'reduce' })
+
 test('picking a task highlights its whole path in the graph, with connectors', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await page.goto('/')

@@ -4,6 +4,9 @@ import { expect, test, type Page } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
 
+// These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
+test.use({ reducedMotion: 'reduce' })
+
 async function selectByKeyboard(page: Page, nodeId: string) {
   await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
   await page.keyboard.press('Enter')
