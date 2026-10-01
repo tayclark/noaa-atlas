@@ -26,7 +26,7 @@ function App() {
         )}
       </header>
       <main className="app-main" id="main" tabIndex={-1}>
-        {compact ? <LeftPanel globe={<MapLibreGlobe />} /> : <SplitPane left={<LeftPanel />} right={<MapLibreGlobe />} />}
+        {compact ? <LeftPanel globe={<MapLibreGlobe />} onAbout={() => setAboutOpen(true)} /> : <SplitPane left={<LeftPanel />} right={<MapLibreGlobe />} />}
       </main>
       <footer className="app-footer">
         {compact ? (

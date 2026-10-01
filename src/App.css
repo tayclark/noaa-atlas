@@ -102,3 +102,23 @@
   padding-top: 0;
   padding-bottom: 0;
 }
+
+/* A phone held on its side (#78): the header and the footer would take a quarter of its height, so
+   both give way. The title stays for assistive technology, and About is on the tab rail, where the
+   full disclaimer is. */
+@media (orientation: landscape) {
+  .app[data-layout='compact'] .app-header {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    clip-path: inset(50%);
+  }
+
+  .app[data-layout='compact'] .app-about-button,
+  .app[data-layout='compact'] .app-footer {
+    display: none;
+  }
+}

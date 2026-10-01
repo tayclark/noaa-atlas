@@ -22,6 +22,7 @@ import { GraphView } from './graph/GraphView'
 import { findGraphNode } from './graph/graphNodes'
 import { InspectorPanel } from './inspector/InspectorPanel'
 import { SplitPane } from './SplitPane'
+import { useMediaQuery } from './useMediaQuery'
 import { useNarrowLayout } from './useNarrowLayout'
 import './LeftPanel.css'
 
@@ -85,10 +86,15 @@ function TabIcon({ view }: { view: ViewId }) {
 interface LeftPanelProps {
   /** The globe, when it lives in a tab here rather than beside this panel (compact layout, #78). */
   globe?: ReactNode
+  /** Opens the About dialog. A phone on its side has no header or footer, so the tab rail carries it. */
+  onAbout?: () => void
 }
 
-export function LeftPanel({ globe }: LeftPanelProps) {
+export function LeftPanel({ globe, onAbout }: LeftPanelProps) {
   const compact = useNarrowLayout()
+  // A phone held on its side: the tabs become a rail down the left, and the detail a panel on the right.
+  const landscape = useMediaQuery('(orientation: landscape)')
+  const sideways = compact && landscape
   const requested = useSyncExternalStore(subscribeView, getViewSnapshot)
   const tabs = tabsFor(compact, Boolean(globe))
   const resolved = resolveView(requested, compact)
@@ -197,6 +203,11 @@ export function LeftPanel({ globe }: LeftPanelProps) {
           </button>
         ))}
       </div>
+      {onAbout && (
+        <button type="button" className="left-panel-about" aria-label="About this app" onClick={onAbout}>
+          <span aria-hidden="true">ⓘ</span>
+        </button>
+      )}
       <div className="left-panel-panels">
         {tabs.map((view) => (
           <div
@@ -211,7 +222,7 @@ export function LeftPanel({ globe }: LeftPanelProps) {
           </div>
         ))}
         {/* A step picked in the finder asked for the detail, so the sheet opens; a graph tap only peeks. */}
-        {sheetView && <DetailSheet view={sheetView} startOpen={sheetView === 'tasks'} />}
+        {sheetView && <DetailSheet view={sheetView} startOpen={sheetView === 'tasks'} side={sideways} />}
       </div>
     </div>
   )
