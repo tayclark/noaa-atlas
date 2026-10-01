@@ -73,10 +73,11 @@ const orgHierarchy = buildOrgHierarchy(graphFile)
 const accessHierarchy = buildAccessHierarchy(graphFile)
 const drawnNodes: LayoutNode[] = [...graph.nodes, ...orgHierarchy.nodes, ...accessHierarchy.nodes]
 const drawnEdges = [...graph.edges, ...orgHierarchy.edges, ...accessHierarchy.edges]
-const LAYOUT_MODES: { mode: LayoutMode; label: string; title: string }[] = [
-  { mode: 'theme', label: 'Theme view', title: 'Group services by theme' },
-  { mode: 'org', label: 'Org view', title: 'Group services by the NOAA office and program that runs them' },
-  { mode: 'access', label: 'Access view', title: 'Group services by how the data is reached: REST, OGC, ArcGIS, cloud bucket or file download' },
+// `short` is the visible text on a phone, where the toolbar is one row; the accessible name stays `label`.
+const LAYOUT_MODES: { mode: LayoutMode; label: string; short: string; title: string }[] = [
+  { mode: 'theme', label: 'Theme view', short: 'Theme', title: 'Group services by theme' },
+  { mode: 'org', label: 'Org view', short: 'Org', title: 'Group services by the NOAA office and program that runs them' },
+  { mode: 'access', label: 'Access view', short: 'Access', title: 'Group services by how the data is reached: REST, OGC, ArcGIS, cloud bucket or file download' },
 ]
 // Connectedness breaks label ties between nodes of one size (every service is the same radius).
 const nodeDegree = new Map<string, number>()
@@ -650,10 +651,11 @@ export function GraphView() {
               type="button"
               className="graph-toolbar-button"
               aria-pressed={mode === option.mode}
+              aria-label={option.label}
               title={option.title}
               onClick={() => setMode(option.mode)}
             >
-              {option.label}
+              {narrow ? option.short : option.label}
             </button>
           ))}
         </div>
