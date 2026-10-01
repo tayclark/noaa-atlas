@@ -30,7 +30,7 @@ import {
   selectNode,
   subscribeSelection,
 } from '../../data/selectionStore'
-import { getSheetHeight, subscribeSheetHeight } from '../../data/sheetStore'
+import { getSheetBox, subscribeSheetBox, type SheetBox } from '../../data/sheetStore'
 import { nodeColor } from '../../data/themeColors'
 import { prefersReducedMotion } from '../prefersReducedMotion'
 import {
@@ -117,13 +117,17 @@ function positionPathEdges(root: Element | null, positions: Map<string, { x: num
 
 /**
  * What covers part of the canvas, in the SVG's screen space, or null when nothing does: the node
- * detail card on a wide screen, or the bottom sheet on a phone (#78), whose height comes from
- * sheetStore because the sheet is a sibling of the whole view, not of the canvas.
+ * detail card on a wide screen, or the sheet on a phone (#78), along the bottom or down the right,
+ * whose place comes from sheetStore because the sheet is a sibling of the whole view, not of the
+ * canvas.
  */
-function detailPanelBox(svgEl: SVGSVGElement, sheetHeight: number): Box | null {
-  if (sheetHeight > 0) {
+function detailPanelBox(svgEl: SVGSVGElement, sheet: SheetBox | null): Box | null {
+  if (sheet) {
     const { clientWidth: width, clientHeight: height } = svgEl
-    return width > 0 && height > 0 ? { x0: 0, y0: Math.max(0, height - sheetHeight), x1: width, y1: height } : null
+    if (width <= 0 || height <= 0) return null
+    return sheet.edge === 'right'
+      ? { x0: Math.max(0, width - sheet.size), y0: 0, x1: width, y1: height }
+      : { x0: 0, y0: Math.max(0, height - sheet.size), x1: width, y1: height }
   }
   const panelRect = svgEl.parentElement?.querySelector('.node-detail-panel')?.getBoundingClientRect()
   if (!panelRect || panelRect.width === 0 || panelRect.height === 0) return null
@@ -167,10 +171,10 @@ export function GraphView() {
   // A phone has no floating card: its detail is a bottom sheet, which publishes its height (#78).
   const narrow = useNarrowLayout()
   const [panelCollapsed, setPanelCollapsed] = useState(false)
-  const sheetHeight = useSyncExternalStore(subscribeSheetHeight, getSheetHeight)
+  const sheet = useSyncExternalStore(subscribeSheetBox, getSheetBox)
   // Read by placeLabelsRef, which runs outside React renders (zoom, ticks), so it's a ref. It is
   // kept up to date by the first effect below, which runs ahead of the ones that place labels.
-  const sheetHeightRef = useRef(sheetHeight)
+  const sheetRef = useRef(sheet)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const highlightedIds = getHighlightedNodeIds()
   const highlightKey = highlightedIds.join('|')
@@ -194,8 +198,8 @@ export function GraphView() {
   }, [matchedIds])
 
   useEffect(() => {
-    sheetHeightRef.current = sheetHeight
-  }, [sheetHeight])
+    sheetRef.current = sheet
+  }, [sheet])
 
   // Taps by touch or pen (#78). Dots are too small and too close for a finger to land on, and the
   // browser's own click after a tap is withheld when the finger drifts a pixel, so a tap is read
@@ -326,7 +330,7 @@ export function GraphView() {
           overNodes: priority >= 3,
         })
       })
-      const panel = detailPanelBox(svgEl, sheetHeightRef.current)
+      const panel = detailPanelBox(svgEl, sheetRef.current)
       const obstacles = panel ? [panel] : []
       const bounds = { width: svgEl.clientWidth || initialSizeRef.current.width, height: svgEl.clientHeight || initialSizeRef.current.height }
       const sides = placeLabels(items, bounds, obstacles)
@@ -507,7 +511,7 @@ export function GraphView() {
       if (!svgEl || !zoomBehavior) return false
       // Frames into the part of the canvas the detail panel doesn't cover, so the selection's
       // neighbours (and their labels) aren't hidden under it (#141).
-      const fit = fitInto(panelInset(detailPanelBox(svgEl, sheetHeight), size.width, size.height))
+      const fit = fitInto(panelInset(detailPanelBox(svgEl, sheet), size.width, size.height))
       if (!fit) return false
       // d3-transition isn't a dependency here, so the pan/zoom is applied immediately rather
       // than animated (unlike MapLibre's flyTo in the reverse direction, #44).
@@ -560,8 +564,8 @@ export function GraphView() {
     placeLabelsRef.current()
     // Keyed on the joined ids, not the array: highlightedIds is a fresh array every render, so
     // depending on it would reset the user's pan/zoom on each keystroke in the search box.
-    // panelCollapsed and the sheet's height change the area the selection is framed into.
-  }, [selection, size, highlightKey, panelCollapsed, sheetHeight])
+    // panelCollapsed and the sheet's size change the area the selection is framed into.
+  }, [selection, size, highlightKey, panelCollapsed, sheet])
 
   // Label priority (#138): what the user asked for wins space first (the selection, task path or
   // globe point, then search matches), then theme hubs, then a single selected node's

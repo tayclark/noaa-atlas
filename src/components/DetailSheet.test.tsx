@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DetailSheet } from './DetailSheet'
 import { clearCompare, getCompareSnapshot } from '../data/compareStore'
 import { clearSelection, getSelectionSnapshot, selectNode } from '../data/selectionStore'
-import { getSheetHeight, setSheetHeight } from '../data/sheetStore'
+import { getSheetBox, setSheetBox } from '../data/sheetStore'
 import { getViewSnapshot, resetView } from '../data/viewStore'
 
 // The area the sheet sits in is 700px tall and its header 124px, so it peeks at 124 and opens to 644.
@@ -17,12 +17,13 @@ beforeEach(() => {
   resetView()
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(AREA)
   vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(HEADER)
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(360)
 })
 
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
-  setSheetHeight(0)
+  setSheetBox(null)
 })
 
 const sheet = (props: Partial<Parameters<typeof DetailSheet>[0]> = {}) => <DetailSheet view="graph" startOpen={false} {...props} />
@@ -60,24 +61,24 @@ describe('DetailSheet', () => {
     const grabber = screen.getByRole('button', { name: 'Expand details' })
     expect(grabber.getAttribute('aria-expanded')).toBe('false')
     expect(body().hasAttribute('inert')).toBe(true)
-    expect(getSheetHeight()).toBe(HEADER)
+    expect(getSheetBox()?.size).toBe(HEADER)
     expect(root().style.height).toBe(`${HEADER}px`)
 
     fireEvent.click(grabber)
     expect(screen.getByRole('button', { name: 'Collapse details' }).getAttribute('aria-expanded')).toBe('true')
     expect(body().hasAttribute('inert')).toBe(false)
-    expect(getSheetHeight()).toBe(AREA - 56)
+    expect(getSheetBox()?.size).toBe(AREA - 56)
     expect(root().style.height).toBe(`${AREA - 56}px`)
 
     fireEvent.click(screen.getByRole('button', { name: 'Collapse details' }))
-    expect(getSheetHeight()).toBe(HEADER)
+    expect(getSheetBox()?.size).toBe(HEADER)
   })
 
   it('starts open when asked to, as a finder step does', () => {
     selectNode('nws-api')
     render(sheet({ startOpen: true }))
     expect(screen.getByRole('button', { name: 'Collapse details' })).toBeTruthy()
-    expect(getSheetHeight()).toBe(AREA - 56)
+    expect(getSheetBox()?.size).toBe(AREA - 56)
   })
 
   it('folds again when it moves to another view', () => {
@@ -100,9 +101,9 @@ describe('DetailSheet', () => {
   it('releases its height when it goes away', () => {
     selectNode('nws-api')
     const { unmount } = render(sheet())
-    expect(getSheetHeight()).toBe(HEADER)
+    expect(getSheetBox()?.size).toBe(HEADER)
     unmount()
-    expect(getSheetHeight()).toBe(0)
+    expect(getSheetBox()).toBeNull()
   })
 
   it('dismisses, clearing the selection, from the close button and from Escape', () => {
@@ -143,6 +144,36 @@ describe('DetailSheet', () => {
     expect(screen.queryByRole('button', { name: 'Compare' })).toBeNull()
     expect(document.querySelector('.detail-sheet-heading .node-detail-live-tag')).toBeNull()
     expect(screen.getByRole('button', { name: 'Show on globe' })).toBeTruthy()
+  })
+
+  describe('down the side of a phone held on its side', () => {
+    it('is always open, with no grabber to fold it by, and reports its width from the right', () => {
+      selectNode('nws-api')
+      const { container } = render(sheet({ side: true }))
+      expect(container.querySelector('.detail-sheet-side')).not.toBeNull()
+      expect(screen.queryByRole('button', { name: /Expand details|Collapse details/ })).toBeNull()
+      expect(body().hasAttribute('inert')).toBe(false)
+      expect(root().style.height).toBe('')
+      expect(getSheetBox()?.edge).toBe('right')
+    })
+
+    it('keeps its close button, Compare and Show on globe', () => {
+      selectNode('nws-api')
+      render(sheet({ side: true }))
+      expect(screen.getByRole('button', { name: 'Close details' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Compare' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Show on globe' })).toBeTruthy()
+    })
+
+    it('is not dragged by its header', () => {
+      selectNode('nws-api')
+      render(sheet({ side: true }))
+      fireEvent.pointerDown(header(), { clientY: 700 })
+      fireEvent.pointerMove(header(), { clientY: 200 })
+      expect(root().className).not.toContain('detail-sheet-dragging')
+      fireEvent.pointerUp(header(), { clientY: 200 })
+      expect(getSheetBox()?.edge).toBe('right')
+    })
   })
 
   describe('dragging the header', () => {
