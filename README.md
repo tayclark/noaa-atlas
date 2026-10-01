@@ -23,7 +23,7 @@ The window is split into two resizable panes: the left pane has three tabs, **Ex
 
 A slim footer under both panes carries the NOAA disclaimer (not an official NOAA product, not endorsed by NOAA, not for life-safety decisions), a link to the data terms below, and the maker's credit.
 
-On a phone (700px wide or less) the panes aren't split: the globe becomes another tab, **Explore · Globe · Compare · Inspector**, at full width. It stays loaded while you use the other tabs, and the Globe tab shows a dot when a selection made elsewhere has changed what it shows. On a narrow globe the alerts box and the Kp readout stack at the bottom, and the map credits start folded behind the ⓘ button. The graph's detail panel starts collapsed to its title bar, so a selection doesn't cover the graph, and the finder gets a larger share of the height.
+On a phone (700px wide or less, or a touch screen on its side) the panes aren't split. The views are bottom tabs at full size, **Tasks · Graph · Globe · Compare · Inspector**, so the finder and the graph each get the whole screen. Tasks, Graph and Globe load the first time you open them and then stay loaded, so switching tabs keeps the graph's pan and zoom, the picked task and the map, and a phone that never opens the Globe never fetches its data. Graph and Globe show a dot when a selection made elsewhere has changed what they show. The footer shrinks to one line, with the full disclaimer, the data terms and the credit behind **About** (or the ⓘ in the header). On a narrow globe the alerts box and the Kp readout stack at the bottom, and the map credits start folded behind the ⓘ button. The graph's detail panel starts collapsed to its title bar, so a selection doesn't cover the graph. On a touch screen buttons and fields are at least 44px tall and the search field is 16px, so iOS doesn't zoom into it.
 
 ## Explore tab
 
@@ -168,7 +168,8 @@ The app does not modify NOAA data and does not use NOAA or NWS logos. Its footer
 
 - **Keyboard**: a skip link is the first Tab stop, and every control shows a focus ring. The view tabs move with the arrow keys, Home and End. Graph nodes are focusable and open with Enter or Space, and the pane dividers resize with the arrow keys. With the graph itself focused (Tab past the toolbar), the arrow keys pan and + / - zoom. Screen readers hear the selected node (`aria-pressed`) and a polite announcement when the selection changes, wherever it was made. Not covered: exploring the globe itself, whose content is reachable through the graph and detail panel.
 - **Reduced motion**: with the OS "reduce motion" setting on, the globe jumps to its target instead of flying, the graph is laid out in one step instead of animating, and the geolocate pulse and finder scroll fade are switched off.
-- **Contrast**: `src/contrast.test.ts` checks the text and accent tokens in `index.css` against WCAG AA (4.5:1 for text, 3:1 for the focus ring). `e2e/a11y.spec.ts` runs axe (WCAG A and AA) on the initial view, with a node selected, on the Inspector tab and in the phone layout, and fails on serious or critical findings.
+- **Contrast**: `src/contrast.test.ts` checks the text and accent tokens in `index.css` against WCAG AA (4.5:1 for text, 3:1 for the focus ring). `e2e/a11y.spec.ts` runs axe (WCAG A and AA) on the initial view, with a node selected, on the Inspector tab and on the phone layout's Tasks, Graph and Globe tabs, and fails on serious or critical findings.
+- **Touch**: `e2e/*.mobile.spec.ts` run in a separate Playwright project that emulates a Pixel 7 (touch, a coarse pointer, 412x915), and `e2e/a11y.mobile.spec.ts` adds axe's WCAG 2.2 `target-size` rule there. axe does not measure the graph's SVG nodes.
 - **Load budget**: `npm run check:budget` fails if the built JavaScript (including MapLibre's worker files) exceeds 685 kB gzip (607 kB when set; the OneStop snapshot brought it to about 658 kB, the AWS registry snapshot to about 666 kB and the DART layer to about 669 kB and the NDBC buoy snapshot to about 680 kB) or the CSS exceeds 17 kB gzip (15 kB when set). Raise a limit in the same PR that adds the weight.
 - **Interaction budget**: `e2e/performance.spec.ts` allows 2 s from navigation to the first graph node and 1 s from selecting a node to its detail panel, against mocked network (about 0.2 s and 0.1 s measured on the dev server). The graph keeps easing for about 6.5 s after it first appears, so settling time is not budgeted.
 - **Scale**: `src/components/graph/graphScale.test.ts` runs the layout and label placement on a synthetic 1000-node graph (about 25x the real one). A simulation tick took about 2.5 ms and a label pass about 2 ms, so no optimisation was needed; the test's limits are loose and only catch a blow-up.
@@ -178,7 +179,8 @@ The app does not modify NOAA data and does not use NOAA or NWS logos. Its footer
 ```
 src/
   components/
-    LeftPanel.tsx        Explore / Compare / Inspector tabs
+    LeftPanel.tsx        Explore / Compare / Inspector tabs (Tasks / Graph / Globe / Compare / Inspector bottom tabs on a phone)
+    AboutDialog.tsx      the full disclaimer, in the footer or (on a phone) a dialog
     SplitPane.tsx        resizable, keyboard-accessible divider
     finder/              "I need..." task finder
     graph/               graph view, search, legend, node detail, sample, relationships
@@ -186,12 +188,12 @@ src/
     globe/               MapLibre globe, alerts, aurora and tide-station layers, Kp readout,
                          point lookup, coverage popup
   data/                  graph/task JSON + schemas, NWS, SWPC and CO-OPS clients, request log,
-                         selection store, coverage geometry and lookup
+                         selection and view stores, coverage geometry and lookup
 e2e/                     Playwright specs and fixtures
 scripts/                 coverage-geometry generator, CO-OPS station, DART station, NCEI, OneStop and AWS Open Data dataset snapshots
 ```
 
-Stack: React 19, TypeScript, Vite, MapLibre GL (globe), d3-force / d3-zoom / d3-drag (graph, rendered as SVG), zod (validation). There is no state library: shared state lives in small module-level stores (`selectionStore.ts`, `requestLog.ts`) read with `useSyncExternalStore`.
+Stack: React 19, TypeScript, Vite, MapLibre GL (globe), d3-force / d3-zoom / d3-drag (graph, rendered as SVG), zod (validation). There is no state library: shared state lives in small module-level stores (`selectionStore.ts`, `viewStore.ts`, `requestLog.ts`) read with `useSyncExternalStore`.
 
 ## Development
 
@@ -203,7 +205,7 @@ Stack: React 19, TypeScript, Vite, MapLibre GL (globe), d3-force / d3-zoom / d3-
 | `npm run lint` | oxlint |
 | `npm test` | Unit tests (Vitest) |
 | `npm run test:coverage` | Unit tests with a 75% gate on lines, statements, functions and branches |
-| `npm run test:e2e:mocked` | Playwright against mocked NWS, SWPC and CO-OPS responses |
+| `npm run test:e2e:mocked` | Playwright against mocked NWS, SWPC and CO-OPS responses, on desktop Chrome and the Pixel 7 phone emulation |
 | `npm run test:e2e:live` | Playwright tests tagged `@live` that hit the real NWS, SWPC and CO-OPS APIs |
 | `npm run check:budget` | Bundle size budget, run after `npm run build` |
 | `npm run coverage-geometry` | Coverage geometry generator (see above) |
