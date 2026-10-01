@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import graphJson from '../../data/graph.json'
 import { buildGraph } from '../../data/buildGraph'
 import { makeFile, makeNode } from '../../data/graphFixtures'
+import { buildAccessHierarchy } from '../../data/accessHierarchy'
 import { buildOrgHierarchy } from '../../data/orgHierarchy'
 import { parseGraphFile, ROOT_NODE_ID, THEMES, type GraphEdge, type ServiceNode, type ThemeNode } from '../../data/graphSchema'
 import {
@@ -9,6 +10,8 @@ import {
   computeFitTransform,
   computeLabelledFitTransform,
   computePathFitTransform,
+  accessAnchors,
+  ACCESS_ORDER,
   applyLayoutMode,
   framingPadding,
   nearestNodeWithin,
@@ -58,6 +61,7 @@ const serviceNode = (id: string): SimNode => ({
   owner: { office: 'NWS', program: '' },
   theme: 'weather',
   baseUrl: 'https://example.com',
+  accessMethod: 'rest',
   formats: ['json'],
   auth: { type: 'none' },
   coverage: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] },
@@ -354,6 +358,44 @@ describe('layout modes (#58)', () => {
     expect(isEdgeVisible({ type: 'theme' }, 'org')).toBe(false)
     expect(isEdgeVisible({ type: 'org' }, 'theme')).toBe(false)
     expect(isEdgeVisible({ type: 'shared-id' }, 'org')).toBe(true)
+  })
+
+  it('shows only the access hubs and their links in the access mode (#60)', () => {
+    const all: LayoutNode[] = [...nodes, ...buildAccessHierarchy(file).nodes]
+    const kinds = all.filter((n) => isNodeVisible(n, 'access')).map((n) => n.kind)
+    expect(kinds).toEqual(expect.arrayContaining(['root', 'access', 'service']))
+    expect(kinds).not.toContain('theme')
+    expect(kinds).not.toContain('office')
+    expect(all.filter((n) => isNodeVisible(n, 'theme')).map((n) => n.kind)).not.toContain('access')
+    expect(isEdgeVisible({ type: 'access' }, 'access')).toBe(true)
+    expect(isEdgeVisible({ type: 'access' }, 'theme')).toBe(false)
+    expect(isEdgeVisible({ type: 'theme' }, 'access')).toBe(false)
+    expect(isEdgeVisible({ type: 'org' }, 'access')).toBe(false)
+  })
+
+  it('places every access method on the ring exactly once', () => {
+    const anchors = accessAnchors(ACCESS_ORDER, 600, 400)
+    expect(anchors.size).toBe(ACCESS_ORDER.length)
+    expect(new Set([...anchors.values()].map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`)).size).toBe(ACCESS_ORDER.length)
+  })
+
+  it('settles services next to their access hub in the access mode (#60)', () => {
+    const accessFile = parseGraphFile(
+      makeFile([
+        makeNode({ id: 'rest-one', accessMethod: 'rest' }),
+        makeNode({ id: 'bucket-one', accessMethod: 'cloud-bucket' }),
+      ]),
+    )
+    const simNodes: SimNode[] = [...buildGraph(accessFile).nodes, ...buildAccessHierarchy(accessFile).nodes].map((n) => ({ ...n }))
+    const simEdges: SimEdge[] = [...buildGraph(accessFile).edges, ...buildAccessHierarchy(accessFile).edges].map((e) => ({ ...e }))
+    const simulation = createGraphSimulation(simNodes, simEdges, 600, 400, 'access')
+    settleSimulation(simulation)
+    const anchors = accessAnchors(ACCESS_ORDER, 600, 400)
+    for (const [service, method] of [['rest-one', 'rest'], ['bucket-one', 'cloud-bucket']] as const) {
+      const node = simNodes.find((n) => n.id === service)!
+      const anchor = anchors.get(method)!
+      expect(Math.hypot(node.x! - anchor.x, node.y! - anchor.y)).toBeLessThan(80)
+    }
   })
 
   it('places the tree in columns: root, office, program, service', () => {

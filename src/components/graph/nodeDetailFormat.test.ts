@@ -70,6 +70,7 @@ describe('liveStatusLabel', () => {
     owner: { office: 'NWS', program: 'api.weather.gov' },
     theme: 'weather',
     baseUrl: 'https://api.weather.gov',
+    accessMethod: 'rest',
     formats: ['json'],
     auth: { type: 'none' },
     coverage: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] },

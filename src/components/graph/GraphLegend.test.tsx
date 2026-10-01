@@ -44,6 +44,14 @@ describe('GraphLegend', () => {
     expect(screen.queryByText('Theme hub')).toBeNull()
     expect(screen.queryByText(EDGE_TYPE_LABELS.theme)).toBeNull()
   })
+
+  it('swaps the theme keys for the access-method keys in the access view (#60)', () => {
+    render(<GraphLegend mode="access" />)
+    expect(screen.getByText('Access-method hub')).toBeTruthy()
+    expect(screen.getByText(EDGE_TYPE_LABELS.access)).toBeTruthy()
+    expect(screen.queryByText('Theme hub')).toBeNull()
+    expect(screen.queryByText(EDGE_TYPE_LABELS.org)).toBeNull()
+  })
 })
 
 // jsdom normalizes inline `style.background` hex values to rgb(); compare against that form

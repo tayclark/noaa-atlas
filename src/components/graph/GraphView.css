@@ -100,6 +100,7 @@
 }
 
 /* Org edges (#58): the NOAA -> office -> program -> service tree, solid like the root spine. */
+.graph-edge-access,
 .graph-edge-org {
   stroke: var(--color-text-muted);
   stroke-width: 1.5;
@@ -145,6 +146,17 @@
 .graph-node circle {
   stroke: var(--color-bg);
   stroke-width: 1.5;
+}
+
+.graph-node-gated circle {
+  stroke: var(--color-text);
+  stroke-width: 2.5;
+  stroke-dasharray: 3 2;
+}
+
+.graph-mode-switch {
+  display: inline-flex;
+  gap: 2px;
 }
 
 .graph-org-node circle {

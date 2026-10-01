@@ -45,6 +45,7 @@ export const THEME_DESCRIPTIONS: Record<Theme, string> = {
 export const THEME_ID_PREFIX = 'theme-'
 export const OFFICE_ID_PREFIX = 'office-'
 export const PROGRAM_ID_PREFIX = 'program-'
+export const ACCESS_ID_PREFIX = 'access-'
 /** Id of the generated NOAA root node that every theme hub links to (#148). */
 export const ROOT_NODE_ID = 'noaa'
 
@@ -60,6 +61,17 @@ export const OFFICE_LABELS: Record<Office, string> = {
   NMFS: 'NOAA Fisheries',
   OMAO: 'Marine & Aviation Operations',
   other: 'Other',
+}
+const ACCESS_METHODS = ['rest', 'ogc', 'arcgis-rest', 'cloud-bucket', 'file-download'] as const
+export type AccessMethod = (typeof ACCESS_METHODS)[number]
+
+/** Hub names for the access-method view (#60). */
+export const ACCESS_METHOD_LABELS: Record<AccessMethod, string> = {
+  rest: 'REST / web API',
+  ogc: 'OGC services (WMS, WMTS)',
+  'arcgis-rest': 'ArcGIS REST',
+  'cloud-bucket': 'Cloud bucket (S3)',
+  'file-download': 'File download',
 }
 const FORMATS = ['json', 'geojson', 'csv', 'xml', 'netcdf', 'grib2', 'geotiff', 'kml', 'shapefile', 'arcgis-rest', 'tiles', 'text', 'other'] as const
 const CADENCES = ['realtime', 'minutes', 'hourly', 'daily', 'periodic', 'static'] as const
@@ -91,6 +103,7 @@ const slug = z
   .refine((id) => !id.startsWith(THEME_ID_PREFIX), `ids starting with "${THEME_ID_PREFIX}" are reserved for theme hubs`)
   .refine((id) => !id.startsWith(OFFICE_ID_PREFIX), `ids starting with "${OFFICE_ID_PREFIX}" are reserved for office hubs`)
   .refine((id) => !id.startsWith(PROGRAM_ID_PREFIX), `ids starting with "${PROGRAM_ID_PREFIX}" are reserved for program hubs`)
+  .refine((id) => !id.startsWith(ACCESS_ID_PREFIX), `ids starting with "${ACCESS_ID_PREFIX}" are reserved for access-method hubs`)
   .refine((id) => id !== ROOT_NODE_ID, `"${ROOT_NODE_ID}" is reserved for the root node`)
 
 const nonEmpty = z.string().trim().min(1)
@@ -111,6 +124,8 @@ export const serviceNodeSchema = z
     }),
     theme: z.enum(THEMES),
     baseUrl: z.url(),
+    /** How the data is reached; services sharing it get a hub in the access-method view (#60). */
+    accessMethod: z.enum(ACCESS_METHODS),
     formats: z.array(z.enum(FORMATS)).min(1),
     auth: z.strictObject({ type: z.enum(['none', 'token', 'key']), note: nonEmpty.optional() }),
     rateLimits: z.strictObject({ text: nonEmpty, sourceUrl: z.url().optional() }).optional(),
@@ -204,6 +219,13 @@ export interface ProgramNode {
   name: string
   office: Office
 }
+/** Access-method hub of the access view (#60). */
+export interface AccessNode {
+  id: string
+  kind: 'access'
+  name: string
+  accessMethod: AccessMethod
+}
 export type GraphNode = ServiceNode | ThemeNode | RootNode
 /** Org-view hubs are render-only: they stay out of `Graph`, so search, neighbours and the panel never see them. */
 export type OrgNode = OfficeNode | ProgramNode
@@ -211,7 +233,7 @@ export type OrgNode = OfficeNode | ProgramNode
 export interface GraphEdge {
   source: string
   target: string
-  type: 'root' | 'theme' | 'org' | 'shared-id' | 'data-flow'
+  type: 'root' | 'theme' | 'org' | 'access' | 'shared-id' | 'data-flow'
   label: string
   sourceUrl?: string
 }
