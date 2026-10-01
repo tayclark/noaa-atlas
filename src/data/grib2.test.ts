@@ -89,7 +89,8 @@ describe('decodeGribFieldAsync', () => {
       return sum / n
     }
     expect(mean(-55)).toBeGreaterThan(mean(0) + 1)
-  })
+    // The JPEG 2000 decode of ~600k points ran 7.7 s under coverage on the CI runner (5 s default).
+  }, 30_000)
 
   it('still reads template 5.3 fields', async () => {
     const f = await decodeGribFieldAsync(fixture())
