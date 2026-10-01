@@ -3,7 +3,20 @@
 // minutes and served with access-control-allow-origin: *, so no special headers are needed.
 
 import { createLiveClient } from './liveRequest'
-import { parseKp1m, parseOvation, type SwpcKp1m, type SwpcOvation } from './swpcSchema'
+import {
+  parseAlerts,
+  parseKp1m,
+  parseOvation,
+  parseScales,
+  parseSolarWind,
+  parseXrays,
+  type SwpcAlerts,
+  type SwpcKp1m,
+  type SwpcOvation,
+  type SwpcScales,
+  type SwpcSolarWind,
+  type SwpcXrays,
+} from './swpcSchema'
 
 export class SwpcHttpError extends Error {
   readonly status: number
@@ -46,4 +59,24 @@ export function getOvationAurora(): Promise<SwpcOvation> {
 /** The running one-minute planetary Kp estimate over about the last six hours. */
 export function getPlanetaryKp(): Promise<SwpcKp1m> {
   return request('/json/planetary_k_index_1m.json', parseKp1m)
+}
+
+/** Current and forecast NOAA space weather scales (R, S, G). */
+export function getNoaaScales(): Promise<SwpcScales> {
+  return request('/products/noaa-scales.json', parseScales)
+}
+
+/** Alerts, watches and warnings issued over the past few days (about 40 KB). */
+export function getSpaceWeatherAlerts(): Promise<SwpcAlerts> {
+  return request('/products/alerts.json', parseAlerts)
+}
+
+/** The active L1 spacecraft's recent one-minute solar wind plasma readings (the file is about 3 MB). */
+export function getSolarWind(): Promise<SwpcSolarWind> {
+  return request('/json/rtsw/rtsw_wind_1m.json', parseSolarWind)
+}
+
+/** GOES primary-satellite X-ray flux for the past six hours, both bands. */
+export function getGoesXrays(): Promise<SwpcXrays> {
+  return request('/json/goes/primary/xrays-6-hour.json', parseXrays)
 }
