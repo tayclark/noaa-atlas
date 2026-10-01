@@ -117,3 +117,56 @@
   text-align: center;
   line-height: 16px;
 }
+
+/* About: only on the rail of a phone held on its side, where there is no header to carry it (#78). */
+.left-panel-about {
+  display: none;
+  min-height: 44px;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: var(--font-size-lg);
+  cursor: pointer;
+}
+
+/* A phone held on its side has no height to spare for a header, a footer or a bar of tabs: the tabs
+   become a rail down the left, with About at its foot, and the view takes all the rest (#78). */
+@media (orientation: landscape) {
+  .app[data-layout='compact'] .left-panel {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .app[data-layout='compact'] .left-panel-tabs {
+    grid-column: 1;
+    grid-row: 1;
+    flex-direction: column;
+    border-top: 0;
+    border-right: 1px solid var(--color-border);
+    overflow-y: auto;
+  }
+
+  .app[data-layout='compact'] .left-panel-tab {
+    flex: 1 1 0;
+    min-height: 44px;
+  }
+
+  .app[data-layout='compact'] .left-panel-tab-active {
+    box-shadow: inset 3px 0 0 var(--color-accent);
+  }
+
+  .app[data-layout='compact'] .left-panel-about {
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+    border-right: 1px solid var(--color-border);
+  }
+
+  .app[data-layout='compact'] .left-panel-panels {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+}

@@ -1,22 +1,31 @@
-// How tall the detail sheet is on a phone (#78), so the graph can frame a selection into what the
-// sheet leaves free. A module-level store like selectionStore.ts: the sheet writes it and the graph
-// reads it with `useSyncExternalStore`. Zero means there is no sheet.
+// Where the detail sheet is on a phone (#78), so the graph can frame a selection into what the
+// sheet leaves free: along the bottom in portrait, down the right-hand side in landscape. A
+// module-level store like selectionStore.ts: the sheet writes it and the graph reads it with
+// `useSyncExternalStore`. Null means there is no sheet.
 
-let height = 0
+export interface SheetBox {
+  edge: 'bottom' | 'right'
+  /** How far (px) it reaches in from that edge: its height at the bottom, its width at the right. */
+  size: number
+}
+
+let box: SheetBox | null = null
 const listeners = new Set<() => void>()
 
-export function setSheetHeight(px: number): void {
-  const next = Math.max(0, Math.round(px))
-  if (next === height) return
-  height = next
+export function setSheetBox(next: SheetBox | null): void {
+  const size = next ? Math.max(0, Math.round(next.size)) : 0
+  const rounded = next && size > 0 ? { edge: next.edge, size } : null
+  if (rounded?.edge === box?.edge && rounded?.size === box?.size) return
+  box = rounded
   for (const listener of listeners) listener()
 }
 
-export function subscribeSheetHeight(listener: () => void): () => void {
+export function subscribeSheetBox(listener: () => void): () => void {
   listeners.add(listener)
   return () => listeners.delete(listener)
 }
 
-export function getSheetHeight(): number {
-  return height
+/** The same object until the sheet moves, as `useSyncExternalStore` needs. */
+export function getSheetBox(): SheetBox | null {
+  return box
 }

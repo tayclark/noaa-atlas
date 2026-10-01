@@ -41,3 +41,11 @@
   display: inline-block;
   margin-right: var(--space-2);
 }
+
+/* The row labels stay in view while a wide table scrolls sideways under a thumb (#78). */
+.compare-table tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-surface);
+}

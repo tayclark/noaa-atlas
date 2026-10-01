@@ -2,14 +2,15 @@
 // floating card of a wide screen. It peeks (a header with the name, the actions and a close button)
 // so a selection doesn't cover the view, and opens to nearly the full height to read the rest. Drag
 // the header, or tap the grabber, to change height; pull it down from peek, or tap ✕ or press
-// Escape, to dismiss it (which clears the selection). The graph frames a selection into what the
-// sheet leaves free, through sheetStore.
+// Escape, to dismiss it (which clears the selection). A phone held on its side has no height to
+// spare, so there the sheet is a panel down the right-hand side, always open, with just its close
+// button. The graph frames a selection into what the sheet leaves free, through sheetStore.
 
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import { getCompareSnapshot, subscribeCompare, toggleCompare } from '../data/compareStore'
 import { clearSelection, getSelectionSnapshot, subscribeSelection } from '../data/selectionStore'
-import { setSheetHeight } from '../data/sheetStore'
+import { setSheetBox } from '../data/sheetStore'
 import { showView, type ViewId } from '../data/viewStore'
 import { findGraphNode } from './graph/graphNodes'
 import { NodeDetailContent } from './graph/NodeDetailPanel'
@@ -35,13 +36,16 @@ interface DetailSheetProps {
   view: ViewId
   /** Open rather than peeking when it first appears: a step picked in the finder asked for the detail. */
   startOpen: boolean
+  /** Down the right-hand side, always open, instead of along the bottom. */
+  side?: boolean
 }
 
-export function DetailSheet({ view, startOpen }: DetailSheetProps) {
+export function DetailSheet({ view, startOpen, side = false }: DetailSheetProps) {
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const node = findGraphNode(selection.selectedNodeId)
   const compared = useSyncExternalStore(subscribeCompare, getCompareSnapshot).includes(node?.id ?? '')
-  const [open, setOpen] = useState(startOpen)
+  const [peekOrOpen, setOpen] = useState(startOpen)
+  const open = side || peekOrOpen
   const [shownFor, setShownFor] = useState(view)
   if (shownFor !== view) {
     setShownFor(view)
@@ -50,6 +54,7 @@ export function DetailSheet({ view, startOpen }: DetailSheetProps) {
   const [dragHeight, setDragHeight] = useState<number | null>(null)
   const [area, setArea] = useState(0)
   const [header, setHeader] = useState(0)
+  const [width, setWidth] = useState(0)
   const rootRef = useRef<HTMLElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
   const drag = useRef<DragState | null>(null)
@@ -61,15 +66,18 @@ export function DetailSheet({ view, startOpen }: DetailSheetProps) {
     const areaEl = rootRef.current?.parentElement
     const headerEl = headerRef.current
     if (!areaEl || !headerEl) return
+    const rootEl = rootRef.current
     const measure = () => {
       setArea(areaEl.clientHeight)
       setHeader(headerEl.offsetHeight)
+      setWidth(rootEl?.offsetWidth ?? 0)
     }
     measure()
     if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(measure)
     observer.observe(areaEl)
     observer.observe(headerEl)
+    if (rootEl) observer.observe(rootEl)
     return () => observer.disconnect()
   }, [present])
 
@@ -78,9 +86,9 @@ export function DetailSheet({ view, startOpen }: DetailSheetProps) {
   const height = dragHeight ?? resting
 
   useLayoutEffect(() => {
-    setSheetHeight(resting)
-  }, [resting])
-  useLayoutEffect(() => () => setSheetHeight(0), [])
+    setSheetBox(side ? { edge: 'right', size: width } : { edge: 'bottom', size: resting })
+  }, [side, width, resting])
+  useLayoutEffect(() => () => setSheetBox(null), [])
 
   if (!node) return null
 
@@ -139,31 +147,37 @@ export function DetailSheet({ view, startOpen }: DetailSheetProps) {
   return (
     <section
       ref={rootRef}
-      className={`detail-sheet${dragHeight === null ? '' : ' detail-sheet-dragging'}`}
+      className={`detail-sheet${side ? ' detail-sheet-side' : ''}${dragHeight === null ? '' : ' detail-sheet-dragging'}`}
       aria-label="Node detail"
       // Until it has been measured it just takes the room it needs.
-      style={area > 0 ? { height } : undefined}
+      style={!side && area > 0 ? { height } : undefined}
       onKeyDown={onKeyDown}
     >
       <div
         ref={headerRef}
         className="detail-sheet-header"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={(event) => endDrag(event, false)}
-        onPointerCancel={(event) => endDrag(event, true)}
+        {...(side
+          ? {}
+          : {
+              onPointerDown,
+              onPointerMove,
+              onPointerUp: (event: PointerEvent<HTMLDivElement>) => endDrag(event, false),
+              onPointerCancel: (event: PointerEvent<HTMLDivElement>) => endDrag(event, true),
+            })}
       >
-        <button
-          type="button"
-          className="detail-sheet-grabber"
-          aria-expanded={open}
-          aria-label={open ? 'Collapse details' : 'Expand details'}
-          onClick={() => {
-            if (!swallowClick.current) setOpen((current) => !current)
-          }}
-        >
-          <span className="detail-sheet-pill" aria-hidden="true" />
-        </button>
+        {!side && (
+          <button
+            type="button"
+            className="detail-sheet-grabber"
+            aria-expanded={open}
+            aria-label={open ? 'Collapse details' : 'Expand details'}
+            onClick={() => {
+              if (!swallowClick.current) setOpen((current) => !current)
+            }}
+          >
+            <span className="detail-sheet-pill" aria-hidden="true" />
+          </button>
+        )}
         <div className="detail-sheet-title">
           <div className="detail-sheet-heading">
             <h3>{node.name}</h3>

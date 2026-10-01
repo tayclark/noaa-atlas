@@ -492,23 +492,22 @@
   }
 }
 
-/* Touch screens (#78): the close button of a popup is a finger-sized target, with its text kept
-   clear of it, and MapLibre's ⓘ credit button reaches past its 24px circle without growing it. */
-@media (pointer: coarse) {
-  .maplibregl-popup-close-button {
-    width: 44px;
-    height: 44px;
-    font-size: 28px;
-    line-height: 1;
+/* A short globe (a phone on its side, #78): the selection card is just its title, the overlays
+   take less of the height, and a popup may have more of it. */
+@container globe (max-height: 420px) {
+  .node-selection-status {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .node-selection-status p {
+    display: none;
+  }
+
+  .globe-bottom {
+    bottom: calc(var(--space-2) + 28px);
   }
 
   .maplibregl-popup-content {
-    padding: var(--space-3) 44px var(--space-3) var(--space-3);
-  }
-
-  .maplibregl-ctrl-attrib-button::before {
-    content: '';
-    position: absolute;
-    inset: -10px;
+    max-height: 70cqh;
   }
 }

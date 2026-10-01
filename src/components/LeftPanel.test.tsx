@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LeftPanel } from './LeftPanel'
 import { mockNarrowLayout, unmockNarrowLayout } from './narrowLayoutTestUtils'
 import { addCompare, clearCompare } from '../data/compareStore'
@@ -209,6 +209,18 @@ describe('LeftPanel', () => {
       expect(screen.queryByLabelText('Node detail')).toBeNull()
       act(() => selectNode('coops-data-api'))
       expect(screen.getByRole('button', { name: 'Expand details' })).toBeTruthy()
+    })
+
+    it('carries an About button in the tab rail when it is given a way to open one', () => {
+      const onAbout = vi.fn()
+      render(<LeftPanel globe={globe} onAbout={onAbout} />)
+      fireEvent.click(screen.getByRole('button', { name: 'About this app' }))
+      expect(onAbout).toHaveBeenCalledTimes(1)
+    })
+
+    it('has no About button of its own without one', () => {
+      render(<LeftPanel globe={globe} />)
+      expect(screen.queryByRole('button', { name: 'About this app' })).toBeNull()
     })
 
     it('can be sent to a view from outside, as a Show on globe button will', () => {
