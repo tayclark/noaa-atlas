@@ -129,5 +129,6 @@ export function formatAuroraPopupHtml(value: number, forecastTime: string): stri
 export function describeSwpcFetchOutcome(err: unknown): string {
   if (err instanceof SwpcHttpError) return `SWPC is unavailable (${err.status}) — space weather could not be loaded.`
   if (err instanceof SwpcParseError) return 'SWPC returned an unexpected response.'
-  return 'Could not reach SWPC for space weather.'
+  if (err instanceof TypeError) return 'Could not reach SWPC for space weather.'
+  return 'Something went wrong loading space weather.'
 }

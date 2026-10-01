@@ -115,5 +115,6 @@ describe('popup and messages', () => {
     expect(describeSwpcFetchOutcome(new SwpcHttpError(503))).toMatch(/unavailable \(503\)/)
     expect(describeSwpcFetchOutcome(new SwpcParseError('bad', null))).toMatch(/unexpected/)
     expect(describeSwpcFetchOutcome(new TypeError('Failed to fetch'))).toMatch(/Could not reach SWPC/)
+    expect(describeSwpcFetchOutcome(new Error('canvas broke'))).toMatch(/Something went wrong/)
   })
 })

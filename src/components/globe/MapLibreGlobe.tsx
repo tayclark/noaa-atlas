@@ -544,8 +544,8 @@ export function MapLibreGlobe() {
       let kpLoaded = false
 
       const loadAurora = () =>
-        getOvationAurora()
-          .then((ovation) => {
+        getOvationAurora().then(
+          (ovation) => {
             ovationRef.current = ovation
             const raster = auroraRaster(ovation)
             if (!auroraCanvas) {
@@ -575,20 +575,22 @@ export function MapLibreGlobe() {
             }
             setAuroraError(null)
             setAuroraCells(raster.cells)
-          })
-          .catch((err: unknown) => {
+          },
+          (err: unknown) => {
             if (!auroraCanvas) setAuroraError(describeSwpcFetchOutcome(err))
-          })
+          },
+        )
 
       const loadKp = () =>
-        getPlanetaryKp()
-          .then((rows) => {
+        getPlanetaryKp().then(
+          (rows) => {
             kpLoaded = true
             setKp({ status: 'ok', readout: describeKp(rows) })
-          })
-          .catch((err: unknown) => {
+          },
+          (err: unknown) => {
             if (!kpLoaded) setKp({ status: 'error', message: describeSwpcFetchOutcome(err) })
-          })
+          },
+        )
 
       refreshSpaceWeatherRef.current = () => {
         spaceWeatherAtRef.current = Date.now()
