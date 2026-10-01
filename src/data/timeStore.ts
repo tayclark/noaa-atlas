@@ -8,22 +8,26 @@ export interface TimeRange {
   end: number
 }
 
+/** The control that owns playback. Only one plays at a time, since each would otherwise drive the shared time. */
+export type PlayerId = 'radar' | 'wind' | 'forecast'
+
 export interface TimeState {
   /** Epoch ms, or null for "now" (the live edge, which follows the clock). */
   time: number | null
-  playing: boolean
+  /** Which control is looping the time, or null when none is. */
+  player: PlayerId | null
   /** The span the active layers can show, or null when nothing time-aware is on screen. */
   range: TimeRange | null
 }
 
-const INITIAL: TimeState = { time: null, playing: false, range: null }
+const INITIAL: TimeState = { time: null, player: null, range: null }
 
 let state: TimeState = INITIAL
 const listeners = new Set<() => void>()
 
 function update(next: Partial<TimeState>): void {
   const merged = { ...state, ...next }
-  if (merged.time === state.time && merged.playing === state.playing && merged.range === state.range) return
+  if (merged.time === state.time && merged.player === state.player && merged.range === state.range) return
   state = merged
   for (const listener of listeners) listener()
 }
@@ -33,8 +37,14 @@ export function setTime(time: number | null): void {
   update({ time })
 }
 
-export function setPlaying(playing: boolean): void {
-  update({ playing })
+/** Starts playback for one control, which stops whichever control was playing. */
+export function startPlayer(player: PlayerId): void {
+  update({ player })
+}
+
+/** Stops playback, but only if this control is the one playing: a scrub elsewhere must not cancel another loop. */
+export function stopPlayer(player: PlayerId): void {
+  if (state.player === player) update({ player: null })
 }
 
 /** Publishes the span the visible layers cover. Pass null when the last time-aware layer goes away. */

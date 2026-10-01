@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { LonLat } from '../../data/coverageLookup'
 import { hasWaves, sampleAt, type ForecastSample, type TideSample } from '../../data/forecastSeries'
-import { getTimeSnapshot, setPlaying, setRange, setTime, subscribeTime } from '../../data/timeStore'
+import { usePlayer } from './usePlayer'
+import { getTimeSnapshot, setRange, setTime, subscribeTime } from '../../data/timeStore'
 import { compassPoint, linePath, niceMax, scaleLinear, stepPath, timeToX, type Point } from './forecastChart'
 import { loadForecastTimeline, type ForecastTimelineData } from './forecastTimelineData'
 
@@ -57,6 +58,7 @@ export function ForecastTimeline({ point, paused = false }: Props) {
   const [attempt, setAttempt] = useState(0)
   const [lng, lat] = point
   const timeState = useSyncExternalStore(subscribeTime, getTimeSnapshot)
+  const [isPlayer, setPlaying] = usePlayer('forecast')
   // "Now" is read when the data arrives, not on every render.
   const [now, setNow] = useState(() => Date.now())
 
@@ -90,12 +92,12 @@ export function ForecastTimeline({ point, paused = false }: Props) {
       setRange(null)
       setPlaying(false)
     }
-  }, [start, end])
+  }, [start, end, setPlaying])
 
   const last = series ? series.length - 1 : 0
   const cursorTime = timeState.time ?? now
   const index = series && start !== undefined ? Math.min(last, Math.max(0, Math.floor((cursorTime - start) / HOUR_MS))) : 0
-  const playing = timeState.playing && !paused
+  const playing = isPlayer && !paused
 
   useEffect(() => {
     if (!playing || !series) return
@@ -147,10 +149,10 @@ export function ForecastTimeline({ point, paused = false }: Props) {
         <button
           type="button"
           className="forecast-timeline-play"
-          aria-label={timeState.playing ? 'Pause forecast loop' : 'Play forecast loop'}
-          onClick={() => setPlaying(!timeState.playing)}
+          aria-label={isPlayer ? 'Pause forecast loop' : 'Play forecast loop'}
+          onClick={() => setPlaying(!isPlayer)}
         >
-          {timeState.playing ? '❚❚' : '▶'}
+          {isPlayer ? '❚❚' : '▶'}
         </button>
         <button
           type="button"

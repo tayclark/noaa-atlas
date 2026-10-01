@@ -3,6 +3,7 @@
 
 import { expect, test } from '@playwright/test'
 import { mockCoops } from './fixtures/coops'
+import { mockRadar } from './fixtures/nowcoast'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockGridpointData, mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
@@ -74,4 +75,23 @@ test('a failed forecast says so and can be retried', async ({ page }) => {
   fail = false
   await timeline.getByRole('button', { name: 'Try again' }).click()
   await expect(timeline.locator('.forecast-timeline-wind')).toBeVisible()
+})
+
+test('only one time control plays at a time: starting the timeline stops the radar loop', async ({ page }) => {
+  await mockGridpointData(page)
+  await mockRadar(page)
+  await page.goto('/')
+  await page.locator('.graph-node[data-node-id="nowcoast-map-services"]').focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-nowcoast-radar', 'visible')
+  await page.locator(GLOBE).click()
+
+  const timeline = page.locator(TIMELINE)
+  await expect(timeline.locator('.forecast-timeline-wind')).toBeVisible()
+  await page.getByRole('button', { name: 'Play radar loop' }).click()
+  await expect(page.getByRole('button', { name: 'Pause radar loop' })).toBeVisible()
+
+  await timeline.getByRole('button', { name: 'Play forecast loop' }).click()
+  await expect(timeline.getByRole('button', { name: 'Pause forecast loop' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Play radar loop' })).toBeVisible()
 })
