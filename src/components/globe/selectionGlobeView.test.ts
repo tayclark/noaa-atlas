@@ -56,7 +56,7 @@ describe('describeSelectionForGlobe', () => {
   })
 
   it('explains why a not-live service is not on the map', () => {
-    const node = findNode('spc-gis-data')
+    const node = findNode('wpc-gis-products')
     const view = describeSelectionForGlobe({ ...none, selectedNodeId: node.id }, context)
     expect(view.liveLayers).toEqual([])
     expect(view.card?.lines[1]).toBe(node.notLiveReason)

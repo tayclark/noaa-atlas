@@ -13,6 +13,7 @@ import graphJson from '../../data/graph.json'
 import { parseGraphFile, type ServiceNode } from '../../data/graphSchema'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
 import { pollWhileVisible } from '../../data/pollWhileVisible'
+import { getDay1CategoricalOutlook, SPC_REFRESH_MS } from '../../data/spcClient'
 import { getHiloPredictions, getWaterLevel } from '../../data/coopsClient'
 import { COOPS_STATIONS } from '../../data/coopsStations'
 import { DART_STATIONS } from '../../data/dartStations'
@@ -27,6 +28,14 @@ import {
   type StationProperties,
 } from './coopsStationsLayer'
 import { dartStationsToGeoJSON, formatDartPopupHtml, type DartProperties } from './dartStationsLayer'
+import {
+  SPC_FILL_OPACITY,
+  categoriesInOutlook,
+  describeSpcFetchOutcome,
+  formatOutlookPopupHtml,
+  isOutlookEmpty,
+  type SpcCategory,
+} from './spcOutlookLayer'
 import { ndbcStationsToGeoJSON, formatNdbcPopupHtml, type NdbcProperties } from './ndbcStationsLayer'
 import {
   AURORA_RASTER_COORDINATES,
@@ -140,6 +149,11 @@ const COOPS_RADIUS: [number, number][] = [
 const COOPS_RADIUS_SELECTED = COOPS_RADIUS.map(([zoom, radius]): [number, number] => [zoom, radius + 2])
 // The DART tsunami buoys (#80): a static snapshot, worldwide, drawn only while the NDBC DART node
 // is selected.
+// The SPC Day 1 convective outlook (#245): polygons coloured by the feed's own fill and stroke,
+// fetched and drawn only while the SPC node is selected.
+const SPC_SOURCE_ID = 'spc-outlook'
+const SPC_FILL_LAYER_ID = 'spc-outlook-fill'
+const SPC_LINE_LAYER_ID = 'spc-outlook-line'
 const DART_SOURCE_ID = 'dart-stations'
 const DART_LAYER_ID = 'dart-stations-circle'
 // The NDBC moored buoys: a static snapshot too, since NDBC sends no CORS headers. Drawn only while
@@ -275,6 +289,9 @@ export function MapLibreGlobe() {
   // selection effect the aurora layer now exists.
   const ovationRef = useRef<SwpcOvation | null>(null)
   const [auroraCells, setAuroraCells] = useState<number | null>(null)
+  const [spc, setSpc] = useState<
+    { status: 'loading' } | { status: 'ok'; categories: SpcCategory[] } | { status: 'empty' } | { status: 'error'; message: string }
+  >({ status: 'loading' })
   const [auroraError, setAuroraError] = useState<string | null>(null)
   const [kp, setKp] = useState<{ status: 'loading' } | { status: 'ok'; readout: KpReadout } | { status: 'error'; message: string }>({
     status: 'loading',
@@ -402,6 +419,23 @@ export function MapLibreGlobe() {
       // hidden, and requests nothing, until the GFS node is selected.
       windRef.current = createWindOverlay(map, prefersReducedMotion())
       waveRef.current = createWaveOverlay(map)
+      // The SPC outlook (#245) sits over the wind and under the stations and alerts. It starts
+      // empty and hidden; the effect below fills it while the SPC node is selected.
+      map.addSource(SPC_SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      map.addLayer({
+        id: SPC_FILL_LAYER_ID,
+        type: 'fill',
+        source: SPC_SOURCE_ID,
+        layout: { visibility: 'none' },
+        paint: { 'fill-color': ['get', 'fill'], 'fill-opacity': SPC_FILL_OPACITY },
+      })
+      map.addLayer({
+        id: SPC_LINE_LAYER_ID,
+        type: 'line',
+        source: SPC_SOURCE_ID,
+        layout: { visibility: 'none' },
+        paint: { 'line-color': ['get', 'stroke'], 'line-width': 1.5 },
+      })
       // Under the alerts, which are added later. Stations are static, so the layer needs no fetch.
       map.addSource(COOPS_SOURCE_ID, { type: 'geojson', data: stationsToGeoJSON(COOPS_STATIONS) })
       map.addLayer({
@@ -489,6 +523,14 @@ export function MapLibreGlobe() {
           // valid representative point for coverage lookup (#45).
           selectPoint([e.lngLat.lng, e.lngLat.lat])
           showPopup(map, e.lngLat, `<strong>${event}</strong><br/>${areaDesc}<br/>${effective} – ${expires}`)
+          return
+        }
+
+        const outlook = map.getLayer(SPC_FILL_LAYER_ID) ? map.queryRenderedFeatures(e.point, { layers: [SPC_FILL_LAYER_ID] }) : []
+        if (outlook.length > 0) {
+          // SPC lists the categories low to high and draws them in that order, so the last is on top.
+          const top = outlook[outlook.length - 1]
+          showPopup(map, e.lngLat, formatOutlookPopupHtml(top.properties as Parameters<typeof formatOutlookPopupHtml>[0]))
           return
         }
 
@@ -806,6 +848,38 @@ export function MapLibreGlobe() {
     map.setLayoutProperty(DART_LAYER_ID, 'visibility', dartShown ? 'visible' : 'none')
   }, [dartShown, mapLoaded])
 
+  // The SPC outlook (#245) is fetched only while its node is selected, and refreshed while the tab
+  // is visible. A failed refresh keeps the polygons already drawn.
+  const spcShown = liveLayers.includes('spc-outlook')
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded || !map.getLayer(SPC_FILL_LAYER_ID)) return
+    const visibility = spcShown ? 'visible' : 'none'
+    map.setLayoutProperty(SPC_FILL_LAYER_ID, 'visibility', visibility)
+    map.setLayoutProperty(SPC_LINE_LAYER_ID, 'visibility', visibility)
+    if (!spcShown) return
+    let cancelled = false
+    let loaded = false
+    const load = () => {
+      getDay1CategoricalOutlook()
+        .then((outlook) => {
+          if (cancelled) return
+          loaded = true
+          map.getSource<GeoJSONSource>(SPC_SOURCE_ID)?.setData(outlook)
+          setSpc(isOutlookEmpty(outlook) ? { status: 'empty' } : { status: 'ok', categories: categoriesInOutlook(outlook) })
+        })
+        .catch((err: unknown) => {
+          if (!cancelled && !loaded) setSpc({ status: 'error', message: describeSpcFetchOutcome(err) })
+        })
+    }
+    load()
+    const stop = pollWhileVisible(load, SPC_REFRESH_MS)
+    return () => {
+      cancelled = true
+      stop()
+    }
+  }, [spcShown, mapLoaded])
+
   const ndbcShown = liveLayers.includes('ndbc-stations')
   useEffect(() => {
     const map = mapRef.current
@@ -822,6 +896,7 @@ export function MapLibreGlobe() {
         data-coverage-features={view.footprint.features.length}
         data-coops-stations={mapLoaded ? COOPS_STATIONS.length : undefined}
         data-dart-stations={mapLoaded ? (dartShown ? DART_STATIONS.length : 0) : undefined}
+        data-spc-outlook={mapLoaded ? (spcShown ? spc.status : 'hidden') : undefined}
         data-ndbc-stations={mapLoaded ? (ndbcShown ? NDBC_STATIONS.length : 0) : undefined}
         data-nowcoast-radar={mapLoaded ? (radarShown ? 'visible' : 'hidden') : undefined}
         data-wind={mapLoaded ? (windShown ? (windField ? 'visible' : 'loading') : 'hidden') : undefined}
@@ -899,6 +974,29 @@ export function MapLibreGlobe() {
             <button type="button" className="radar-time-step wind-status-action" onClick={() => setForecastLayer(forecastLayer === 'wind' ? 'waves' : 'wind')}>
               Show {forecastLayer === 'wind' ? 'waves' : 'wind'} instead
             </button>
+          </div>
+        )}
+        {spcShown && spc.status === 'ok' && (
+          <div className="zone-only-alerts spc-legend" role="status" aria-label="Convective outlook legend">
+            <strong>Day 1 convective outlook</strong>
+            <ul>
+              {spc.categories.map((category) => (
+                <li key={category.label}>
+                  <span className="spc-legend-swatch" style={{ background: category.color }} aria-hidden="true" />
+                  {category.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {spcShown && spc.status === 'empty' && (
+          <div className="zone-only-alerts" role="status" aria-label="Convective outlook status">
+            No convective outlook areas today.
+          </div>
+        )}
+        {spcShown && spc.status === 'error' && (
+          <div className="zone-only-alerts" role="status" aria-label="Convective outlook status">
+            {spc.message}
           </div>
         )}
         {alertsStatus === 'error' && (

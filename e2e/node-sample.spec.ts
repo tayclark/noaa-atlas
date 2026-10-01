@@ -19,7 +19,7 @@ test('non-live node shows a static sample; live node can run it', async ({ page 
   await mockPointLookup(page)
   await page.goto('/')
 
-  await selectByKeyboard(page, 'spc-gis-data')
+  await selectByKeyboard(page, 'wpc-gis-products')
   const sample = page.getByRole('region', { name: 'Sample call' })
   await expect(sample).toContainText('Static sample')
   await expect(sample.getByRole('button', { name: 'Run sample' })).toHaveCount(0)
