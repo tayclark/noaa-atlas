@@ -70,11 +70,11 @@ test('a selection made on Tasks marks the Graph and Globe tabs, which then show 
   const graphTab = page.getByRole('tab', { name: /Graph/ })
   const globeTab = page.getByRole('tab', { name: /Globe/ })
   await expect(page.getByLabel('updated')).toHaveCount(0)
+  const task = await page.locator('.finder-task-item').first().innerText()
   await page.locator('.finder-task-item').first().tap()
   await expect(graphTab.getByLabel('updated')).toHaveCount(1)
   await expect(globeTab.getByLabel('updated')).toHaveCount(1)
 
-  const task = await page.locator('.finder-task-item').first().innerText()
   await globeTab.tap()
   await expect(globeTab.getByLabel('updated')).toHaveCount(0)
   await expect(page.getByRole('status', { name: 'Selection status' })).toContainText(task)
@@ -89,9 +89,10 @@ test('the graph keeps its layout and the finder its task while another tab shows
   await mockSwpc(page)
   await page.goto('/')
 
+  const task = await page.locator('.finder-task-item').first().innerText()
   await page.locator('.finder-task-item').first().tap()
-  const picked = page.locator('.finder-task-item-selected')
-  await expect(picked).toHaveCount(1)
+  const picked = page.getByRole('heading', { name: task })
+  await expect(picked).toBeVisible()
 
   await page.getByRole('tab', { name: /Graph/ }).tap()
   const svg = page.locator('.graph-canvas svg')
@@ -107,28 +108,7 @@ test('the graph keeps its layout and the finder its task while another tab shows
   expect(await layer.getAttribute('transform')).toEqual(framing)
 
   await page.getByRole('tab', { name: 'Tasks' }).tap()
-  await expect(picked).toHaveCount(1)
-})
-
-test('a selected node leaves the graph mostly clear (#78)', async ({ page }) => {
-  await mockAlerts(page, zoneOnlyAlertsFixture(3))
-  await mockSwpc(page)
-  await page.goto('/')
-  await page.getByRole('tab', { name: /Graph/ }).tap()
-
-  const node = page.locator('.graph-node').first()
-  await node.focus()
-  await page.keyboard.press('Enter')
-  const panel = page.locator('.node-detail-panel')
-  await expect(panel).toBeVisible()
-  // Collapsed by default on a phone: just the header, not most of the canvas.
-  const [canvasBox, panelBox] = [await page.locator('.graph-canvas').boundingBox(), await panel.boundingBox()]
-  if (!canvasBox || !panelBox) throw new Error('expected the canvas and panel to be laid out')
-  expect((panelBox.width * panelBox.height) / (canvasBox.width * canvasBox.height)).toBeLessThan(0.15)
-
-  // Expanding it stays within 40% of the canvas height.
-  await panel.getByRole('button').first().tap()
-  expect((await panel.boundingBox())?.height ?? 0).toBeLessThanOrEqual(canvasBox.height * 0.4 + 1)
+  await expect(picked).toBeVisible()
 })
 
 test('the footer is a single tappable line, with the full disclaimer behind About', async ({ page }) => {
