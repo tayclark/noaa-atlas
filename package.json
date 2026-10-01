@@ -18,6 +18,7 @@
     "verify:data": "node scripts/verify-links.mjs",
     "coops-stations": "node scripts/coops-stations.mjs",
     "dart-stations": "node scripts/dart-stations.mjs",
+    "ndbc-stations": "node scripts/ndbc-stations.mjs",
     "ncei-datasets": "node scripts/ncei-datasets.mjs",
     "onestop-datasets": "node scripts/onestop-datasets.mjs",
     "aws-open-data-datasets": "node scripts/aws-open-data-datasets.mjs",

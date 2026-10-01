@@ -16,6 +16,7 @@ import { pollWhileVisible } from '../../data/pollWhileVisible'
 import { getHiloPredictions, getWaterLevel } from '../../data/coopsClient'
 import { COOPS_STATIONS } from '../../data/coopsStations'
 import { DART_STATIONS } from '../../data/dartStations'
+import { NDBC_STATIONS } from '../../data/ndbcStations'
 import { getOvationAurora, getPlanetaryKp, SWPC_REFRESH_MS } from '../../data/swpcClient'
 import type { SwpcOvation } from '../../data/swpcSchema'
 import {
@@ -26,6 +27,7 @@ import {
   type StationProperties,
 } from './coopsStationsLayer'
 import { dartStationsToGeoJSON, formatDartPopupHtml, type DartProperties } from './dartStationsLayer'
+import { ndbcStationsToGeoJSON, formatNdbcPopupHtml, type NdbcProperties } from './ndbcStationsLayer'
 import {
   AURORA_RASTER_COORDINATES,
   auroraAt,
@@ -123,6 +125,10 @@ const COOPS_RADIUS_SELECTED = COOPS_RADIUS.map(([zoom, radius]): [number, number
 // is selected.
 const DART_SOURCE_ID = 'dart-stations'
 const DART_LAYER_ID = 'dart-stations-circle'
+// The NDBC moored buoys: a static snapshot too, since NDBC sends no CORS headers. Drawn only while
+// the NDBC realtime node is selected.
+const NDBC_SOURCE_ID = 'ndbc-stations'
+const NDBC_LAYER_ID = 'ndbc-stations-circle'
 const coopsRadius = (stops: [number, number][]) =>
   ['interpolate', ['linear'], ['zoom'], ...stops.flat()] as ExpressionSpecification
 
@@ -314,6 +320,32 @@ export function MapLibreGlobe() {
       map.on('mouseleave', DART_LAYER_ID, () => {
         map.getCanvas().style.cursor = ''
       })
+      map.addSource(NDBC_SOURCE_ID, { type: 'geojson', data: ndbcStationsToGeoJSON(NDBC_STATIONS) })
+      map.addLayer({
+        id: NDBC_LAYER_ID,
+        type: 'circle',
+        source: NDBC_SOURCE_ID,
+        layout: { visibility: 'none' },
+        paint: {
+          'circle-color': '#0f766e',
+          'circle-radius': 4,
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 1,
+        },
+      })
+      map.on('click', NDBC_LAYER_ID, (e: MapLayerMouseEvent) => {
+        const feature = e.features?.[0]
+        if (!feature || feature.geometry.type !== 'Point') return
+        const [lng, lat] = feature.geometry.coordinates
+        selectPoint([lng, lat])
+        new Popup().setLngLat([lng, lat]).setHTML(formatNdbcPopupHtml(feature.properties as NdbcProperties)).addTo(map)
+      })
+      map.on('mouseenter', NDBC_LAYER_ID, () => {
+        map.getCanvas().style.cursor = 'pointer'
+      })
+      map.on('mouseleave', NDBC_LAYER_ID, () => {
+        map.getCanvas().style.cursor = ''
+      })
       setMapLoaded(true)
 
       // Point-click forecast/observation lookup (#39). Registered as a global click handler,
@@ -322,7 +354,7 @@ export function MapLibreGlobe() {
       // the alert popup below, not both — map.getLayer(...) also guards queryRenderedFeatures
       // being called before the alerts layer exists. A tide station is guarded the same way (#51).
       map.on('click', (e: MapMouseEvent) => {
-        const layers = [ALERTS_FILL_LAYER_ID, COOPS_LAYER_ID, DART_LAYER_ID].filter((id) => map.getLayer(id))
+        const layers = [ALERTS_FILL_LAYER_ID, COOPS_LAYER_ID, DART_LAYER_ID, NDBC_LAYER_ID].filter((id) => map.getLayer(id))
         if (layers.length > 0 && map.queryRenderedFeatures(e.point, { layers }).length > 0) return
         showPointLookup(map, e.lngLat.lng, e.lngLat.lat, ovationRef.current)
       })
@@ -530,6 +562,13 @@ export function MapLibreGlobe() {
     map.setLayoutProperty(DART_LAYER_ID, 'visibility', dartShown ? 'visible' : 'none')
   }, [dartShown, mapLoaded])
 
+  const ndbcShown = view.liveLayers.includes('ndbc-stations')
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded || !map.getLayer(NDBC_LAYER_ID)) return
+    map.setLayoutProperty(NDBC_LAYER_ID, 'visibility', ndbcShown ? 'visible' : 'none')
+  }, [ndbcShown, mapLoaded])
+
   return (
     <div className="globe">
       <div
@@ -539,6 +578,7 @@ export function MapLibreGlobe() {
         data-coverage-features={view.footprint.features.length}
         data-coops-stations={mapLoaded ? COOPS_STATIONS.length : undefined}
         data-dart-stations={mapLoaded ? (dartShown ? DART_STATIONS.length : 0) : undefined}
+        data-ndbc-stations={mapLoaded ? (ndbcShown ? NDBC_STATIONS.length : 0) : undefined}
         data-nowcoast-radar={mapLoaded ? (radarShown ? 'visible' : 'hidden') : undefined}
         data-aurora-cells={auroraCells ?? undefined}
         style={{ width: '100%', height: '100%' }}
