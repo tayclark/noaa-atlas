@@ -1,9 +1,10 @@
-// Client for the NCEP GFS 10 m wind field, read straight from the public AWS Open Data bucket
+// Client for the NCEP GFS 10 m wind and GFS-Wave significant wave height fields, read straight from the public AWS Open Data bucket
 // (#229). The bucket sends `access-control-allow-origin: *` and honours Range requests, so no proxy
-// is needed: the `.idx` sidecar gives each field's byte range and only those ~80 kB are fetched.
+// is needed: the `.idx` sidecar gives each field's byte range and only that field (~80 kB for wind,
+// ~430 kB for waves) is fetched.
 // Requests are logged to requestLog.ts for the Inspector, like the other live clients.
 
-import { decodeGribField, type GribField } from './grib2'
+import { decodeGribField, decodeGribFieldAsync, type GribField } from './grib2'
 import { findGribField, parseGribIdx, rangeHeader } from './gribIdx'
 import { pushLogEntry, type RequestLogStatus } from './requestLog'
 
@@ -53,11 +54,16 @@ function pad(n: number): string {
   return String(n).padStart(2, '0')
 }
 
-function fieldPath(cycle: number, hour: number): string {
+export type GfsProduct = 'atmos' | 'wave'
+
+function fieldPath(cycle: number, hour: number, product: GfsProduct = 'atmos'): string {
   const d = new Date(cycle)
   const day = `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}`
   const cc = pad(d.getUTCHours())
-  return `/gfs.${day}/${cc}/atmos/gfs.t${cc}z.pgrb2.1p00.f${String(hour).padStart(3, '0')}`
+  const f = String(hour).padStart(3, '0')
+  return product === 'wave'
+    ? `/gfs.${day}/${cc}/wave/gridded/gfswave.t${cc}z.global.0p25.f${f}.grib2`
+    : `/gfs.${day}/${cc}/atmos/gfs.t${cc}z.pgrb2.1p00.f${f}`
 }
 
 async function logged(path: string, headers: Record<string, string>, read: (res: Response) => Promise<unknown>): Promise<Response> {
@@ -91,23 +97,26 @@ async function logged(path: string, headers: Record<string, string>, read: (res:
   return res
 }
 
-let cycleCache: { cycle: number; expiresAt: number } | null = null
+const cycleCache = new Map<GfsProduct, { cycle: number; expiresAt: number }>()
 const fieldCache = new Map<string, Promise<WindField>>()
+const waveCache = new Map<string, Promise<GribField>>()
 
 /** Clears the cycle and field caches. Intended for test isolation between cases. */
 export function clearGfsCache(): void {
-  cycleCache = null
+  cycleCache.clear()
   fieldCache.clear()
+  waveCache.clear()
 }
 
-/** The newest GFS cycle whose first file is already published. */
-export async function getLatestCycle(now = Date.now()): Promise<number> {
-  if (cycleCache && cycleCache.expiresAt > now) return cycleCache.cycle
+/** The newest GFS cycle whose first file is already published (the wave files can lag the atmos ones). */
+export async function getLatestCycle(now = Date.now(), product: GfsProduct = 'atmos'): Promise<number> {
+  const cached = cycleCache.get(product)
+  if (cached && cached.expiresAt > now) return cached.cycle
   let lastError: unknown = new GfsHttpError(404)
   for (const cycle of cycleCandidates(now)) {
     try {
-      await logged(`${fieldPath(cycle, 0)}.idx`, {}, async () => ({ cycle: new Date(cycle).toISOString() }))
-      cycleCache = { cycle, expiresAt: now + CYCLE_TTL_MS }
+      await logged(`${fieldPath(cycle, 0, product)}.idx`, {}, async () => ({ cycle: new Date(cycle).toISOString() }))
+      cycleCache.set(product, { cycle, expiresAt: now + CYCLE_TTL_MS })
       return cycle
     } catch (err) {
       if (!(err instanceof GfsHttpError) || err.status !== 404) throw err
@@ -138,5 +147,24 @@ export function getWindField(cycle: number, hour: number): Promise<WindField> {
   fieldCache.set(path, pending)
   pending.catch(() => fieldCache.delete(path))
   while (fieldCache.size > FIELD_CACHE_SIZE) fieldCache.delete(fieldCache.keys().next().value as string)
+  return pending
+}
+
+/** Significant wave height (m) for `hour` hours after the wave `cycle`; land is NaN. Cached for the session. */
+export function getWaveField(cycle: number, hour: number): Promise<GribField> {
+  const path = fieldPath(cycle, hour, 'wave')
+  const cached = waveCache.get(path)
+  if (cached) return cached
+  const pending = (async () => {
+    const idx = await (await logged(`${path}.idx`, {}, async () => ({ bytes: 'index' }))).text()
+    const entry = findGribField(parseGribIdx(idx), 'HTSGW', 'surface')
+    if (!entry) throw new Error('GFS-Wave index has no HTSGW')
+    const headers = { Range: rangeHeader(entry) }
+    const res = await logged(path, headers, async (r) => ({ name: 'HTSGW', bytes: (await r.arrayBuffer()).byteLength }))
+    return decodeGribFieldAsync(await res.arrayBuffer())
+  })()
+  waveCache.set(path, pending)
+  pending.catch(() => waveCache.delete(path))
+  while (waveCache.size > FIELD_CACHE_SIZE) waveCache.delete(waveCache.keys().next().value as string)
   return pending
 }
