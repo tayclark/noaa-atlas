@@ -10,6 +10,9 @@ import { mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
 import { pinch, swipe } from './fixtures/touch'
 
+// The graph is only used to pick a node here, so skip its ~6.5 s animated settle.
+test.use({ reducedMotion: 'reduce' })
+
 const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
 const POPUP = '.maplibregl-popup-content'
 

@@ -7,6 +7,9 @@ import { RADAR_FRAMES, mockRadar } from './fixtures/nowcoast'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc, mockSwpcRefresh } from './fixtures/swpc'
 
+// The graph is only used to pick a node here, so skip its ~6.5 s animated settle.
+test.use({ reducedMotion: 'reduce' })
+
 const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
 const NOWCOAST = 'nowcoast-map-services'
 

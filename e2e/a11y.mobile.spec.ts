@@ -9,6 +9,9 @@ import { emptyAlertsFixture, mockAlerts, zoneOnlyAlertsFixture } from './fixture
 import { mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
 
+// The graph is only used to pick a node here, so skip its ~6.5 s animated settle.
+test.use({ reducedMotion: 'reduce' })
+
 async function openApp(page: Page) {
   await mockAlerts(page, emptyAlertsFixture())
   await mockSwpc(page)

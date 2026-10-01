@@ -20,10 +20,8 @@ test('renders the NWS alerts layer from a mocked response', async ({ page }) => 
   const globe = page.locator(GLOBE)
   await expect(globe).toBeVisible()
   await responsePromise
-  // Give MapLibre a beat to add the alerts source/layer after the mocked response resolves —
-  // there's no exposed map-ready hook to await directly (see e2e/live-layer.spec.ts's `@live`
-  // test for the same constraint).
-  await page.waitForTimeout(500)
+  // The map answers clicks only once its style has loaded, which is when it publishes its station count.
+  await expect(globe).toHaveAttribute('data-coops-stations', /\d+/, { timeout: 20_000 })
 
   // The mocked alert polygon straddles the map's initial center, so clicking the canvas's
   // on-screen center lands inside it.
