@@ -33,3 +33,18 @@ test('every task frames its on-screen steps with placed labels inside the canvas
     expect(problems, task.label).toEqual([])
   }
 })
+
+// The reduced-motion layout settles at once, so the labels are measured while the view is already
+// zoomed (React StrictMode re-runs the mount effect). A width taken at that size once inflated the
+// fit and dropped a label from a crowded cluster.
+test.describe('with reduced motion', () => {
+  test.use({ reducedMotion: 'reduce', viewport: { width: 1400, height: 900 } })
+
+  test('a crowded task path keeps every on-screen label', async ({ page }) => {
+    await mockAlerts(page, emptyAlertsFixture())
+    await page.goto('/')
+    await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
+    await page.locator('.finder-task-item', { hasText: 'Get raw gridded forecast data' }).click()
+    await expect(page.locator('.graph-node[data-node-id="hrrr-aws-open-data"] text')).not.toHaveClass(/graph-label-hidden/)
+  })
+})

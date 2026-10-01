@@ -312,10 +312,12 @@ export function GraphView() {
 
     const nodeById = new Map(simNodes.map((node) => [node.id, node]))
 
-    // Measured once at the default label size, before any zoom scales the font.
+    // Measured at the label's size on screen. The font is LABEL_PX / k in world units, so a measure
+    // taken after a zoom (a re-run of this effect, as StrictMode does) is rescaled by k.
+    const measureScale = zoomTransform(svgRef.current).k
     nodeElsRef.current.forEach((el, id) => {
       const text = el.querySelector('text')
-      const measured = text?.getComputedTextLength?.() ?? 0
+      const measured = (text?.getComputedTextLength?.() ?? 0) * measureScale
       const node = nodeById.get(id)
       labelWidthsRef.current.set(id, measured > 0 ? measured : (node ? labelText(node).length : 0) * 6.5)
     })
