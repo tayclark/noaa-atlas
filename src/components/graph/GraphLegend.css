@@ -68,3 +68,17 @@
 .graph-legend-edge {
   flex-shrink: 0;
 }
+
+/* Compact layout (#78): on a short canvas the legend can be taller than it, so it must scroll,
+   which needs it to take touches. It closes with the toolbar button or a tap on the graph. */
+.app[data-layout='compact'] .graph-legend {
+  pointer-events: auto;
+  /* Clear of the zoom buttons in the top corner. */
+  max-height: calc(100% - 2 * var(--space-3) - 160px);
+  overscroll-behavior: contain;
+  font-size: var(--font-size-xs);
+}
+
+.app[data-layout='compact'] .graph-legend h3 {
+  font-size: var(--font-size-xs);
+}

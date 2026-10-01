@@ -19,10 +19,11 @@ import graphJson from '../../data/graph.json'
 import tasksJson from '../../data/tasks.json'
 import { buildGraph } from '../../data/buildGraph'
 import { buildOrgHierarchy } from '../../data/orgHierarchy'
-import { parseGraphFile } from '../../data/graphSchema'
+import { parseGraphFile, THEME_LABELS } from '../../data/graphSchema'
 import { getNeighbors } from '../../data/neighbors'
 import { parseTasksFile } from '../../data/taskSchema'
 import {
+  clearSelection,
   getHighlightedNodeIds,
   getSelectedTaskPath,
   getSelectionSnapshot,
@@ -43,9 +44,12 @@ import {
   keyboardViewTransform,
   settleSimulation,
   EDGE_CLASS,
+  framingPadding,
+  nearestNodeWithin,
   nodeRadius,
   panelInset,
   type FitTransform,
+  type HitNode,
   type Inset,
   type LayoutMode,
   type LayoutNode,
@@ -54,7 +58,7 @@ import {
 } from './graphLayout'
 import { selectionAnnouncement } from './a11yAnnouncements'
 import { GraphLegend } from './GraphLegend'
-import { GraphSearch } from './GraphSearch'
+import { GraphSearch, type SearchResult } from './GraphSearch'
 import { buildSearchIndex, matchNodeIds } from './searchMatch'
 import { DIAGONAL_OFFSET, LABEL_GAP, placeLabels, type Box, type LabelItem } from './labelPlacement'
 import { NodeDetailPanel } from './NodeDetailPanel'
@@ -79,6 +83,14 @@ const FIT_ALL_PADDING = 40
 const LABEL_PX = 12
 const LABEL_HEIGHT = 13
 const AUTOFIT_TICK_INTERVAL = 20
+// A touch is a tap, rather than the start of a pan or a pinch, when it ends this close (px) and this
+// soon (ms) to where it began; it means the nearest dot within TAP_REACH_PX of its edge (#78).
+const TAP_SLOP_PX = 10
+const TAP_MAX_MS = 500
+const TAP_REACH_PX = 22
+// The click a browser may send after a tap we already handled arrives this soon (ms) after it.
+const TAP_ECHO_MS = 700
+const ZOOM_MS = 250
 
 const tasks = parseTasksFile(tasksJson).tasks
 const searchIndex = buildSearchIndex(graph.nodes, tasks)
@@ -139,6 +151,10 @@ export function GraphView() {
   // The first settled layout is auto-fit once; later settles (e.g. after a node drag) must not
   // yank the view away from where the user left it.
   const initialFitDoneRef = useRef(false)
+  // Set when the user pans or zooms, and cleared when a selection is framed: a layout that settles
+  // later must not pull the view back from where they put it (#78).
+  const userMovedRef = useRef(false)
+  const tapHandledAtRef = useRef(-Infinity)
   // Read by the fit and label code, which run outside React renders; `relayoutRef` is assigned by
   // the simulation effect, which owns the simulation (#58).
   const modeRef = useRef<LayoutMode>('theme')
@@ -163,10 +179,75 @@ export function GraphView() {
   const announcement = selectionAnnouncement(selection, nodeNameById, taskLabelById, highlightedIds.length)
   const [query, setQuery] = useState('')
   const matchedIds = useMemo(() => matchNodeIds(searchIndex, query), [query])
+  // What a phone lists under the search box: the matches by name, with where each sits (#78).
+  // Services come first, since an API is what the reader is after; the theme hubs follow.
+  const searchResults = useMemo<SearchResult[]>(() => {
+    const found = [...(matchedIds ?? [])].flatMap((id) => {
+      const node = graphNodeById.get(id)
+      return node ? [node] : []
+    })
+    return [...found.filter((node) => node.kind === 'service'), ...found.filter((node) => node.kind !== 'service')].map((node) => ({
+      id: node.id,
+      name: node.name,
+      detail: node.kind === 'service' ? THEME_LABELS[node.theme] : node.kind === 'theme' ? 'Theme' : 'NOAA',
+    }))
+  }, [matchedIds])
 
   useEffect(() => {
     sheetHeightRef.current = sheetHeight
   }, [sheetHeight])
+
+  // Taps by touch or pen (#78). Dots are too small and too close for a finger to land on, and the
+  // browser's own click after a tap is withheld when the finger drifts a pixel, so a tap is read
+  // here: a single pointer that goes down and up within TAP_SLOP_PX and TAP_MAX_MS selects the
+  // nearest dot within reach, and a tap on nothing clears the selection. The mouse keeps its click.
+  useEffect(() => {
+    const svgEl = svgRef.current
+    if (!svgEl) return
+    let tap: { id: number; x: number; y: number; t: number } | null = null
+    const onDown = (event: PointerEvent) => {
+      if (event.pointerType === 'mouse') return
+      // A second finger is a pinch, not a tap.
+      tap = event.isPrimary ? { id: event.pointerId, x: event.clientX, y: event.clientY, t: event.timeStamp } : null
+    }
+    const onMove = (event: PointerEvent) => {
+      if (tap && event.pointerId === tap.id && Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > TAP_SLOP_PX) tap = null
+    }
+    const onUp = (event: PointerEvent) => {
+      const start = tap
+      tap = null
+      if (!start || event.pointerId !== start.id || event.timeStamp - start.t > TAP_MAX_MS) return
+      tapHandledAtRef.current = event.timeStamp
+      const rect = svgEl.getBoundingClientRect()
+      const hittable: HitNode[] = []
+      nodePositionsRef.current.forEach((position, id) => {
+        const node = drawnNodeById.get(id)
+        if (node && (node.kind === 'service' || node.kind === 'theme' || node.kind === 'root') && isNodeVisible(node, modeRef.current)) {
+          hittable.push({ id, ...position, radius: nodeRadius(node) })
+        }
+      })
+      const hit = nearestNodeWithin(hittable, { x: event.clientX - rect.left, y: event.clientY - rect.top }, zoomTransform(svgEl), TAP_REACH_PX)
+      setLegendOpen(false)
+      if (hit) selectNode(hit)
+      else {
+        const { selectedNodeId, selectedPoint, selectedTaskId } = getSelectionSnapshot()
+        if (selectedNodeId || selectedPoint || selectedTaskId) clearSelection()
+      }
+    }
+    const cancel = () => {
+      tap = null
+    }
+    svgEl.addEventListener('pointerdown', onDown)
+    svgEl.addEventListener('pointermove', onMove)
+    svgEl.addEventListener('pointerup', onUp)
+    svgEl.addEventListener('pointercancel', cancel)
+    return () => {
+      svgEl.removeEventListener('pointerdown', onDown)
+      svgEl.removeEventListener('pointermove', onMove)
+      svgEl.removeEventListener('pointerup', onUp)
+      svgEl.removeEventListener('pointercancel', cancel)
+    }
+  }, [])
 
   useEffect(() => {
     const container = containerRef.current
@@ -199,12 +280,17 @@ export function GraphView() {
 
     const zoomBehavior = d3zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.25, 4])
+      // The double-tap zoom eases over this long; with reduced motion it jumps.
+      .duration(prefersReducedMotion() ? 0 : ZOOM_MS)
       .on('zoom', (event: { transform: ZoomTransform; sourceEvent: unknown }) => {
         zoomLayer.attr('transform', event.transform.toString())
         zoomLayer.style('--graph-label-px', String(LABEL_PX / event.transform.k))
         scheduleLabelPlacement()
         // Pan/zoom by the user (not our programmatic fit) ends the automatic framing.
-        if (event.sourceEvent) initialFitDoneRef.current = true
+        if (event.sourceEvent) {
+          initialFitDoneRef.current = true
+          userMovedRef.current = true
+        }
       })
     svg.call(zoomBehavior)
     zoomBehaviorRef.current = zoomBehavior
@@ -283,6 +369,9 @@ export function GraphView() {
     }
 
     const dragBehavior = d3drag<SVGGElement, unknown>()
+      // A finger drags the view, not a dot: with dots a few px across a pan that starts on one would
+      // grab it, and each touch would reheat the layout. Dragging a dot stays for the mouse (#78).
+      .filter((event: Event) => !(event as MouseEvent).ctrlKey && !(event as MouseEvent).button && !event.type.startsWith('touch'))
       .on('start', function onStart(event) {
         const node = nodeById.get(this.dataset.nodeId ?? '')
         if (!node) return
@@ -310,7 +399,9 @@ export function GraphView() {
     select(zoomLayerRef.current)
       .selectAll<SVGGElement, unknown>('.graph-node')
       .call(dragBehavior)
-      .on('click', function onClick() {
+      .on('click', function onClick(event: MouseEvent) {
+        // The browser's echo of a tap the pointer handler already acted on.
+        if (event.timeStamp - tapHandledAtRef.current < TAP_ECHO_MS) return
         const nodeId = this.dataset.nodeId
         if (nodeId) selectNode(nodeId)
       })
@@ -424,22 +515,31 @@ export function GraphView() {
       return true
     }
 
+    // Padding that gives way on a short canvas (#78), measured on the area the inset leaves free.
+    const paddingFor = (inset: Inset, max: number) =>
+      framingPadding(size.width - inset.left - inset.right, size.height - inset.top - inset.bottom, max)
+
     const fitAll = () => {
       const shown = [...nodePositionsRef.current].flatMap(([id, pos]) => {
         const node = drawnNodeById.get(id)
         return node && isNodeVisible(node, modeRef.current) ? [pos] : []
       })
-      applyTransform((inset) => computeFitTransform(shown, size.width, size.height, FIT_ALL_PADDING, 1, inset))
+      applyTransform((inset) => computeFitTransform(shown, size.width, size.height, paddingFor(inset, FIT_ALL_PADDING), 1, inset))
     }
     fitAllRef.current = fitAll
 
     const applyHighlightPan = (settled = false) => {
       positionPathEdges(zoomLayerRef.current, nodePositionsRef.current)
       if (highlightedIds.length === 0) {
-        if (!settled || !initialFitDoneRef.current) fitAll()
+        // Nothing is selected, so the whole graph is framed only while that is still the automatic
+        // view. A resize, or a selection that was just dismissed, must not undo the user's pan (#78).
+        if (!initialFitDoneRef.current) fitAll()
         if (settled) initialFitDoneRef.current = true
         return
       }
+      // The layout settling is not a reason to move a view the user has since moved themselves.
+      if (settled && userMovedRef.current) return
+      if (!settled) userMovedRef.current = false
       const onlyId = highlightedIds.length === 1 ? (highlightedIds[0] as string) : null
       const ids = onlyId
         ? [onlyId, ...getNeighbors(graph, onlyId).flatMap((group) => group.neighbors.map((n) => n.node.id))]
@@ -451,8 +551,8 @@ export function GraphView() {
       })
       applyTransform((inset) =>
         !onlyId && selection.selectedTaskId
-          ? computePathFitTransform(framed, size.width, size.height, 60, SELECTION_MAX_SCALE, inset, LABEL_GAP, PATH_MIN_SCALE, PATH_LINK_DISTANCE)
-          : computeLabelledFitTransform(framed, size.width, size.height, 60, SELECTION_MAX_SCALE, inset, LABEL_GAP),
+          ? computePathFitTransform(framed, size.width, size.height, paddingFor(inset, 60), SELECTION_MAX_SCALE, inset, LABEL_GAP, PATH_MIN_SCALE, PATH_LINK_DISTANCE)
+          : computeLabelledFitTransform(framed, size.width, size.height, paddingFor(inset, 60), SELECTION_MAX_SCALE, inset, LABEL_GAP),
       )
     }
     applyHighlightPanRef.current = applyHighlightPan
@@ -484,26 +584,50 @@ export function GraphView() {
 
   // Arrow keys pan and +/- zoom, for keyboard users who can't drag or scroll (#86). Only when the
   // canvas itself has focus, so typing in the search box or moving between nodes is untouched.
-  const onCanvasKeyDown = (event: ReactKeyboardEvent<SVGSVGElement>) => {
+  // Moves the view as a pan or zoom key would, and says whether the key was one. The zoom buttons of
+  // the phone layout use it too, as the single-pointer alternative to a pinch (#78).
+  const nudgeView = (key: string): boolean => {
     const svgEl = svgRef.current
     const zoomBehavior = zoomBehaviorRef.current
-    if (!svgEl || !zoomBehavior || event.target !== svgEl || event.ctrlKey || event.metaKey || event.altKey) return
+    if (!svgEl || !zoomBehavior) return false
     const current = zoomTransform(svgEl)
-    const next = keyboardViewTransform({ x: current.x, y: current.y, k: current.k }, event.key, size.width, size.height)
-    if (!next) return
-    event.preventDefault()
+    const next = keyboardViewTransform({ x: current.x, y: current.y, k: current.k }, key, size.width, size.height)
+    if (!next) return false
     select(svgEl).call(zoomBehavior.transform, zoomIdentity.translate(next.x, next.y).scale(next.k))
     // A programmatic transform has no sourceEvent, so end the automatic framing explicitly.
     initialFitDoneRef.current = true
+    userMovedRef.current = true
+    return true
+  }
+  const onCanvasKeyDown = (event: ReactKeyboardEvent<SVGSVGElement>) => {
+    if (event.target !== svgRef.current || event.ctrlKey || event.metaKey || event.altKey) return
+    if (nudgeView(event.key)) event.preventDefault()
   }
 
   return (
     <section className="graph-view" aria-label="Graph">
       <div className="graph-toolbar">
-        <GraphSearch query={query} onQueryChange={setQuery} matchCount={matchedIds?.size ?? null} />
-        <button type="button" className="graph-toolbar-button" onClick={() => fitAllRef.current()}>
-          Fit
-        </button>
+        <GraphSearch
+          query={query}
+          onQueryChange={setQuery}
+          matchCount={matchedIds?.size ?? null}
+          {...(narrow
+            ? {
+                placeholder: 'Search APIs…',
+                results: searchResults,
+                onPick: (id: string) => {
+                  selectNode(id)
+                  setQuery('')
+                },
+              }
+            : {})}
+        />
+        {/* The phone layout has Fit with the zoom buttons over the canvas instead. */}
+        {!narrow && (
+          <button type="button" className="graph-toolbar-button" onClick={() => fitAllRef.current()}>
+            Fit
+          </button>
+        )}
         <button
           type="button"
           className="graph-toolbar-button"
@@ -589,6 +713,20 @@ export function GraphView() {
             </g>
           </g>
         </svg>
+        {narrow && (
+          // Pinch and the arrow keys have no single-pointer equivalent on a touch screen without these.
+          <div className="graph-zoom-controls" role="group" aria-label="Zoom">
+            <button type="button" aria-label="Zoom in" onClick={() => nudgeView('+')}>
+              <span aria-hidden="true">+</span>
+            </button>
+            <button type="button" aria-label="Zoom out" onClick={() => nudgeView('-')}>
+              <span aria-hidden="true">−</span>
+            </button>
+            <button type="button" aria-label="Fit graph" onClick={() => fitAllRef.current()}>
+              <span aria-hidden="true">⤢</span>
+            </button>
+          </div>
+        )}
         {!narrow && <NodeDetailPanel collapsed={panelCollapsed} onToggleCollapsed={() => setPanelCollapsed((c) => !c)} />}
         {legendOpen && <GraphLegend mode={mode} />}
       </div>
