@@ -485,6 +485,8 @@ export function GraphView() {
       delete svgEl.dataset.layoutSettled
       initialFitDoneRef.current = false
       if (prefersReducedMotion()) {
+        // A settled simulation is below alphaMin, so reheat it or the settle loop runs no ticks.
+        simulation.alpha(1)
         settleSimulation(simulation)
         renderTick()
         requestAnimationFrame(onSettled)

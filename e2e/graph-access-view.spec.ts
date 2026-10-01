@@ -46,3 +46,26 @@ test('the access view shows access hubs and rings token-gated services, and swit
   await expect(page.locator('[data-node-id="theme-weather"]')).toBeVisible()
   await expect(page.locator('[data-node-id="access-rest"]')).toBeHidden()
 })
+
+test.describe('with reduced motion', () => {
+  test.use({ reducedMotion: 'reduce' })
+
+  test('the access view still re-lays the graph out around its hubs', async ({ page }) => {
+    await mockAlerts(page, emptyAlertsFixture())
+    await mockSwpc(page)
+    await page.goto('/')
+    const svg = page.locator('svg[aria-label="Service graph"]')
+    await expect(svg).toHaveAttribute('data-layout-settled', 'true', { timeout: 20_000 })
+    await page.getByRole('button', { name: 'Access view' }).click()
+    await expect(svg).toHaveAttribute('data-layout-settled', 'true', { timeout: 20_000 })
+    const centre = async (id: string) => {
+      const box = (await page.locator(`[data-node-id="${id}"] circle`).boundingBox())!
+      return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+    }
+    const distance = async (a: string, b: string) => {
+      const [p, q] = [await centre(a), await centre(b)]
+      return Math.hypot(p.x - q.x, p.y - q.y)
+    }
+    expect(await distance('goes-aws-open-data', 'access-cloud-bucket')).toBeLessThan(await distance('goes-aws-open-data', 'access-rest'))
+  })
+})
