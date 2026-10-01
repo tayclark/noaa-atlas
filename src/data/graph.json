@@ -2346,8 +2346,7 @@
         "url": "https://www.ndbc.noaa.gov/data/realtime2/42001.txt",
         "responseExcerpt": "#YY  MM DD hh mm WDIR WSPD GST  WVHT   DPD   APD MWD   PRES  ATMP  WTMP  DEWP  VIS PTDY  TIDE\n#yr  mo dy hr mn degT m/s  m/s     m   sec   sec degT   hPa  degC  degC  degC  nmi  hPa    ft\n2026 09 23 22 10  60  5.0  6.0   0.5    MM   3.8  52 1013.0  30.3  30.7  24.7   MM   MM    MM\n(abbreviated)"
       },
-      "liveLayer": false,
-      "notLiveReason": "Not wired into the v1 map: one text file per station, so a layer needs the station list and per-station fetches.",
+      "liveLayer": true,
       "tags": [
         "buoys",
         "waves",
