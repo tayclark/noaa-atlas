@@ -109,6 +109,23 @@ export const observationSchema = z.object({
 })
 export type NwsObservation = z.infer<typeof observationSchema>
 
+// One layer of the raw gridpoint grid (#228). `validTime` is an ISO interval "start/duration", and a
+// layer with no data (waveHeight inland) comes back with an empty `values` and no `uom`.
+const gridLayerSchema = z.object({
+  uom: z.string().optional(),
+  values: z.array(z.object({ validTime: z.string(), value: z.number().nullable() })).default([]),
+})
+const gridpointDataSchema = z.object({
+  properties: z.object({
+    windSpeed: gridLayerSchema,
+    windDirection: gridLayerSchema,
+    windGust: gridLayerSchema,
+    waveHeight: gridLayerSchema.optional(),
+  }),
+})
+export type NwsGridLayer = z.infer<typeof gridLayerSchema>
+export type NwsGridpointData = z.infer<typeof gridpointDataSchema>
+
 function parse<T>(schema: z.ZodType<T>, raw: unknown): T {
   const result = schema.safeParse(raw)
   if (!result.success) {
@@ -135,4 +152,8 @@ export function parseStationCollection(raw: unknown): NwsStationCollection {
 
 export function parseObservation(raw: unknown): NwsObservation {
   return parse(observationSchema, raw)
+}
+
+export function parseGridpointData(raw: unknown): NwsGridpointData {
+  return parse(gridpointDataSchema, raw)
 }

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearCoopsCache, CoopsHttpError, CoopsParseError, getHiloPredictions, getWaterLevel } from './coopsClient'
-import { makeCoopsError, makePredictions, makeWaterLevel } from './coopsFixtures'
+import { clearCoopsCache, CoopsHttpError, CoopsParseError, getHiloPredictions, getHourlyPredictions, getWaterLevel } from './coopsClient'
+import { makeCoopsError, makeHourlyPredictions, makePredictions, makeWaterLevel } from './coopsFixtures'
 import { clearRequestLog, getRequestLogSnapshot } from './requestLog'
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -94,5 +94,25 @@ describe('getHiloPredictions', () => {
   it('returns the error message when CO-OPS has no predictions for the station', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(makeCoopsError('No Predictions data was found.')))
     expect(await getHiloPredictions('1')).toEqual({ ok: false, message: 'No Predictions data was found.' })
+  })
+})
+
+describe('getHourlyPredictions', () => {
+  it('requests the hourly curve for the date range', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(makeHourlyPredictions()))
+    const result = await getHourlyPredictions('8729108', '20261001', '20261008')
+    const url = new URL(vi.mocked(fetch).mock.calls[0][0] as string)
+    expect(url.searchParams.get('interval')).toBe('h')
+    expect(url.searchParams.get('begin_date')).toBe('20261001')
+    expect(url.searchParams.get('end_date')).toBe('20261008')
+    expect(result).toMatchObject({ ok: true, value: [{ time: '2026-10-01 00:00', metres: 0.392 }, {}, {}] })
+  })
+
+  it('returns the error message when CO-OPS has no predictions for the station', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(makeCoopsError('No Predictions data was found.')))
+    expect(await getHourlyPredictions('1', '20261001', '20261002')).toEqual({
+      ok: false,
+      message: 'No Predictions data was found.',
+    })
   })
 })

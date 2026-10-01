@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   clearNwsCache,
   getActiveAlerts,
+  getGridpointData,
   getGridpointForecast,
   getLatestObservation,
   getPoint,
@@ -11,6 +12,7 @@ import {
 } from './nwsClient'
 import {
   makeAlertCollection,
+  makeGridpointData,
   makeGridpointForecast,
   makeObservation,
   makePoint,
@@ -131,6 +133,26 @@ describe('getGridpointForecast', () => {
     const forecast = await getGridpointForecast('SEW', 125, 68)
     expect(forecast.properties.periods).toHaveLength(1)
     expect(fetch).toHaveBeenCalledWith('https://api.weather.gov/gridpoints/SEW/125,68/forecast', expect.any(Object))
+  })
+})
+
+describe('getGridpointData', () => {
+  it('requests the raw grid and parses its layers', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(makeGridpointData()))
+    const data = await getGridpointData('SEW', 125, 68)
+    expect(data.properties.windSpeed.values).toHaveLength(2)
+    expect(fetch).toHaveBeenCalledWith('https://api.weather.gov/gridpoints/SEW/125,68', expect.any(Object))
+  })
+
+  it('accepts an inland grid whose waveHeight has no unit and no values', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(makeGridpointData({ waveHeight: {} })))
+    const data = await getGridpointData('TOP', 80, 51)
+    expect(data.properties.waveHeight?.values).toEqual([])
+  })
+
+  it('rejects a grid without wind', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ properties: {} }))
+    await expect(getGridpointData('SEW', 125, 68)).rejects.toBeInstanceOf(NwsParseError)
   })
 })
 

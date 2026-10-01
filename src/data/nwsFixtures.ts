@@ -91,3 +91,34 @@ export function makeObservation(overrides: Record<string, unknown> = {}): Record
     },
   }
 }
+
+/** The shape of /gridpoints/{wfo}/{x},{y} (checked 2026-10-01): intervals run "start/duration". */
+export function makeGridpointData(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    properties: {
+      windSpeed: {
+        uom: 'wmoUnit:km_h-1',
+        values: [
+          { validTime: '2026-10-01T00:00:00+00:00/PT2H', value: 16.668 },
+          { validTime: '2026-10-01T02:00:00+00:00/PT1H', value: 20.372 },
+        ],
+      },
+      windDirection: {
+        uom: 'wmoUnit:degree_(angle)',
+        values: [{ validTime: '2026-10-01T00:00:00+00:00/PT3H', value: 240 }],
+      },
+      windGust: {
+        uom: 'wmoUnit:km_h-1',
+        values: [{ validTime: '2026-10-01T00:00:00+00:00/PT3H', value: 29.632 }],
+      },
+      waveHeight: {
+        uom: 'wmoUnit:m',
+        values: [
+          { validTime: '2026-10-01T00:00:00+00:00/PT1H', value: 0 },
+          { validTime: '2026-10-01T01:00:00+00:00/PT1H', value: 0.3048 },
+        ],
+      },
+      ...overrides,
+    },
+  }
+}

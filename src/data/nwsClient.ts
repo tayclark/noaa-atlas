@@ -9,11 +9,13 @@
 
 import {
   parseAlertCollection,
+  parseGridpointData,
   parseGridpointForecast,
   parseObservation,
   parsePoint,
   parseStationCollection,
   type NwsAlertCollection,
+  type NwsGridpointData,
   type NwsGridpointForecast,
   type NwsObservation,
   type NwsPoint,
@@ -80,6 +82,11 @@ export function getPoint(lat: number, lon: number): Promise<NwsPoint> {
 
 export function getGridpointForecast(wfo: string, x: number, y: number): Promise<NwsGridpointForecast> {
   return request(`/gridpoints/${wfo}/${x},${y}/forecast`, parseGridpointForecast)
+}
+
+/** The raw forecast grid: hourly wind, plus wave height where the office publishes it (#228). */
+export function getGridpointData(wfo: string, x: number, y: number): Promise<NwsGridpointData> {
+  return request(`/gridpoints/${wfo}/${x},${y}`, parseGridpointData)
 }
 
 export function getStations(wfo: string, x: number, y: number): Promise<NwsStationCollection> {

@@ -16,6 +16,16 @@ export function makePredictions() {
   }
 }
 
+export function makeHourlyPredictions() {
+  return {
+    predictions: [
+      { t: '2026-10-01 00:00', v: '0.392' },
+      { t: '2026-10-01 01:00', v: '0.455' },
+      { t: '2026-10-01 02:00', v: '0.514' },
+    ],
+  }
+}
+
 export function makeCoopsError(message = 'There is no MLLW for the station: 9999999') {
   return { error: { message } }
 }
