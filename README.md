@@ -1,12 +1,14 @@
 # NOAA Atlas
 
-A linked globe and graph that answers "which NOAA API do I use for X?".
+A linked globe and graph that answers "which NOAA API do I use for X?". **[Try it live](https://tayclark.github.io/noaa-atlas/)**.
+
+![NOAA Atlas: the NWS API selected in the service graph, with its coverage outlined on the globe beside live alerts and an aurora forecast](docs/screenshot.png)
 
 - The **graph** is the NOAA API ecosystem: a curated set of services (owner, base URL, formats, auth, coverage, freshness, sample call) grouped by theme and connected where a documented relationship exists.
 - The **globe** shows NOAA APIs in action: live layers of active National Weather Service alerts, the Space Weather Prediction Center's aurora forecast, the current Kp index, CO-OPS tide stations, DART tsunami buoys, NDBC moored buoys, nowCOAST radar and the GFS wind forecast, click-anywhere point lookups, and the geographic coverage of whichever service you select.
 - The two are linked. Select something on one side and the other reacts.
 
-It is a client-only single-page app. There is no backend, no accounts and no API keys; live data comes straight from `api.weather.gov`, `services.swpc.noaa.gov` and `api.tidesandcurrents.noaa.gov` in the browser.
+It is a client-only single-page app. There is no backend, no accounts and no API keys; live data comes straight from `api.weather.gov`, `services.swpc.noaa.gov` and `api.tidesandcurrents.noaa.gov` in the browser. NOAA data and the map data keep their own terms: see [Data terms and attribution](#data-terms-and-attribution).
 
 ```sh
 npm install
