@@ -70,8 +70,12 @@ export function getActiveAlerts(): Promise<NwsAlertCollection> {
   return request('/alerts/active', parseAlertCollection)
 }
 
+// The NWS answers a coordinate with more than four decimals by redirecting to the four-decimal one,
+// which is an extra round trip, and two taps a metre apart would otherwise be two cache entries (#78).
+const fourDecimals = (degrees: number) => Number(degrees.toFixed(4))
+
 export function getPoint(lat: number, lon: number): Promise<NwsPoint> {
-  return request(`/points/${lat},${lon}`, parsePoint)
+  return request(`/points/${fourDecimals(lat)},${fourDecimals(lon)}`, parsePoint)
 }
 
 export function getGridpointForecast(wfo: string, x: number, y: number): Promise<NwsGridpointForecast> {

@@ -24,6 +24,14 @@
   pointer-events: auto;
 }
 
+/* What only informs takes no touches, so a pan or a tap that starts under it still reaches the
+   globe (#78). */
+.node-selection-status,
+.globe-bottom > .space-weather-readout,
+.globe-bottom > .zone-only-alerts[role='status'] {
+  pointer-events: none;
+}
+
 .node-selection-status {
   position: absolute;
   top: var(--space-4);
@@ -128,19 +136,40 @@
   cursor: pointer;
 }
 
-/* "Locate me": MapLibre's geolocate control drawn as a navigation arrow instead of its crosshair. */
-.maplibregl-ctrl button.maplibregl-ctrl-geolocate .maplibregl-ctrl-icon {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23333' stroke='%23333' stroke-width='2' stroke-linejoin='round'%3E%3Cpolygon points='3 11 22 2 13 21 11 13 3 11'/%3E%3C/svg%3E");
-  background-size: 16px;
+/* "Locate me" (#78): a labelled button of ours, since an unlabelled 29px arrow is hard to find and
+   to hit. MapLibre's own control still does the work (position, camera, the user's dot), but its
+   button is hidden. */
+.maplibregl-ctrl-top-right > .maplibregl-ctrl-group:has(.maplibregl-ctrl-geolocate) {
+  display: none;
 }
 
-.maplibregl-ctrl button.maplibregl-ctrl-geolocate:disabled .maplibregl-ctrl-icon {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23aaa' stroke='%23aaa' stroke-width='2' stroke-linejoin='round'%3E%3Cpolygon points='3 11 22 2 13 21 11 13 3 11'/%3E%3C/svg%3E");
+.globe-locate {
+  position: absolute;
+  top: var(--space-4);
+  right: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 22px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.globe-locate:disabled {
+  color: var(--color-text-muted);
+  cursor: progress;
 }
 
 /* A spinning arrow reads as broken, so waiting for a fix pulses instead. */
-.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-waiting .maplibregl-ctrl-icon {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2333b5e5' stroke='%2333b5e5' stroke-width='2' stroke-linejoin='round'%3E%3Cpolygon points='3 11 22 2 13 21 11 13 3 11'/%3E%3C/svg%3E");
+.globe-locate[aria-busy='true'] .globe-locate-icon {
+  color: var(--color-accent);
   animation: geolocate-pulse 1.2s ease-in-out infinite;
 }
 
@@ -151,7 +180,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-waiting .maplibregl-ctrl-icon {
+  .globe-locate[aria-busy='true'] .globe-locate-icon {
     animation: none;
     opacity: 0.6;
   }
@@ -188,12 +217,13 @@
 
 .geolocation-status {
   position: absolute;
-  top: 50px;
+  top: calc(var(--space-4) + 44px + var(--space-2));
   right: 10px;
+  z-index: 2;
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
-  max-width: 260px;
+  max-width: min(260px, calc(100% - 2 * var(--space-2)));
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   background: var(--color-surface-raised);
@@ -218,10 +248,60 @@
 }
 
 .maplibregl-popup-content {
+  /* The popup scrolls rather than running off the globe: the list of every API covering a point is
+     long, and the page behind must not scroll with it (#78). */
+  max-height: min(50cqh, 22rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--color-surface-raised);
   color: var(--color-text);
   font-family: var(--font-sans);
   font-size: var(--font-size-sm);
+}
+
+/* Over the globe's own overlays, such as the selection card, which would otherwise cover the top of it. */
+.maplibregl-popup {
+  z-index: 4;
+}
+
+.globe-tap-ring {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  background: rgb(62 166 255 / 0.2);
+  pointer-events: none;
+}
+
+.maplibregl-popup-content ul {
+  margin: var(--space-1) 0 0;
+  padding-left: 18px;
+}
+
+/* The disclosure arrow is drawn here, since a flex summary (centred in its touch-sized box) has no marker. */
+.maplibregl-popup-content summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  list-style: none;
+  cursor: pointer;
+}
+
+.maplibregl-popup-content summary::-webkit-details-marker {
+  display: none;
+}
+
+.maplibregl-popup-content summary::before {
+  content: '▸';
+}
+
+.maplibregl-popup-content details[open] > summary::before {
+  content: '▾';
+}
+
+.maplibregl-popup-content .coverage-more {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
 }
 
 .maplibregl-popup-tip {
@@ -294,10 +374,45 @@
 /* Narrow globe (#159): the zone-alerts box stacks above the Kp readout, both full width, and the
    selection card keeps clear of the locate-me button. */
 @container globe (max-width: 480px) {
+  /* A popup spans the globe (the placement is in popupPlacement): the tip would point at nothing. */
+  .globe-popup-narrow {
+    max-width: none !important;
+  }
+
+  .globe-popup-narrow .maplibregl-popup-content {
+    box-sizing: border-box;
+    width: calc(100cqw - 2 * var(--space-2));
+  }
+
+  .globe-popup-narrow .maplibregl-popup-tip {
+    display: none;
+  }
+
   .node-selection-status {
     top: var(--space-2);
     left: var(--space-2);
-    max-width: calc(100% - 2 * var(--space-2) - 44px);
+    /* Clear of the locate button, which is just its icon while a card is showing. */
+    max-width: calc(100% - 2 * var(--space-2) - 44px - var(--space-2));
+  }
+
+  .globe-locate {
+    top: var(--space-2);
+    right: var(--space-2);
+  }
+
+  .globe-has-card .globe-locate-label {
+    display: none;
+  }
+
+  .globe-has-card .globe-locate {
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .geolocation-status {
+    top: calc(var(--space-2) + 44px + var(--space-2));
+    right: var(--space-2);
   }
 
   .globe-bottom {
@@ -318,5 +433,26 @@
     flex: 1;
     min-width: 0;
     width: auto;
+  }
+}
+
+/* Touch screens (#78): the close button of a popup is a finger-sized target, with its text kept
+   clear of it, and MapLibre's ⓘ credit button reaches past its 24px circle without growing it. */
+@media (pointer: coarse) {
+  .maplibregl-popup-close-button {
+    width: 44px;
+    height: 44px;
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  .maplibregl-popup-content {
+    padding: var(--space-3) 44px var(--space-3) var(--space-3);
+  }
+
+  .maplibregl-ctrl-attrib-button::before {
+    content: '';
+    position: absolute;
+    inset: -10px;
   }
 }

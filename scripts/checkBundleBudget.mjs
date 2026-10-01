@@ -12,7 +12,7 @@ const KB = 1000
 
 export const BUDGETS = [
   { name: 'JavaScript', ext: ['.js', '.mjs'], maxGzipBytes: 690 * KB },
-  { name: 'CSS', ext: ['.css'], maxGzipBytes: 17 * KB },
+  { name: 'CSS', ext: ['.css'], maxGzipBytes: 18 * KB },
 ]
 
 function* files(dir) {

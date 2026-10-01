@@ -19,19 +19,29 @@ export function describeCoverageForPopup(nodes: readonly ServiceNode[]): Coverag
   }))
 }
 
+const escapeHtml = (text: string) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+/**
+ * The popup's list of covering APIs. The live ones are listed, since those are the ones that do
+ * something here; the rest, which can be most of thirty, fold into one line to open (#78). A point
+ * in the US is covered by about thirty services, and listing each with its reason made a popup
+ * thousands of pixels tall; the reasons are in each service's detail.
+ */
 export function formatCoveragePopupHtml(entries: readonly CoverageEntry[]): string {
   if (entries.length === 0) {
     return '<span style="opacity: 0.7">No APIs cover this location.</span>'
   }
 
-  const items = entries
-    .map(
-      (entry) =>
-        `<li><strong>${entry.name}</strong> — ${entry.status}${
-          entry.notLiveReason ? ` <span style="opacity: 0.7">(${entry.notLiveReason})</span>` : ''
-        }</li>`,
-    )
-    .join('')
+  const live = entries.filter((entry) => entry.status === 'live')
+  const rest = entries.filter((entry) => entry.status !== 'live')
+  const liveItems = live.map((entry) => `<li><strong>${escapeHtml(entry.name)}</strong> — live</li>`).join('')
+  const restItems = rest.map((entry) => `<li>${escapeHtml(entry.name)}</li>`).join('')
+  const more = rest.length
+    ? `<details class="coverage-more"><summary>${live.length ? `${rest.length} more` : rest.length} available, not live yet</summary><ul>${restItems}</ul></details>`
+    : ''
 
-  return `<strong>APIs covering this point</strong><ul style="margin: 4px 0 0; padding-left: 18px">${items}</ul>`
+  return `<strong>APIs covering this point</strong>${
+    live.length ? `<ul class="coverage-live">${liveItems}</ul>` : ''
+  }${more}`
 }

@@ -75,10 +75,12 @@ select,
   -webkit-tap-highlight-color: transparent;
 }
 
+/* A press shows by brightening, not fading: opacity would also drop the text's contrast below AA for
+   as long as the touch is held (or, in some browsers, a little after). */
 button:active,
 summary:active,
 [role='button']:active {
-  opacity: 0.75;
+  filter: brightness(1.3);
 }
 
 /* Touch screens (#78): controls get a finger-sized target (WCAG 2.2 asks for 24px at least, and
@@ -87,7 +89,7 @@ summary:active,
 @media (pointer: coarse) {
   /* MapLibre's own controls are sized with the globe's touch work. */
   button:not(.maplibregl-ctrl button),
-  summary,
+  summary:not(.maplibregl-ctrl summary),
   [role='tab'],
   input[type='search'],
   input[type='text'] {
