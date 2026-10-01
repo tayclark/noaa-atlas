@@ -5,7 +5,8 @@
 
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
+import { emptyAlertsFixture, mockAlerts, zoneOnlyAlertsFixture } from './fixtures/nwsAlerts'
+import { mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
 
 async function openApp(page: Page) {
@@ -83,5 +84,24 @@ test('the Graph tab, with the search results and the legend open, has no serious
   await page.getByRole('list', { name: 'Matching services' }).getByRole('button').first().tap()
   await page.getByRole('button', { name: 'Legend' }).tap()
   await expect(page.getByLabel('Legend', { exact: true })).toBeVisible()
+  expect(await seriousViolations(page)).toEqual([])
+})
+
+test('the Globe tab, with the zone alerts open and a point popup showing, has no serious violations', async ({ page }) => {
+  await mockAlerts(page, zoneOnlyAlertsFixture(7))
+  await mockSwpc(page)
+  await mockPointLookup(page)
+  await page.goto('/')
+  await page.getByRole('tab', { name: 'Globe' }).tap()
+  const globe = page.getByLabel('Globe view of NOAA API coverage')
+  await expect(globe).toHaveAttribute('data-coops-stations', /\d+/, { timeout: 20_000 })
+  expect(await seriousViolations(page)).toEqual([])
+
+  await page.getByRole('button', { name: 'Expand zone alerts' }).tap()
+  const box = (await globe.boundingBox())!
+  await page.touchscreen.tap(box.x + box.width / 2 + 60, box.y + box.height / 2)
+  const popup = page.locator('.maplibregl-popup-content')
+  await expect(popup).toContainText('Sunny')
+  await popup.locator('summary').tap()
   expect(await seriousViolations(page)).toEqual([])
 })
