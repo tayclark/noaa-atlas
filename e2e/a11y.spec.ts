@@ -126,7 +126,7 @@ test.describe('with motion', () => {
     await page.goto('/')
     await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
     const globe = page.locator('[aria-label="Globe view of NOAA API coverage"]')
-    await page.waitForTimeout(500)
+    await expect(globe).toHaveAttribute('data-coops-stations', /\d+/, { timeout: 20_000 })
     await globe.click()
     await expect(page.getByText('Flood Warning')).toBeVisible()
     expect(await seriousViolations(page)).toEqual([])
