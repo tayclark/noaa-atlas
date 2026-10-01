@@ -7,6 +7,10 @@ import { expect, test, type Page } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 
+// Reduced motion lays the graph out in one go instead of animating the ~6.5 s settle, and these
+// specs assert the settled layout, not the animation.
+test.use({ reducedMotion: 'reduce' })
+
 test.use({ viewport: { width: 844, height: 390 } })
 
 test.beforeEach(async ({ page }) => {

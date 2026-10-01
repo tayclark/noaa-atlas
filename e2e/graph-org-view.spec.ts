@@ -4,6 +4,10 @@ import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 
+// Reduced motion lays the graph out in one go instead of animating the ~6.5 s settle, and these
+// specs assert the settled layout, not the animation.
+test.use({ reducedMotion: 'reduce' })
+
 test('the org view shows office hubs instead of theme hubs, and toggles back', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await mockSwpc(page)
