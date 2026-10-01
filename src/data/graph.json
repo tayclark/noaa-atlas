@@ -5105,7 +5105,7 @@
       "id": "gfs-aws-open-data",
       "name": "GFS global forecast model (AWS Open Data)",
       "shortName": "GFS (AWS)",
-      "summary": "Global Forecast System output from NCEP as GRIB2 files in a public S3 bucket, one prefix per date and cycle (gfs.YYYYMMDD/HH/), with the GDAS analysis and ensemble Kalman filter (enkfgdas) products alongside. The globe's wind overlay reads the 10 m wind fields from it with Range requests, using each cycle's .idx file for the byte offsets.",
+      "summary": "Global Forecast System output from NCEP as GRIB2 files in a public S3 bucket, one prefix per date and cycle (gfs.YYYYMMDD/HH/), with the GDAS analysis and ensemble Kalman filter (enkfgdas) products alongside. The globe's wind and wave overlays read the 10 m wind and significant wave height fields from it with Range requests, using each file's .idx for the byte offsets (the GFS-Wave files are JPEG 2000 packed).",
       "owner": {
         "office": "NWS",
         "program": "NCEP Environmental Modeling Center, Global Forecast System (GFS)",

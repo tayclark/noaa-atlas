@@ -896,7 +896,7 @@ export function MapLibreGlobe() {
         {gfsShown && forecastCycle === null && forecast.status === 'error' && (
           <div className="zone-only-alerts" role="status" aria-label={`${forecastLabel} status`}>
             {forecast.message}
-            <button type="button" className="radar-time-step" onClick={() => setForecastLayer(forecastLayer === 'wind' ? 'waves' : 'wind')}>
+            <button type="button" className="radar-time-step wind-status-action" onClick={() => setForecastLayer(forecastLayer === 'wind' ? 'waves' : 'wind')}>
               Show {forecastLayer === 'wind' ? 'waves' : 'wind'} instead
             </button>
           </div>
