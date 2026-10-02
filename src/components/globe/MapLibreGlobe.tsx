@@ -68,6 +68,7 @@ import { getTimeSnapshot, setTime, subscribeTime } from '../../data/timeStore'
 import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePopup'
 import { hitBox, hitPadding, nearestCandidate } from './hitPick'
 import { describeGeolocationError, GEOLOCATE_MAX_ZOOM, GEOLOCATE_POSITION_OPTIONS } from './geolocation'
+import { LINKED_POINT_ZOOM, needsLinkedLookup } from './linkedPoint'
 import { describeStyleError } from './globeFailure'
 import {
   GLOBE_PROJECTION,
@@ -744,6 +745,24 @@ export function MapLibreGlobe() {
       )
     }
   }, [view, mapLoaded, alertsHighlighted, active])
+
+  // A point selected by a link or by Back (#266) frames itself and opens its lookup, as a click
+  // there would. Once per point, so a popup the reader closed doesn't come back on a tab switch.
+  const linkedPointRef = useRef<string | null>(null)
+  useEffect(() => {
+    const map = mapRef.current
+    const point = selection.selectedPoint
+    if (!map || !mapLoaded || !active || !point) return
+    const key = point.join(',')
+    if (linkedPointRef.current === key) return
+    linkedPointRef.current = key
+    const popupAt = openPopup?.getLngLat()
+    if (!needsLinkedLookup(point, popupAt ? [popupAt.lng, popupAt.lat] : null)) return
+    const camera = { center: point as [number, number], zoom: Math.max(map.getZoom(), LINKED_POINT_ZOOM) }
+    if (prefersReducedMotion()) map.jumpTo(camera)
+    else map.flyTo({ ...camera, essential: true })
+    showPointLookup(map, point[0], point[1], ovationRef.current)
+  }, [selection.selectedPoint, mapLoaded, active])
 
   // The aurora's emphasis (#54) lives apart from the effect above so that the layer arriving
   // (auroraCells) re-applies it without re-framing the globe.

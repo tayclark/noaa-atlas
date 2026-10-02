@@ -6,11 +6,11 @@
 // On a phone (#78) the finder is the whole Tasks tab, so it drills down instead of sharing the
 // pane: the task list, then a page for the picked task, with Back to the list.
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useSyncExternalStore } from 'react'
 import graphJson from '../../data/graph.json'
 import { parseGraphFile, type ServiceNode } from '../../data/graphSchema'
 import { addCompare } from '../../data/compareStore'
-import { clearSelection, selectNode, selectTask } from '../../data/selectionStore'
+import { clearSelection, getSelectionSnapshot, selectNode, selectTask, subscribeSelection } from '../../data/selectionStore'
 import { parseTasksFile, type Task } from '../../data/taskSchema'
 import tasksJson from '../../data/tasks.json'
 import { showView } from '../../data/viewStore'
@@ -26,6 +26,13 @@ export function FinderPanel() {
   // node selection, but the panel should keep showing the task the user picked. Starts empty, so
   // the panel never shows a task as picked when nothing is selected (#148).
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  // A task selected from elsewhere, by a link or by Back (#266), is picked here too.
+  const storeTaskId = useSyncExternalStore(subscribeSelection, getSelectionSnapshot).selectedTaskId
+  const [seenStoreTaskId, setSeenStoreTaskId] = useState<string | null>(null)
+  if (storeTaskId !== seenStoreTaskId) {
+    setSeenStoreTaskId(storeTaskId)
+    if (storeTaskId) setSelectedTaskId(storeTaskId)
+  }
   const selectedTask = tasks.find((task) => task.id === selectedTaskId)
   const bodyRef = useRef<HTMLDivElement>(null)
 
