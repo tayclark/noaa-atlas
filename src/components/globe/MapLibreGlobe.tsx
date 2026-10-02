@@ -568,8 +568,9 @@ export function MapLibreGlobe() {
 
       // Every tap or click on the map (#39, #51, #78). One handler decides what it meant, so only one
       // popup opens: a station if one is near (a fingertip can't aim at a 6px dot, so the query is a
-      // padded box and the nearest dot wins), else an alert polygon under the point, else a
-      // forecast and coverage lookup there. Layers that aren't drawn yet are skipped.
+      // padded box and the nearest dot wins), else an alert polygon under the point, else an SPC
+      // outlook area, else a forecast and coverage lookup there. Alerts and outlook areas also
+      // select the point. Layers that aren't drawn yet are skipped.
       let lastClickAt = -Infinity
       map.on('click', (e: MapMouseEvent) => {
         const at = e.originalEvent.timeStamp
@@ -600,6 +601,8 @@ export function MapLibreGlobe() {
         if (outlook.length > 0) {
           // SPC lists the categories low to high and draws them in that order, so the last is on top.
           const top = outlook[outlook.length - 1]
+          // Like an alert, the outlook area selects the point under it (#274).
+          selectPoint([e.lngLat.lng, e.lngLat.lat])
           showPopup(map, e.lngLat, formatOutlookPopupHtml(top.properties as Parameters<typeof formatOutlookPopupHtml>[0]))
           return
         }
