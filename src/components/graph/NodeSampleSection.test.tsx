@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import graphJson from '../../data/graph.json'
 import type { ServiceNode } from '../../data/graphSchema'
@@ -56,11 +56,11 @@ describe('NodeSampleSection', () => {
     expect(screen.queryByRole('button', { name: /run sample/i })).toBeNull()
   })
 
-  it('copies the sample as curl and fetch', () => {
+  it('copies the sample as curl and fetch', async () => {
     render(<NodeSampleSection node={nwsApi} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Copy as curl' }))
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Copy as curl' })))
     expect(writeText).toHaveBeenLastCalledWith(`curl -H 'Accept: application/geo+json' '${nwsApi.sample?.url}'`)
-    fireEvent.click(screen.getByRole('button', { name: 'Copy as fetch' }))
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Copy as fetch' })))
     expect(writeText.mock.lastCall?.[0]).toContain(`fetch("${nwsApi.sample?.url}"`)
   })
 

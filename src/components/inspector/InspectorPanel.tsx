@@ -7,6 +7,7 @@
 import { useState, useSyncExternalStore } from 'react'
 import { toCurlCommand, toFetchSnippet } from '../../data/copyAsCode'
 import { clearRequestLog, getRequestLogSnapshot, subscribeRequestLog, type RequestLogEntry } from '../../data/requestLog'
+import { CopyButton } from '../CopyButton'
 import { formatTimestamp, statusColorClass, statusLabel, truncatePath } from './inspectorFormat'
 import { JsonTree } from './JsonTree'
 import './InspectorPanel.css'
@@ -25,12 +26,8 @@ function EntryDetail({ entry }: { entry: RequestLogEntry }) {
     <div className="inspector-detail" id={`inspector-detail-${entry.id}`}>
       <div className="inspector-detail-url">{entry.url}</div>
       <div className="inspector-detail-actions">
-        <button type="button" onClick={() => void navigator.clipboard.writeText(toCurlCommand(entry))}>
-          Copy as curl
-        </button>
-        <button type="button" onClick={() => void navigator.clipboard.writeText(toFetchSnippet(entry))}>
-          Copy as fetch
-        </button>
+        <CopyButton label="Copy as curl" text={toCurlCommand(entry)} />
+        <CopyButton label="Copy as fetch" text={toFetchSnippet(entry)} />
       </div>
       <details className="inspector-detail-section">
         <summary>Request headers ({headers.length})</summary>

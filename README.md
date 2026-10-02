@@ -91,7 +91,7 @@ A network log of every live request the app makes, to `api.weather.gov` (alerts,
 - Each row shows the status (`200 OK`, `403 Error`, `Parse error`, `Network error`), the request path and the time. Rows start collapsed.
 - Clicking a row expands it in place (click again to collapse; one row is open at a time) to show the full URL, the request headers (folded) and the response.
 - The response is a foldable tree: the top-level keys are shown, nested objects and arrays are folded to a summary such as `[…] 467 items`, and long arrays show 20 items at a time behind a **Show more** button. A failed call shows its error message instead.
-- **Copy as curl** and **Copy as fetch** reproduce the request outside the app.
+- **Copy as curl** and **Copy as fetch** reproduce the request outside the app. A copy confirms with "Copied" (also announced to screen readers). If the browser blocks the clipboard, the button says so and shows the text in a box, already selected, to copy by hand. The same applies to the node panel's copy buttons.
 - To bound memory while the globe refreshes its feeds, only the newest response for each URL keeps its body, and older bodies are dropped once the kept ones pass about 4 million characters of response text. A row whose body was dropped still shows its URL, status, time and headers, with a note in place of the response.
 
 ## Globe

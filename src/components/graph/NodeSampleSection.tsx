@@ -6,6 +6,7 @@ import { toCurlCommand, toFetchSnippet } from '../../data/copyAsCode'
 import type { ServiceNode } from '../../data/graphSchema'
 import { getPoint } from '../../data/nwsClient'
 import { getPlanetaryKp } from '../../data/swpcClient'
+import { CopyButton } from '../CopyButton'
 import { SWPC_TRY_ITS, type TryItTable } from './swpcTryIt'
 
 // Must match the `sample.url` authored in graph.json for the same node.
@@ -50,12 +51,8 @@ export function NodeSampleSection({ node }: { node: ServiceNode }) {
       <h4>Sample call</h4>
       <code className="node-sample-url">GET {sample.url}</code>
       <div className="node-sample-actions">
-        <button type="button" onClick={() => void navigator.clipboard.writeText(toCurlCommand(request))}>
-          Copy as curl
-        </button>
-        <button type="button" onClick={() => void navigator.clipboard.writeText(toFetchSnippet(request))}>
-          Copy as fetch
-        </button>
+        <CopyButton label="Copy as curl" text={toCurlCommand(request)} />
+        <CopyButton label="Copy as fetch" text={toFetchSnippet(request)} />
         {(runSample || runTables) && (
           <button type="button" onClick={onRun} disabled={run.status === 'loading'}>
             {run.status === 'loading' ? 'Running…' : 'Run sample'}

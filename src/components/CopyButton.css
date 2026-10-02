@@ -1,0 +1,24 @@
+.copy-button-status {
+  align-self: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.copy-button-failed {
+  color: var(--color-danger, #e5484d);
+}
+
+/* Full width and ordered last, so it wraps under the whole row of buttons. */
+.copy-button-fallback {
+  order: 1;
+  flex-basis: 100%;
+  width: 100%;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  resize: vertical;
+}
