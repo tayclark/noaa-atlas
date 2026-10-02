@@ -62,7 +62,7 @@ import { selectionAnnouncement } from './a11yAnnouncements'
 import { GraphLegend } from './GraphLegend'
 import { GraphSearch, type SearchResult } from './GraphSearch'
 import { buildSearchIndex, matchNodeIds } from './searchMatch'
-import { DIAGONAL_OFFSET, LABEL_GAP, labelBudget, placeLabels, type Box, type LabelItem } from './labelPlacement'
+import { boxRelativeTo, DIAGONAL_OFFSET, LABEL_GAP, labelBudget, placeLabels, type Box, type LabelItem } from './labelPlacement'
 import { NodeDetailPanel } from './NodeDetailPanel'
 import { revealTransform, rovingOrder, rovingTabStop, rovingTarget } from './rovingFocus'
 import { useNarrowLayout } from '../useNarrowLayout'
@@ -146,9 +146,13 @@ function detailPanelBox(svgEl: SVGSVGElement, sheet: SheetBox | null): Box | nul
       : { x0: 0, y0: Math.max(0, height - sheet.size), x1: width, y1: height }
   }
   const panelRect = svgEl.parentElement?.querySelector('.node-detail-panel')?.getBoundingClientRect()
-  if (!panelRect || panelRect.width === 0 || panelRect.height === 0) return null
-  const svgRect = svgEl.getBoundingClientRect()
-  return { x0: panelRect.left - svgRect.left, y0: panelRect.top - svgRect.top, x1: panelRect.right - svgRect.left, y1: panelRect.bottom - svgRect.top }
+  return panelRect ? boxRelativeTo(panelRect, svgEl.getBoundingClientRect()) : null
+}
+
+/** The phone zoom buttons (#78) float over the canvas's top-right corner, so no label may sit under them (#292). */
+function zoomControlsBox(svgEl: SVGSVGElement): Box | null {
+  const rect = svgEl.parentElement?.querySelector('.graph-zoom-controls')?.getBoundingClientRect()
+  return rect ? boxRelativeTo(rect, svgEl.getBoundingClientRect()) : null
 }
 
 export function GraphView() {
@@ -354,8 +358,7 @@ export function GraphView() {
           overNodes: priority >= 3,
         })
       })
-      const panel = detailPanelBox(svgEl, sheetRef.current)
-      const obstacles = panel ? [panel] : []
+      const obstacles = [detailPanelBox(svgEl, sheetRef.current), zoomControlsBox(svgEl)].filter((box) => box !== null)
       const bounds = { width: svgEl.clientWidth || initialSizeRef.current.width, height: svgEl.clientHeight || initialSizeRef.current.height }
       const sides = placeLabels(items, bounds, obstacles, labelBudget(t.k, items.length))
       nodeElsRef.current.forEach((el, id) => {
