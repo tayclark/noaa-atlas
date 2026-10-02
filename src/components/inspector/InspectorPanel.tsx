@@ -11,6 +11,12 @@ import { formatTimestamp, statusColorClass, statusLabel, truncatePath } from './
 import { JsonTree } from './JsonTree'
 import './InspectorPanel.css'
 
+// The log keeps only some response bodies, to bound its memory (#265).
+const BODY_OMITTED_TEXT: Record<NonNullable<RequestLogEntry['bodyOmitted']>, string> = {
+  superseded: 'Older response not kept. Only the newest response for each URL is held in memory.',
+  'over-budget': 'Older response not kept. Newer responses filled the space the log keeps for bodies.',
+}
+
 function EntryDetail({ entry }: { entry: RequestLogEntry }) {
   const failed = entry.status === 'network-error' || entry.status === 'http-error'
   const headers = Object.entries(entry.requestHeaders)
@@ -41,6 +47,8 @@ function EntryDetail({ entry }: { entry: RequestLogEntry }) {
         <div className="inspector-detail-section-title">Response</div>
         {failed ? (
           <pre className="inspector-detail-body" tabIndex={0} aria-label="Error message">{entry.errorMessage ?? 'No response body.'}</pre>
+        ) : entry.bodyOmitted ? (
+          <p className="inspector-detail-body inspector-detail-omitted">{BODY_OMITTED_TEXT[entry.bodyOmitted]}</p>
         ) : (
           <div className="inspector-detail-body">
             <JsonTree value={entry.responseBody} />
