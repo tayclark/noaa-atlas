@@ -342,7 +342,7 @@
       ],
       "auth": {
         "type": "none",
-        "note": "Responses echo the request Origin in access-control-allow-origin (checked 2026-09-21)."
+        "note": "Responses echo the request Origin in access-control-allow-origin (checked 2026-09-21). The globe draws the outlooks/cpc_6_10_day_outlk MapServer through its export endpoint as raster tiles (checked 2026-10-02)."
       },
       "coverage": {
         "type": "MultiPolygon",
@@ -633,8 +633,7 @@
         },
         "responseExcerpt": "{\n  \"currentVersion\": 11.3,\n  \"folders\": [\"aviation\", \"fire_weather\", \"hazards\", \"obs\", \"outlooks\", \"precip\", \"Utilities\"],\n  \"services\": []\n}"
       },
-      "liveLayer": false,
-      "notLiveReason": "Deferred: outside the v1 live layers (NWS alerts and point forecast/observations). CORS works, so SPC, WPC and CPC layers here are the likeliest candidates for later map layers.",
+      "liveLayer": true,
       "tags": [
         "arcgis",
         "outlooks",

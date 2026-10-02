@@ -2,7 +2,7 @@
 // this says what the globe shows for it, so a selection can emphasise the right layer and the
 // status card can name it. liveLayers.test.ts keeps it in step with graph.json's liveLayer flags.
 
-export type LiveLayerKey = 'nws-alerts' | 'aurora' | 'kp' | 'coops-stations' | 'nowcoast-radar' | 'dart-stations' | 'ndbc-stations' | 'wind' | 'spc-outlook' | 'arcgis-raster'
+export type LiveLayerKey = 'nws-alerts' | 'aurora' | 'kp' | 'coops-stations' | 'nowcoast-radar' | 'dart-stations' | 'ndbc-stations' | 'wind' | 'spc-outlook' | 'arcgis-raster' | 'arcgis-vector'
 
 // `layer` is null for a node that is live only as a try-it in its detail panel (#240): nothing is drawn.
 export const LIVE_LAYERS: Readonly<Record<string, { layer: LiveLayerKey | null; status: string }>> = {
@@ -15,6 +15,7 @@ export const LIVE_LAYERS: Readonly<Record<string, { layer: LiveLayerKey | null; 
   'gfs-aws-open-data': { layer: 'wind', status: 'Its live layers, the 10 m wind forecast and the wave height forecast (switch between them in the bottom control), are drawn on the globe while this is selected and follow the time slider.' },
   'spc-gis-data': { layer: 'spc-outlook', status: 'Its live layer, the Day 1 convective outlook, is drawn on the globe while this is selected.' },
   'nws-raster-map-services': { layer: 'arcgis-raster', status: 'Its live layer, the last 24 hours of observed precipitation, is drawn on the globe while this is selected.' },
+  'nws-gis-portal': { layer: 'arcgis-vector', status: 'Its live layer, the CPC 6-10 day temperature outlook, is drawn on the globe while this is selected.' },
   'ndbc-dart-realtime': { layer: 'dart-stations', status: 'Its live layer, the DART tsunami buoys, is drawn on the globe while this is selected.' },
   'swpc-alerts-scales': { layer: null, status: 'Live in its detail panel: Run sample fetches the current scales and alerts. Nothing is drawn on the globe.' },
   'swpc-rtsw-solar-wind': { layer: null, status: 'Live in its detail panel: Run sample fetches the latest solar wind readings. Nothing is drawn on the globe.' },

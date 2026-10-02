@@ -1,4 +1,4 @@
-// ArcGIS overlays on the globe (#247). Each is a MapServer drawn through its `export` endpoint,
+// ArcGIS overlays on the globe (#247, #246). Each is a MapServer drawn through its `export` endpoint,
 // which MapLibre requests as raster tiles (the same `{bbox-epsg-3857}` approach as the nowCOAST
 // radar). Nothing is requested until the node is selected. MapLibre owns the image fetches, so only
 // the legend JSON call goes through the typed client and shows up in the Inspector.
@@ -32,6 +32,16 @@ export const ARCGIS_OVERLAYS: readonly ArcgisOverlay[] = [
     opacity: 0.7,
     title: 'Last 24 hours of rain and melt (inches)',
     attribution: 'Precipitation: <a href="https://www.weather.gov/gis/">NOAA/NWS River Forecast Centers</a>',
+  },
+  {
+    key: 'arcgis-vector',
+    sourceId: 'arcgis-vector',
+    layerId: 'arcgis-vector-layer',
+    serviceUrl: 'https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_6_10_day_outlk/MapServer',
+    layerIdInService: 0,
+    opacity: 0.6,
+    title: '6-10 day temperature outlook',
+    attribution: 'Outlook: <a href="https://www.cpc.ncep.noaa.gov/">NOAA/NWS Climate Prediction Center</a>',
   },
 ]
 

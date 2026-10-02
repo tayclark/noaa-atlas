@@ -2,7 +2,7 @@
 // tiles and legend, plus one `@live` smoke test that fetches a real tile.
 
 import { expect, test, type Page } from '@playwright/test'
-import { mockArcgisRaster } from './fixtures/arcgis'
+import { mockArcgisRaster, mockArcgisVector } from './fixtures/arcgis'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 
@@ -66,6 +66,24 @@ test('the overlay still draws, with a message, when the legend fails', async ({ 
   await expect(page.getByRole('status', { name: 'Map overlay legend' })).toContainText('legend could not be loaded')
   await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'arcgis-raster')
   await expect.poll(() => tiles.length).toBeGreaterThan(0)
+})
+
+test('the NWS GIS portal node draws the CPC outlook with its legend and logs the legend call', async ({ page }) => {
+  const tiles = await mockArcgisVector(page)
+  await page.goto('/')
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'hidden')
+
+  await selectByKeyboard(page, 'nws-gis-portal')
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'arcgis-vector')
+  await expect(page.getByLabel('Selection status')).toContainText('temperature outlook')
+  await expect.poll(() => tiles.length).toBeGreaterThan(0)
+  expect(tiles[0]).toContain('layers=show:0')
+  const legend = page.getByRole('status', { name: 'Map overlay legend' })
+  await expect(legend).toContainText('Above, 90%')
+  await expect(page.locator('.maplibregl-ctrl-attrib')).toContainText('Climate Prediction Center')
+
+  await page.getByRole('tab', { name: /Inspector/ }).click()
+  await expect(page.getByRole('button', { name: /vector\/rest\/services\/outlooks/ })).toBeVisible()
 })
 
 test('fetches a real overlay tile @live', async ({ page }) => {

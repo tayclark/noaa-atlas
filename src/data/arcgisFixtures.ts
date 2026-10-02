@@ -5,6 +5,22 @@ import type { ArcgisLegend } from './arcgisSchema'
 const SWATCH =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
 
+// Trimmed copy of the real outlooks/cpc_6_10_day_outlk MapServer legend (curled 2026-10-02).
+export function makeArcgisVectorLegend(): ArcgisLegend {
+  return {
+    layers: [
+      {
+        layerId: 0,
+        layerName: 'CPC 6-10 Day Temperature Outlook',
+        legend: [
+          { label: 'Above, 90%', imageData: SWATCH, contentType: 'image/png' },
+          { label: 'Below, 40%', imageData: SWATCH, contentType: 'image/png' },
+        ],
+      },
+    ],
+  }
+}
+
 export function makeArcgisLegend(): ArcgisLegend {
   return {
     layers: [
