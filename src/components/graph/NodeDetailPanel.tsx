@@ -57,7 +57,9 @@ export function NodeDetailPanel({ collapsed, onToggleCollapsed }: NodeDetailPane
 export function NodeDetailContent({ node, inSheet = false }: { node: DetailNode; inSheet?: boolean }) {
   if (node.kind === 'root') return <RootDetailBody />
   if (node.kind === 'theme') return <ThemeDetailBody node={node} />
-  return <NodeDetailBody node={node as ServiceNode} inSheet={inSheet} />
+  // Keyed so a new node starts fresh: a "Run sample" result, or a run still in flight, belongs to
+  // the node it ran for and must not carry over to the next one (#262).
+  return <NodeDetailBody key={node.id} node={node as ServiceNode} inSheet={inSheet} />
 }
 
 function NodeDetailBody({ node, inSheet }: { node: ServiceNode; inSheet: boolean }) {

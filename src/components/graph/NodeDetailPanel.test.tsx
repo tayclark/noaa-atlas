@@ -1,15 +1,18 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import graphJson from '../../data/graph.json'
 import { buildGraph } from '../../data/buildGraph'
 import type { ServiceNode, ThemeNode } from '../../data/graphSchema'
 import { parseGraphFile, THEME_DESCRIPTIONS, THEME_LABELS } from '../../data/graphSchema'
 import { clearCompare, getCompareSnapshot } from '../../data/compareStore'
+import { getPoint } from '../../data/nwsClient'
 import { clearSelection, getSelectionSnapshot, selectNode } from '../../data/selectionStore'
 import { NodeDetailPanel } from './NodeDetailPanel'
 import { RootDetailBody } from './RootDetailBody'
 import { ThemeDetailBody } from './ThemeDetailBody'
+
+vi.mock('../../data/nwsClient', () => ({ getPoint: vi.fn() }))
 
 const file = parseGraphFile(graphJson)
 const nodes = file.nodes as ServiceNode[]
@@ -19,6 +22,7 @@ const panel = <NodeDetailPanel collapsed={false} onToggleCollapsed={() => {}} />
 beforeEach(() => {
   clearSelection()
   clearCompare()
+  vi.mocked(getPoint).mockReset()
 })
 
 afterEach(cleanup)
@@ -75,6 +79,32 @@ describe('NodeDetailPanel', () => {
     selectNode(second.id)
     render(panel)
     expect(screen.getByText(second.name)).toBeTruthy()
+  })
+
+  it('shows the next node\'s static sample, not the previous node\'s run result (#262)', async () => {
+    vi.mocked(getPoint).mockResolvedValue({ gridId: 'TOP' } as never)
+    selectNode('nws-api')
+    render(panel)
+    fireEvent.click(screen.getByRole('button', { name: 'Run sample' }))
+    await waitFor(() => expect(screen.getByText('Live response (parsed)')).toBeTruthy())
+
+    act(() => selectNode('ncei-access-data-service'))
+    expect(screen.getByText('Static sample')).toBeTruthy()
+    expect(screen.queryByText(/"gridId"/)).toBeNull()
+  })
+
+  it('drops a run that finishes after the selection has moved on (#262)', async () => {
+    let resolve: (value: unknown) => void = () => {}
+    vi.mocked(getPoint).mockReturnValue(new Promise((r) => (resolve = r)) as never)
+    selectNode('nws-api')
+    render(panel)
+    fireEvent.click(screen.getByRole('button', { name: 'Run sample' }))
+    expect(screen.getByRole('button', { name: 'Running…' })).toBeTruthy()
+
+    act(() => selectNode('ncei-access-data-service'))
+    await act(async () => resolve({ gridId: 'TOP' }))
+    expect(screen.getByText('Static sample')).toBeTruthy()
+    expect(screen.queryByText(/"gridId"/)).toBeNull()
   })
 
   it('summarizes a selected theme hub and links to its services (#145)', () => {

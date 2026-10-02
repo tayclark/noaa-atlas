@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DetailSheet } from './DetailSheet'
 import { clearCompare, getCompareSnapshot } from '../data/compareStore'
+import { getPoint } from '../data/nwsClient'
 import { clearSelection, getSelectionSnapshot, selectNode } from '../data/selectionStore'
 import { getSheetBox, setSheetBox } from '../data/sheetStore'
 import { getViewSnapshot, resetView } from '../data/viewStore'
+
+vi.mock('../data/nwsClient', () => ({ getPoint: vi.fn() }))
 
 // The area the sheet sits in is 700px tall and its header 124px, so it peeks at 124 and opens to 644.
 const AREA = 700
@@ -96,6 +99,18 @@ describe('DetailSheet', () => {
     act(() => selectNode('coops-data-api'))
     expect(screen.getByRole('button', { name: 'Collapse details' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: /CO-OPS/ })).toBeTruthy()
+  })
+
+  it('shows the next node\'s static sample, not the previous node\'s run result (#262)', async () => {
+    vi.mocked(getPoint).mockResolvedValue({ gridId: 'TOP' } as never)
+    selectNode('nws-api')
+    render(sheet({ startOpen: true }))
+    fireEvent.click(screen.getByRole('button', { name: 'Run sample' }))
+    await waitFor(() => expect(screen.getByText('Live response (parsed)')).toBeTruthy())
+
+    act(() => selectNode('ncei-access-data-service'))
+    expect(screen.getByText('Static sample')).toBeTruthy()
+    expect(screen.queryByText(/"gridId"/)).toBeNull()
   })
 
   it('releases its height when it goes away', () => {
