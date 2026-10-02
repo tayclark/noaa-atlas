@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AboutDialog, Disclaimer } from './components/AboutDialog'
 import { LeftPanel } from './components/LeftPanel'
 import { SplitPane } from './components/SplitPane'
+import { GlobeErrorBoundary } from './components/globe/GlobeErrorBoundary'
 import { MapLibreGlobe } from './components/globe/MapLibreGlobe'
 import { useNarrowLayout } from './components/useNarrowLayout'
 import './App.css'
@@ -11,6 +12,12 @@ function App() {
   // `data-layout` is what the stylesheets key off, so CSS and JS agree on which layout applies.
   const compact = useNarrowLayout()
   const [aboutOpen, setAboutOpen] = useState(false)
+  // A globe that can't start (no WebGL2) shows a message in its pane instead of blanking the app (#260).
+  const globe = (
+    <GlobeErrorBoundary>
+      <MapLibreGlobe />
+    </GlobeErrorBoundary>
+  )
   return (
     <div className="app" data-layout={compact ? 'compact' : 'wide'}>
       <a className="skip-link" href="#main">
@@ -26,7 +33,7 @@ function App() {
         )}
       </header>
       <main className="app-main" id="main" tabIndex={-1}>
-        {compact ? <LeftPanel globe={<MapLibreGlobe />} onAbout={() => setAboutOpen(true)} /> : <SplitPane left={<LeftPanel />} right={<MapLibreGlobe />} />}
+        {compact ? <LeftPanel globe={globe} onAbout={() => setAboutOpen(true)} /> : <SplitPane left={<LeftPanel />} right={globe} />}
       </main>
       <footer className="app-footer">
         {compact ? (
