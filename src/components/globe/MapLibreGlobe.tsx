@@ -1,6 +1,7 @@
 import { GeolocateControl, LngLat, Map as MapLibreMap, Marker, Popup, type CanvasSource, type ExpressionSpecification, type GeoJSONSource, type LngLatLike, type MapGeoJSONFeature, type MapMouseEvent, type PopupOptions, type RasterTileSource } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import './GlobePane.css'
 import './MapLibreGlobe.css'
 import {
   getActiveAlerts,

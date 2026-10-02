@@ -22,6 +22,9 @@ vi.mock('maplibre-gl', () => ({
   },
 }))
 
+// The first test to render the globe waits for its lazy module to be transformed and imported.
+const GLOBE_LOAD_MS = 10_000
+
 beforeEach(resetView)
 
 afterEach(() => {
@@ -42,14 +45,15 @@ describe('Escape (#267)', () => {
 })
 
 describe('App', () => {
-  it('renders the header, the left panel (Explore tab by default), and the globe', () => {
+  it('renders the header, the left panel (Explore tab by default), and the globe', async () => {
     render(<App />)
     expect(screen.getByRole('heading', { name: 'NOAA Atlas' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Explore', selected: true })).toBeTruthy()
-    expect(
-      screen.getByRole('group', { name: 'Globe view of NOAA API coverage' }),
-    ).toBeTruthy()
     expect(screen.getByRole('separator', { name: 'Resize panes' })).toBeTruthy()
+    // The globe is a lazy chunk (#264): a placeholder holds its pane until it arrives.
+    expect(screen.getByRole('status', { name: 'Map status' }).textContent).toMatch(/Loading the globe/)
+    expect(await screen.findByRole('group', { name: 'Globe view of NOAA API coverage' }, { timeout: GLOBE_LOAD_MS })).toBeTruthy()
+    expect(screen.queryByText(/Loading the globe/)).toBeNull()
   })
 
   it('shows the graph alongside the finder on the default tab', () => {
@@ -81,12 +85,13 @@ describe('App', () => {
       expect(screen.getByRole('tab', { name: 'Tasks', selected: true })).toBeTruthy()
       expect(screen.queryByRole('separator')).toBeNull()
       expect(screen.queryByRole('group', { name: 'Globe view of NOAA API coverage' })).toBeNull()
+      expect(screen.queryByRole('status', { name: 'Map status' })).toBeNull()
     })
 
-    it('shows the globe once its tab is opened', () => {
+    it('shows the globe once its tab is opened', async () => {
       render(<App />)
       fireEvent.click(screen.getByRole('tab', { name: 'Globe' }))
-      expect(screen.getByRole('group', { name: 'Globe view of NOAA API coverage' })).toBeTruthy()
+      expect(await screen.findByRole('group', { name: 'Globe view of NOAA API coverage' }, { timeout: GLOBE_LOAD_MS })).toBeTruthy()
     })
 
     it('condenses the footer to a line, with the full disclaimer in the About dialog', () => {

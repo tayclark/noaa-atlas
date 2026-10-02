@@ -1,0 +1,48 @@
+/* The globe pane's box and its status cards. This loads with the app, not with the lazy globe
+   chunk (#264), so the loading placeholder and the error boundary are styled before, or without,
+   that chunk. The pane is a size container, so the overlays can rearrange in a narrow globe (a
+   phone's Globe tab, or a narrow desktop pane, #159). */
+.globe {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  container: globe / size;
+}
+
+/* The globe pane when the map can't start or its basemap fails (#260): a card in the middle, in
+   place of the canvas or over the empty one. */
+.globe-unavailable {
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--color-bg);
+}
+
+.globe-unavailable-card,
+.globe-map-status {
+  max-width: min(360px, calc(100% - 2 * var(--space-4)));
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.globe-map-status {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.globe-unavailable-card p,
+.globe-map-status p {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+}
+
+.globe-map-status p {
+  margin: 0;
+}

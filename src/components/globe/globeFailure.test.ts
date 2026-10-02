@@ -12,6 +12,16 @@ describe('describeMapInitError', () => {
     expect(describeMapInitError(namedError('GPUInitializationError'))).toMatch(/needs WebGL2/)
   })
 
+  it('says to reload when the lazy globe chunk fails to load, in each browser\'s wording', () => {
+    for (const message of [
+      'Failed to fetch dynamically imported module: https://example.test/assets/MapLibreGlobe-abc.js',
+      'error loading dynamically imported module: https://example.test/assets/MapLibreGlobe-abc.js',
+      'Importing a module script failed.',
+    ]) {
+      expect(describeMapInitError(new TypeError(message))).toMatch(/globe's code couldn't load.*reload/)
+    }
+  })
+
   it('falls back to a generic message for anything else', () => {
     expect(describeMapInitError(new Error('other'))).toMatch(/couldn't start/)
     expect(describeMapInitError('a string')).toMatch(/couldn't start/)

@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { AboutDialog, Disclaimer } from './components/AboutDialog'
 import { onEscapeKeyDown } from './components/escapeDismiss'
 import { LeftPanel } from './components/LeftPanel'
 import { SplitPane } from './components/SplitPane'
 import { GlobeErrorBoundary } from './components/globe/GlobeErrorBoundary'
-import { MapLibreGlobe } from './components/globe/MapLibreGlobe'
+import { GlobePlaceholder } from './components/globe/GlobePlaceholder'
 import { useNarrowLayout } from './components/useNarrowLayout'
 import './App.css'
+
+// The globe, MapLibre and its CSS load on demand, so the finder and graph paint without waiting for
+// them. On a phone the globe tab mounts only when first opened, so MapLibre isn't fetched until then. (#264)
+const MapLibreGlobe = lazy(() => import('./components/globe/MapLibreGlobe').then((m) => ({ default: m.MapLibreGlobe })))
 
 function App() {
   // On a phone the globe is a tab of its own rather than a sliver of a side-by-side split (#78).
@@ -18,10 +22,13 @@ function App() {
     document.addEventListener('keydown', onEscapeKeyDown)
     return () => document.removeEventListener('keydown', onEscapeKeyDown)
   }, [])
-  // A globe that can't start (no WebGL2) shows a message in its pane instead of blanking the app (#260).
+  // A globe that can't start (no WebGL2), or whose chunk fails to load, shows a message in its pane
+  // instead of blanking the app (#260).
   const globe = (
     <GlobeErrorBoundary>
-      <MapLibreGlobe />
+      <Suspense fallback={<GlobePlaceholder />}>
+        <MapLibreGlobe />
+      </Suspense>
     </GlobeErrorBoundary>
   )
   return (

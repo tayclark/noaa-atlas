@@ -8,6 +8,8 @@ import { defineConfig } from 'vitest/config'
 // chunk, so a visitor downloads it twice. The build therefore leaves maplibre-gl external and ships
 // MapLibre's own three files side by side, where the main module finds the worker next to itself.
 // The directory carries the version, so a cached old worker never pairs with a new bundle. (#263)
+// Nothing preloads these files: only the lazy globe chunk imports MapLibre, so it's fetched when the
+// globe mounts rather than competing with the entry chunk on first load (#264).
 const maplibreExternal = (): Plugin => {
   const version: string = JSON.parse(
     readFileSync(new URL('./node_modules/maplibre-gl/package.json', import.meta.url), 'utf8'),
@@ -34,15 +36,6 @@ const maplibreExternal = (): Plugin => {
         })
       }
     },
-    // Vite doesn't preload an external import, so without these the browser finds MapLibre only
-    // after parsing the entry chunk. Drop them once the globe loads lazily (#264).
-    transformIndexHtml() {
-      return ['maplibre-gl.mjs', 'maplibre-gl-shared.mjs'].map((name) => ({
-        tag: 'link',
-        attrs: { rel: 'modulepreload', crossorigin: '', href: `${base}${dir}/${name}` },
-        injectTo: 'head' as const,
-      }))
-    },
   }
 }
 
@@ -51,6 +44,8 @@ export default defineConfig({
   // Project Pages serves from /noaa-atlas/; the deploy workflow sets VITE_BASE. (#49)
   base: process.env.VITE_BASE ?? '/',
   plugins: [react(), maplibreExternal()],
+  // scripts/checkBundleBudget.mjs reads the manifest to tell the initial load from lazy chunks (#264).
+  build: { manifest: true },
   // maplibre-gl loads its tile-parsing worker as a separate ESM chunk at
   // runtime; Vite's dep pre-bundling doesn't discover that chunk, so the
   // worker 404s unless maplibre-gl is excluded from pre-bundling. (#82 spike)
