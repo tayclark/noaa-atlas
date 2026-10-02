@@ -140,7 +140,10 @@ export function DetailSheet({ view, startOpen, side = false }: DetailSheetProps)
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === 'Escape') clearSelection()
+    if (event.key !== 'Escape') return
+    // Handled here, so the app's own Escape (escapeDismiss.ts) leaves it alone.
+    event.preventDefault()
+    clearSelection()
   }
 
   const service = node.kind === 'service'
