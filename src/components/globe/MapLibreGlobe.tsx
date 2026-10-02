@@ -68,6 +68,7 @@ import { getTimeSnapshot, setTime, subscribeTime } from '../../data/timeStore'
 import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePopup'
 import { hitBox, hitPadding, nearestCandidate } from './hitPick'
 import { describeGeolocationError, GEOLOCATE_MAX_ZOOM, GEOLOCATE_POSITION_OPTIONS } from './geolocation'
+import { describeStyleError } from './globeFailure'
 import {
   GLOBE_PROJECTION,
   GLOBE_STYLE_URL,
@@ -337,6 +338,8 @@ export function MapLibreGlobe() {
   const alertsAtRef = useRef(0)
   // MapLibre enables its own button once it knows the browser can geolocate; ours waits for that.
   const [locateReady, setLocateReady] = useState(false)
+  // Set when the basemap fails before `load`, which then never fires and leaves no layers (#260).
+  const [mapError, setMapError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -384,9 +387,18 @@ export function MapLibreGlobe() {
       setGeolocationError(describeGeolocationError(e.code))
     })
 
+    // An error before `load` (the style or its sources failing) means `load` may never come, so say
+    // why the globe is empty. Later errors, such as a missing tile, keep being ignored.
+    let loaded = false
+    map.on('error', (e) => {
+      if (!loaded) setMapError(describeStyleError(e.error))
+    })
+
     // setProjection must run after the style has finished loading, or
     // MapLibre throws "Style is not done loading."
     map.on('load', () => {
+      loaded = true
+      setMapError(null)
       map.setProjection(GLOBE_PROJECTION)
       // In a narrow map MapLibre makes the attribution compact but opens it until the first drag,
       // covering the bottom of the globe on a phone (#159). There, start it folded to its ⓘ button;
@@ -958,6 +970,11 @@ export function MapLibreGlobe() {
         data-aurora-cells={auroraCells ?? undefined}
         style={{ width: '100%', height: '100%' }}
       />
+      {mapError && (
+        <div className="globe-map-status" role="status" aria-label="Map status">
+          <p>{mapError}</p>
+        </div>
+      )}
       {view.card && (
         <div className="node-selection-status" role="status" aria-label="Selection status">
           <div className="node-selection-status-title">
