@@ -15,3 +15,13 @@ test('searching dims non-matching nodes and reports no results', async ({ page }
   await search.fill('xyzzy')
   await expect(page.getByRole('status')).toHaveText('No matches for "xyzzy"')
 })
+
+test('selecting a node dims the others (#255)', async ({ page }) => {
+  await mockAlerts(page, emptyAlertsFixture())
+  await page.goto('/')
+
+  await page.locator('.graph-node[data-node-id="nws-api"]').focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.graph-node[data-node-id="spc-gis-data"]')).toHaveClass(/graph-node-dimmed/)
+  await expect(page.locator('.graph-node[data-node-id="nws-api"]')).not.toHaveClass(/graph-node-dimmed/)
+})

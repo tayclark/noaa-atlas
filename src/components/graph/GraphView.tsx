@@ -34,6 +34,7 @@ import {
 import { getSheetBox, subscribeSheetBox, type SheetBox } from '../../data/sheetStore'
 import { nodeColor } from '../../data/themeColors'
 import { prefersReducedMotion } from '../prefersReducedMotion'
+import { focusIds, isEdgeDimmed, neighborIds, nodeDim } from './focusDim'
 import {
   computeFitTransform,
   computeLabelledFitTransform,
@@ -72,6 +73,7 @@ const graphNodeById = new Map(graph.nodes.map((node) => [node.id, node]))
 const orgHierarchy = buildOrgHierarchy(graphFile)
 const accessHierarchy = buildAccessHierarchy(graphFile)
 const drawnNodes: LayoutNode[] = [...graph.nodes, ...orgHierarchy.nodes, ...accessHierarchy.nodes]
+const dimClass = { none: '', near: ' graph-node-near', dim: ' graph-node-dimmed' } as const
 const drawnEdges = [...graph.edges, ...orgHierarchy.edges, ...accessHierarchy.edges]
 // `short` is the visible text on a phone, where the toolbar is one row; the accessible name stays `label`.
 const LAYOUT_MODES: { mode: LayoutMode; label: string; short: string; title: string }[] = [
@@ -194,6 +196,8 @@ export function GraphView() {
   const announcement = selectionAnnouncement(selection, nodeNameById, taskLabelById, highlightedIds.length)
   const [query, setQuery] = useState('')
   const matchedIds = useMemo(() => matchNodeIds(searchIndex, query), [query])
+  const focus = focusIds(matchedIds, highlightedIds)
+  const near = neighborIds(drawnEdges, highlightedIds, matchedIds)
   // What a phone lists under the search box: the matches by name, with where each sits (#78).
   // Services come first, since an API is what the reader is after; the theme hubs follow.
   const searchResults = useMemo<SearchResult[]>(() => {
@@ -695,7 +699,7 @@ export function GraphView() {
               {drawnEdges.map((edge, i) => (
                 <line
                   key={`${edge.source}-${edge.target}-${edge.type}`}
-                  className={`graph-edge ${EDGE_CLASS[edge.type]}${isEdgeVisible(edge, mode) ? '' : ' graph-hidden'}${matchedIds && !(matchedIds.has(edge.source) && matchedIds.has(edge.target)) ? ' graph-edge-dimmed' : ''}`}
+                  className={`graph-edge ${EDGE_CLASS[edge.type]}${isEdgeVisible(edge, mode) ? '' : ' graph-hidden'}${isEdgeDimmed(focus, matchedIds, highlightedIds, edge.source, edge.target) ? ' graph-edge-dimmed' : ''}`}
                   data-edge-type={edge.type}
                   ref={(el) => {
                     edgeElsRef.current[i] = el as SVGLineElement
@@ -722,7 +726,7 @@ export function GraphView() {
                 return (
                   <g
                     key={node.id}
-                    className={`${hub ? 'graph-org-node' : 'graph-node'} graph-node-${node.kind}${hidden}${gated ? ' graph-node-gated' : ''}${highlightedIds.includes(node.id) ? ' graph-node-highlighted' : ''}${matchedIds ? (matchedIds.has(node.id) ? ' graph-node-match' : ' graph-node-dimmed') : ''}`}
+                    className={`${hub ? 'graph-org-node' : 'graph-node'} graph-node-${node.kind}${hidden}${gated ? ' graph-node-gated' : ''}${highlightedIds.includes(node.id) ? ' graph-node-highlighted' : ''}${matchedIds?.has(node.id) ? ' graph-node-match' : ''}${dimClass[nodeDim(focus, near, node.id)]}`}
                     data-node-id={node.id}
                     {...(hub ? {} : { role: 'button', tabIndex: 0, 'aria-label': node.name, 'aria-pressed': selection.selectedNodeId === node.id })}
                     ref={(el) => {
