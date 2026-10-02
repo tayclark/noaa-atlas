@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { mockNarrowLayout, unmockNarrowLayout } from './components/narrowLayoutTestUtils'
+import { clearSelection, getSelectionSnapshot, selectNode } from './data/selectionStore'
 import { resetView } from './data/viewStore'
 
 vi.mock('maplibre-gl', () => ({
@@ -13,6 +14,8 @@ vi.mock('maplibre-gl', () => ({
     addControl = vi.fn()
     touchZoomRotate = { disableRotation: vi.fn() }
     resize = vi.fn()
+    canvas = document.createElement('canvas')
+    getCanvas = () => this.canvas
   },
   GeolocateControl: class {
     on = vi.fn()
@@ -24,6 +27,18 @@ beforeEach(resetView)
 afterEach(() => {
   cleanup()
   unmockNarrowLayout()
+  clearSelection()
+})
+
+describe('Escape (#267)', () => {
+  it('clears the selection from anywhere but a field', () => {
+    render(<App />)
+    selectNode('nws-api')
+    fireEvent.keyDown(screen.getByRole('searchbox'), { key: 'Escape' })
+    expect(getSelectionSnapshot().selectedNodeId).toBe('nws-api')
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(getSelectionSnapshot().selectedNodeId).toBeNull()
+  })
 })
 
 describe('App', () => {

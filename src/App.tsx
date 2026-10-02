@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AboutDialog, Disclaimer } from './components/AboutDialog'
+import { onEscapeKeyDown } from './components/escapeDismiss'
 import { LeftPanel } from './components/LeftPanel'
 import { SplitPane } from './components/SplitPane'
 import { GlobeErrorBoundary } from './components/globe/GlobeErrorBoundary'
@@ -12,6 +13,11 @@ function App() {
   // `data-layout` is what the stylesheets key off, so CSS and JS agree on which layout applies.
   const compact = useNarrowLayout()
   const [aboutOpen, setAboutOpen] = useState(false)
+  // Escape closes a globe popup, then clears the selection, wherever focus is (#267).
+  useEffect(() => {
+    document.addEventListener('keydown', onEscapeKeyDown)
+    return () => document.removeEventListener('keydown', onEscapeKeyDown)
+  }, [])
   // A globe that can't start (no WebGL2) shows a message in its pane instead of blanking the app (#260).
   const globe = (
     <GlobeErrorBoundary>

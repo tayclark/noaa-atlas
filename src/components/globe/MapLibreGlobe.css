@@ -137,6 +137,37 @@
   cursor: pointer;
 }
 
+/* The spot Enter looks up while the map has keyboard focus (#267): a ring at the centre, with the
+   keys spelled out under it. It never takes a click. */
+.globe-centre {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.globe-centre-mark {
+  grid-area: 1 / 1;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--color-bg);
+}
+
+.globe-centre-hint {
+  grid-area: 1 / 1;
+  transform: translateY(32px);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
 /* "Locate me" (#78): a labelled button of ours, since an unlabelled 29px arrow is hard to find and
    to hit. MapLibre's own control still does the work (position, camera, the user's dot), but its
    button is hidden. */

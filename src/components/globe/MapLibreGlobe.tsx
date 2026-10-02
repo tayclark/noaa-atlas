@@ -69,6 +69,7 @@ import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePop
 import { hitBox, hitPadding, nearestCandidate } from './hitPick'
 import { describeGeolocationError, GEOLOCATE_MAX_ZOOM, GEOLOCATE_POSITION_OPTIONS } from './geolocation'
 import { LINKED_POINT_ZOOM, needsLinkedLookup } from './linkedPoint'
+import { registerDismisser } from '../escapeDismiss'
 import { describeStyleError } from './globeFailure'
 import {
   GLOBE_PROJECTION,
@@ -337,6 +338,8 @@ export function MapLibreGlobe() {
   const [locateReady, setLocateReady] = useState(false)
   // Set when the basemap fails before `load`, which then never fires and leaves no layers (#260).
   const [mapError, setMapError] = useState<string | null>(null)
+  // The map has keyboard focus, so the centre marker that Enter looks up shows (#267).
+  const [keyboardFocus, setKeyboardFocus] = useState(false)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -389,6 +392,32 @@ export function MapLibreGlobe() {
     let loaded = false
     map.on('error', (e) => {
       if (!loaded) setMapError(describeStyleError(e.error))
+    })
+
+    // Keyboard (#267): MapLibre pans the focused map with the arrow keys, and Enter asks about the
+    // spot under the centre marker, as a click there would. The marker shows only while the map
+    // has keyboard focus. Escape closes the popup (escapeDismiss.ts), before it clears the selection.
+    const canvas = map.getCanvas()
+    canvas.setAttribute('aria-keyshortcuts', 'Enter')
+    const onCanvasKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !loaded) return
+      event.preventDefault()
+      const { lng, lat } = map.getCenter()
+      showPointLookup(map, lng, lat, ovationRef.current)
+    }
+    const onCanvasFocus = () => setKeyboardFocus(canvas.matches(':focus-visible'))
+    const onCanvasBlur = () => setKeyboardFocus(false)
+    canvas.addEventListener('keydown', onCanvasKeyDown)
+    canvas.addEventListener('focus', onCanvasFocus)
+    canvas.addEventListener('blur', onCanvasBlur)
+    const unregisterDismisser = registerDismisser(() => {
+      if (!openPopup) return false
+      // MapLibre focuses a popup as it opens, so closing one would leave focus on nothing. It goes
+      // back to the map instead, where the reader was.
+      const hadFocus = openPopup.getElement()?.contains(document.activeElement) ?? false
+      openPopup.remove()
+      if (hadFocus) canvas.focus()
+      return true
     })
 
     // setProjection must run after the style has finished loading, or
@@ -690,6 +719,10 @@ export function MapLibreGlobe() {
 
     return () => {
       readyObserver.disconnect()
+      unregisterDismisser()
+      canvas.removeEventListener('keydown', onCanvasKeyDown)
+      canvas.removeEventListener('focus', onCanvasFocus)
+      canvas.removeEventListener('blur', onCanvasBlur)
       mapRef.current = null
       geolocateRef.current = null
       map.remove()
@@ -985,6 +1018,12 @@ export function MapLibreGlobe() {
         data-aurora-cells={auroraCells ?? undefined}
         style={{ width: '100%', height: '100%' }}
       />
+      {keyboardFocus && (
+        <div className="globe-centre" aria-hidden="true">
+          <span className="globe-centre-mark" />
+          <span className="globe-centre-hint">Enter: look up this spot · Esc: close</span>
+        </div>
+      )}
       {mapError && (
         <div className="globe-map-status" role="status" aria-label="Map status">
           <p>{mapError}</p>
