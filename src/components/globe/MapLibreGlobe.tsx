@@ -80,6 +80,7 @@ import {
   alertSeverityColorExpression,
   describeAlertForPopup,
   describeAlertsFetchOutcome,
+  formatAlertPopupHtml,
   splitAlertsByGeometry,
   visibleZoneOnlyAlerts,
   zoneOnlyAlertsTitle,
@@ -541,11 +542,11 @@ export function MapLibreGlobe() {
 
         const alert = map.getLayer(ALERTS_FILL_LAYER_ID) ? map.queryRenderedFeatures(e.point, { layers: [ALERTS_FILL_LAYER_ID] })[0] : undefined
         if (alert?.properties) {
-          const { event, areaDesc, effective, expires } = describeAlertForPopup(alert.properties as Parameters<typeof describeAlertForPopup>[0])
+          const content = describeAlertForPopup(alert.properties as Parameters<typeof describeAlertForPopup>[0])
           // e.lngLat is guaranteed inside the polygon (queryRenderedFeatures matched it), so it's a
           // valid representative point for coverage lookup (#45).
           selectPoint([e.lngLat.lng, e.lngLat.lat])
-          showPopup(map, e.lngLat, `<strong>${event}</strong><br/>${areaDesc}<br/>${effective} – ${expires}`)
+          showPopup(map, e.lngLat, formatAlertPopupHtml(content))
           return
         }
 

@@ -5,6 +5,7 @@
 import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec'
 import { NwsHttpError, NwsParseError } from '../../data/nwsClient'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
+import { escapeHtml } from './popupHtml'
 
 // The alerts are refreshed this often while the globe is looked at, and a failed first load is
 // retried sooner (#222).
@@ -71,6 +72,11 @@ export function describeAlertForPopup(
     effective: new Date(properties.effective).toLocaleString(),
     expires: new Date(properties.expires).toLocaleString(),
   }
+}
+
+/** The alert click popup's HTML. Every field is NWS text (or derived from it), so all are escaped (#261). */
+export function formatAlertPopupHtml({ event, areaDesc, effective, expires }: AlertPopupContent): string {
+  return `<strong>${escapeHtml(event)}</strong><br/>${escapeHtml(areaDesc)}<br/>${escapeHtml(effective)} – ${escapeHtml(expires)}`
 }
 
 export interface VisibleZoneOnlyAlerts {

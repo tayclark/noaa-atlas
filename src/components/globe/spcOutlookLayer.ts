@@ -4,6 +4,7 @@
 
 import { SpcHttpError, SpcParseError } from '../../data/spcClient'
 import type { SpcOutlook } from '../../data/spcSchema'
+import { escapeHtml } from './popupHtml'
 
 export interface SpcCategory {
   label: string
@@ -49,10 +50,6 @@ export function describeOutlookForPopup(properties: SpcOutlook['features'][numbe
     expires: new Date(properties.EXPIRE_ISO).toLocaleString(),
     forecaster: properties.FORECASTER ?? null,
   }
-}
-
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
 export function formatOutlookPopupHtml(properties: SpcOutlook['features'][number]['properties']): string {

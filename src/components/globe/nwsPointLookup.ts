@@ -5,6 +5,7 @@
 
 import { NwsHttpError, NwsParseError } from '../../data/nwsClient'
 import type { NwsForecastPeriod, NwsObservation, NwsStation, NwsStationCollection } from '../../data/nwsSchema'
+import { escapeHtml } from './popupHtml'
 
 /**
  * Picks the station closest to (lat, lon) by simple squared-distance-in-degrees. NWS's own
@@ -107,13 +108,13 @@ export function formatPointLoadingHtml(): string {
 export function formatPointPopupHtml(content: PointPopupContent): string {
   const temperature = content.temperatureF === null ? '—' : `${content.temperatureF}°F`
   return [
-    `<strong>${content.location}</strong>`,
-    `${content.shortForecast} · ${temperature}`,
-    `Wind: ${content.windSummary}`,
-    `<span style="opacity: 0.7">Observed ${content.observedAt}</span>`,
+    `<strong>${escapeHtml(content.location)}</strong>`,
+    `${escapeHtml(content.shortForecast)} · ${temperature}`,
+    `Wind: ${escapeHtml(content.windSummary)}`,
+    `<span style="opacity: 0.7">Observed ${escapeHtml(content.observedAt)}</span>`,
   ].join('<br/>')
 }
 
 export function formatPointErrorHtml(message: string): string {
-  return `<span>${message}</span>`
+  return `<span>${escapeHtml(message)}</span>`
 }

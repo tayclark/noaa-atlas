@@ -9,6 +9,7 @@ import {
   alertSeverityColorExpression,
   describeAlertForPopup,
   describeAlertsFetchOutcome,
+  formatAlertPopupHtml,
   splitAlertsByGeometry,
   visibleZoneOnlyAlerts,
   zoneOnlyAlertsTitle,
@@ -68,6 +69,22 @@ describe('describeAlertForPopup', () => {
     expect(popup.areaDesc).toBe('King County, WA')
     expect(popup.effective).toBe(new Date(feature.properties.effective).toLocaleString())
     expect(popup.expires).toBe(new Date(feature.properties.expires).toLocaleString())
+  })
+})
+
+describe('formatAlertPopupHtml', () => {
+  it('renders event, area and times', () => {
+    expect(formatAlertPopupHtml({ event: 'Flood Warning', areaDesc: 'King County, WA', effective: 'e', expires: 'x' })).toBe(
+      '<strong>Flood Warning</strong><br/>King County, WA<br/>e – x',
+    )
+  })
+
+  it('escapes NWS text', () => {
+    const html = formatAlertPopupHtml({ event: '<img src=x onerror=alert(1)>', areaDesc: 'A & B', effective: '<b>', expires: '"' })
+    expect(html).not.toContain('<img')
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;')
+    expect(html).toContain('A &amp; B')
+    expect(html).toContain('&lt;b&gt; – &quot;')
   })
 })
 
