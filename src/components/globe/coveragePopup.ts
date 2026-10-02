@@ -3,6 +3,7 @@
 // itself is excluded from coverage and verified manually in the browser (see vite.config.ts).
 
 import type { ServiceNode } from '../../data/graphSchema'
+import { escapeHtml } from './popupHtml'
 
 export interface CoverageEntry {
   name: string
@@ -18,9 +19,6 @@ export function describeCoverageForPopup(nodes: readonly ServiceNode[]): Coverag
     notLiveReason: node.notLiveReason,
   }))
 }
-
-const escapeHtml = (text: string) =>
-  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 /**
  * The popup's list of covering APIs. The live ones are listed, since those are the ones that do

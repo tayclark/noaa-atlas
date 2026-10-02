@@ -2,6 +2,7 @@
 // GeoJSON and popup text are unit-testable, as with coopsStationsLayer.ts.
 
 import type { NdbcStation } from '../../data/ndbcStations'
+import { escapeHtml } from './popupHtml'
 
 export interface NdbcProperties {
   id: string
@@ -22,10 +23,6 @@ export function ndbcStationsToGeoJSON(stations: readonly NdbcStation[]): NdbcFea
       geometry: { type: 'Point', coordinates: [lng, lat] },
     })),
   }
-}
-
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
 /** The buoy popup: its name and a link to its NDBC page, where the observations live. */

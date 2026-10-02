@@ -32,6 +32,24 @@ test('renders the NWS alerts layer from a mocked response', async ({ page }) => 
   await expect(page.locator('.zone-only-alerts', { hasText: 'No active alerts.' })).toHaveCount(0)
 })
 
+test('the alert popup shows NWS text as text, not markup (#261)', async ({ page }) => {
+  const fixture = mappableAlertsFixture()
+  const alert = fixture.features[0]!
+  alert.properties = { ...alert.properties, event: '<img src=x onerror="window.__xss=1">Flood', areaDesc: 'Lake & <b>River</b>' }
+  await mockAlerts(page, fixture)
+  await page.goto('/')
+
+  const globe = page.locator(GLOBE)
+  await expect(globe).toHaveAttribute('data-coops-stations', /\d+/, { timeout: 20_000 })
+  await globe.click()
+
+  const popup = page.locator('.maplibregl-popup-content')
+  await expect(popup).toContainText('<img src=x onerror="window.__xss=1">Flood')
+  await expect(popup).toContainText('Lake & <b>River</b>')
+  await expect(popup.locator('img, b')).toHaveCount(0)
+  expect(await page.evaluate(() => (window as { __xss?: number }).__xss)).toBeUndefined()
+})
+
 test('the zone-only alerts overlay starts collapsed and expands on demand (#151)', async ({ page }) => {
   await mockAlerts(page, zoneOnlyAlertsFixture(7))
   await page.goto('/')

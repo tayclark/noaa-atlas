@@ -98,6 +98,28 @@ describe('describePointForPopup', () => {
   })
 })
 
+describe('formatPointPopupHtml', () => {
+  it('escapes NWS text', () => {
+    const html = formatPointPopupHtml({
+      location: '<img src=x onerror=alert(1)>',
+      shortForecast: 'Rain & <script>',
+      temperatureF: 50,
+      windSummary: 'Calm',
+      observedAt: 'now',
+    })
+    expect(html).not.toContain('<img')
+    expect(html).not.toContain('<script')
+    expect(html).toContain('<strong>&lt;img src=x onerror=alert(1)&gt;</strong>')
+    expect(html).toContain('Rain &amp; &lt;script&gt; · 50°F')
+  })
+})
+
+describe('formatPointErrorHtml', () => {
+  it('escapes its message', () => {
+    expect(formatPointErrorHtml('<img src=x onerror=alert(1)> & more')).toBe('<span>&lt;img src=x onerror=alert(1)&gt; &amp; more</span>')
+  })
+})
+
 describe('describePointError', () => {
   it('describes a rate-limited error', () => {
     const err = new NwsHttpError(429, 'rate-limited', 'rate limited')

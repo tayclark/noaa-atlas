@@ -3,6 +3,7 @@
 
 import { CoopsHttpError, CoopsParseError } from '../../data/coopsClient'
 import type { CoopsReading, CoopsResult, CoopsStation, CoopsTide } from '../../data/coopsSchema'
+import { escapeHtml } from './popupHtml'
 
 /** Below this zoom the ~300 stations would read as noise on the globe, so the layer stays hidden. */
 export const COOPS_MIN_ZOOM = 3
@@ -27,10 +28,6 @@ export function stationsToGeoJSON(stations: readonly CoopsStation[]): StationFea
       geometry: { type: 'Point', coordinates: [lng, lat] },
     })),
   }
-}
-
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
 function stationTitle({ name, state }: Pick<StationProperties, 'name' | 'state'>): string {
