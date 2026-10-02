@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { clearCompare, getCompareSnapshot } from '../../data/compareStore'
-import { clearSelection, getHighlightedNodeIds, getSelectionSnapshot, selectNode } from '../../data/selectionStore'
+import { clearSelection, getHighlightedNodeIds, getSelectionSnapshot, selectNode, selectTask } from '../../data/selectionStore'
 import { getViewSnapshot, resetView } from '../../data/viewStore'
 import { mockNarrowLayout, unmockNarrowLayout } from '../narrowLayoutTestUtils'
 import tasksJson from '../../data/tasks.json'
@@ -37,6 +37,20 @@ describe('FinderPanel', () => {
     for (const task of tasks) {
       expect(screen.getByText(task.label).getAttribute('aria-pressed')).toBe('false')
     }
+  })
+
+  it('picks a task selected from elsewhere, such as a link or Back (#266)', () => {
+    const [first, second] = tasks
+    if (!first || !second) throw new Error('expected at least two authored tasks')
+    selectTask(first.id)
+    render(<FinderPanel />)
+    expect(screen.getByText(first.label).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('list', { name: 'Recommended nodes' })).toBeTruthy()
+    act(() => selectTask(second.id))
+    expect(screen.getByText(second.label).getAttribute('aria-pressed')).toBe('true')
+    // A step's node replaces the task in the store, and the panel keeps showing the task.
+    act(() => selectNode('nws-api'))
+    expect(screen.getByText(second.label).getAttribute('aria-pressed')).toBe('true')
   })
 
   it('makes the intro scroller keyboard-focusable only while the intro is showing', () => {
