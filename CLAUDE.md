@@ -53,7 +53,7 @@ The workflow is in the README ("Adding or editing services"). Beyond that:
 - oxlint also flags hook-dependency and ref-in-render issues, and `erasing-op` (e.g. `k * 0` in a test).
 - e2e node selection: use the keyboard (`focus()` + Enter on `.graph-node[data-node-id=...]`). The graph re-frames after every selection, so a clicked node can end up under the globe canvas.
 - Graph layout changes: check both Playwright's default 1280x720 viewport (a tight canvas, about 640x352) and a larger one such as 1400x900.
-- e2e runs against the dev server, not `vite preview`, because the production build doesn't emit MapLibre's worker (see `playwright.config.ts`).
+- e2e runs against the dev server, not `vite preview` (see `playwright.config.ts`). Changes to how the build ships MapLibre (`maplibreExternal` in `vite.config.ts`) need a manual `vite build` + `vite preview` check.
 - If port 5173 is taken, start `npx vite --port 5199 --strictPort` and run Playwright against a temporary copy of `playwright.config.ts` with the port swapped (keep `reuseExistingServer` true). Delete the copy afterwards.
 - For scripted browser checks, Playwright is importable from `node_modules/playwright/index.mjs`.
 

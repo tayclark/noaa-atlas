@@ -3,27 +3,54 @@ import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
 
-// maplibre-gl 5+ starts its worker from a separate ESM file that imports a shared chunk by its
-// bare name, so both must ship unhashed and side by side. (#49)
-const maplibreWorker = (): Plugin => ({
-  name: 'maplibre-worker',
-  apply: 'build',
-  generateBundle() {
-    for (const name of ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs']) {
-      this.emitFile({
-        type: 'asset',
-        fileName: `maplibre/${name}`,
-        source: readFileSync(new URL(`./node_modules/maplibre-gl/dist/${name}`, import.meta.url)),
-      })
-    }
-  },
-})
+// maplibre-gl 5+ starts its worker from a separate ESM file, and both the main module and the
+// worker import a shared chunk by its bare name (#49). Bundling the main module would inline that
+// chunk, so a visitor downloads it twice. The build therefore leaves maplibre-gl external and ships
+// MapLibre's own three files side by side, where the main module finds the worker next to itself.
+// The directory carries the version, so a cached old worker never pairs with a new bundle. (#263)
+const maplibreExternal = (): Plugin => {
+  const version: string = JSON.parse(
+    readFileSync(new URL('./node_modules/maplibre-gl/package.json', import.meta.url), 'utf8'),
+  ).version
+  const dir = `maplibre/${version}`
+  let base = '/'
+  return {
+    name: 'maplibre-external',
+    apply: 'build',
+    // Before Vite's own resolver, which would otherwise bundle the package.
+    enforce: 'pre',
+    configResolved(config) {
+      base = config.base
+    },
+    resolveId(id) {
+      if (id === 'maplibre-gl') return { id: `${base}${dir}/maplibre-gl.mjs`, external: true }
+    },
+    generateBundle() {
+      for (const name of ['maplibre-gl.mjs', 'maplibre-gl-shared.mjs', 'maplibre-gl-worker.mjs']) {
+        this.emitFile({
+          type: 'asset',
+          fileName: `${dir}/${name}`,
+          source: readFileSync(new URL(`./node_modules/maplibre-gl/dist/${name}`, import.meta.url)),
+        })
+      }
+    },
+    // Vite doesn't preload an external import, so without these the browser finds MapLibre only
+    // after parsing the entry chunk. Drop them once the globe loads lazily (#264).
+    transformIndexHtml() {
+      return ['maplibre-gl.mjs', 'maplibre-gl-shared.mjs'].map((name) => ({
+        tag: 'link',
+        attrs: { rel: 'modulepreload', crossorigin: '', href: `${base}${dir}/${name}` },
+        injectTo: 'head' as const,
+      }))
+    },
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
   // Project Pages serves from /noaa-atlas/; the deploy workflow sets VITE_BASE. (#49)
   base: process.env.VITE_BASE ?? '/',
-  plugins: [react(), maplibreWorker()],
+  plugins: [react(), maplibreExternal()],
   // maplibre-gl loads its tile-parsing worker as a separate ESM chunk at
   // runtime; Vite's dep pre-bundling doesn't discover that chunk, so the
   // worker 404s unless maplibre-gl is excluded from pre-bundling. (#82 spike)

@@ -1,8 +1,9 @@
 // Fails when the production build outgrows its load budget (#47). Sizes are gzip bytes of what a
-// first visit downloads: the app's JS (including MapLibre's worker files) and its CSS. The limits
+// first visit downloads: the app's JS (including MapLibre's own files) and its CSS. The limits
 // sit about 10% above the size measured when the budget was set, so growth has to be deliberate:
 // raise a limit in the same PR that adds the weight, and say why. 700 to 720 kB: the GFS-Wave layer
-// (#229) adds a lazily loaded JPEG 2000 decoder (about 9 kB gzip) plus its overlay code.
+// (#229) adds a lazily loaded JPEG 2000 decoder (about 9 kB gzip) plus its overlay code. 720 to
+// 592 kB: MapLibre's shared chunk ships once instead of twice (#263), 714.0 to 585.6 kB.
 
 import { readdirSync, readFileSync } from 'node:fs'
 import { extname, join } from 'node:path'
@@ -12,7 +13,7 @@ const DIST = new URL('../dist', import.meta.url).pathname
 const KB = 1000
 
 export const BUDGETS = [
-  { name: 'JavaScript', ext: ['.js', '.mjs'], maxGzipBytes: 720 * KB },
+  { name: 'JavaScript', ext: ['.js', '.mjs'], maxGzipBytes: 592 * KB },
   { name: 'CSS', ext: ['.css'], maxGzipBytes: 19 * KB },
 ]
 
