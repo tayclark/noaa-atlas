@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { mockNarrowLayout, unmockNarrowLayout } from './components/narrowLayoutTestUtils'
 import { clearSelection, getSelectionSnapshot, selectNode } from './data/selectionStore'
@@ -22,6 +22,11 @@ vi.mock('maplibre-gl', () => ({
   },
 }))
 
+// The globe is a lazy chunk (#264). Importing it once up front means a render's lazy import
+// resolves from the module cache: a test that waited for the first transform could pass the
+// 5 s test timeout on CI, and the graph's simulation would tick into d3-zoom, which jsdom can't run.
+beforeAll(() => import('./components/globe/MapLibreGlobe'), 60_000)
+
 beforeEach(resetView)
 
 afterEach(() => {
@@ -42,14 +47,13 @@ describe('Escape (#267)', () => {
 })
 
 describe('App', () => {
-  it('renders the header, the left panel (Explore tab by default), and the globe', () => {
+  it('renders the header, the left panel (Explore tab by default), and the globe', async () => {
     render(<App />)
     expect(screen.getByRole('heading', { name: 'NOAA Atlas' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Explore', selected: true })).toBeTruthy()
-    expect(
-      screen.getByRole('group', { name: 'Globe view of NOAA API coverage' }),
-    ).toBeTruthy()
     expect(screen.getByRole('separator', { name: 'Resize panes' })).toBeTruthy()
+    // The globe is a lazy chunk (#264); its loading placeholder is covered by e2e/globe-lazy.spec.ts.
+    expect(await screen.findByRole('group', { name: 'Globe view of NOAA API coverage' })).toBeTruthy()
   })
 
   it('shows the graph alongside the finder on the default tab', () => {
@@ -81,12 +85,13 @@ describe('App', () => {
       expect(screen.getByRole('tab', { name: 'Tasks', selected: true })).toBeTruthy()
       expect(screen.queryByRole('separator')).toBeNull()
       expect(screen.queryByRole('group', { name: 'Globe view of NOAA API coverage' })).toBeNull()
+      expect(screen.queryByRole('status', { name: 'Map status' })).toBeNull()
     })
 
-    it('shows the globe once its tab is opened', () => {
+    it('shows the globe once its tab is opened', async () => {
       render(<App />)
       fireEvent.click(screen.getByRole('tab', { name: 'Globe' }))
-      expect(screen.getByRole('group', { name: 'Globe view of NOAA API coverage' })).toBeTruthy()
+      expect(await screen.findByRole('group', { name: 'Globe view of NOAA API coverage' })).toBeTruthy()
     })
 
     it('condenses the footer to a line, with the full disclaimer in the About dialog', () => {

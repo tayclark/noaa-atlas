@@ -44,14 +44,23 @@ test('the views are five bottom tabs, each at full size and with no split', asyn
 test('the globe is a full-width tab that loads on first visit, with its overlays clear of each other', async ({ page }) => {
   await mockAlerts(page, zoneOnlyAlertsFixture(3))
   await mockSwpc(page)
+  const globeCode: string[] = []
+  page.on('request', (req) => {
+    if (/maplibre-gl|MapLibreGlobe/.test(req.url())) globeCode.push(req.url())
+  })
   await page.goto('/')
 
-  // Nothing of the map is fetched or built until the tab is opened.
+  // Nothing of the map is fetched or built until the tab is opened: the globe chunk and MapLibre
+  // load on demand (#264).
+  await expect(page.locator('.finder-task-item').first()).toBeVisible()
   await expect(page.locator('.maplibregl-canvas')).toHaveCount(0)
+  expect(globeCode).toEqual([])
 
   await page.getByRole('tab', { name: 'Globe' }).click()
   const canvas = page.locator('.maplibregl-canvas')
   await expect(canvas).toBeVisible()
+  expect(globeCode.some((url) => /MapLibreGlobe/.test(url))).toBe(true)
+  expect(globeCode.some((url) => /maplibre-gl/.test(url))).toBe(true)
   await expect.poll(async () => (await canvas.boundingBox())?.width ?? 0).toBeGreaterThan(380)
 
   const kp = page.getByRole('status', { name: 'Geomagnetic activity' })

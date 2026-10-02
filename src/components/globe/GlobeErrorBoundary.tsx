@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react'
 import { describeMapInitError } from './globeFailure'
+import './GlobePane.css'
 
 // MapLibre throws from the globe's mount effect when WebGL2 is unavailable (#260). Without a
 // boundary React unmounts the whole app, finder and graph included, though neither needs WebGL.

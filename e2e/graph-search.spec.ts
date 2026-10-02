@@ -13,7 +13,7 @@ test('searching dims non-matching nodes and reports no results', async ({ page }
   await expect(page.locator('.graph-node[data-node-id="nws-api"]')).toHaveClass(/graph-node-dimmed/)
 
   await search.fill('xyzzy')
-  await expect(page.getByRole('status')).toHaveText('No matches for "xyzzy"')
+  await expect(page.locator('.graph-search-status')).toHaveText('No matches for "xyzzy"')
 })
 
 test('selecting a node dims the others (#255)', async ({ page }) => {
