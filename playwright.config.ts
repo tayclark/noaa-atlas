@@ -16,9 +16,9 @@ export default defineConfig({
     // Only `*.mobile.spec.ts` files run here, so the rest of the suite isn't run twice.
     { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /\.mobile\.spec\.ts$/ },
   ],
-  // e2e runs against the dev server rather than `vite preview`. The production build's MapLibre
-  // worker is now emitted (see the `maplibreWorker` plugin in vite.config.ts, #49), so switching
-  // to a preview server is possible but hasn't been done.
+  // e2e runs against the dev server rather than `vite preview`. The production build ships
+  // MapLibre's own files (see the `maplibreExternal` plugin in vite.config.ts, #49, #263), so
+  // switching to a preview server is possible but hasn't been done.
   webServer: {
     command: 'npm run dev -- --port 5173',
     url: 'http://localhost:5173',
