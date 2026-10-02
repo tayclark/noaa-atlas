@@ -142,4 +142,15 @@ describe('InspectorPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /Network error/ }))
     expect(screen.getByText('offline')).toBeTruthy()
   })
+
+  it('says when an older response body was not kept', () => {
+    pushLogEntry(entry({ responseSize: 10 }))
+    pushLogEntry(entry({ responseSize: 10 }))
+    render(<InspectorPanel />)
+    const rows = screen.getAllByRole('button', { name: /200 OK/ })
+    fireEvent.click(rows[1] as HTMLElement)
+    expect(screen.getByText(/Older response not kept\. Only the newest response/)).toBeTruthy()
+    fireEvent.click(rows[0] as HTMLElement)
+    expect(screen.queryByText(/Older response not kept/)).toBeNull()
+  })
 })

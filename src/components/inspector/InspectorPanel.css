@@ -158,6 +158,12 @@
   word-break: break-word;
 }
 
+/* A body the log dropped to bound its memory (#265). */
+.inspector-detail-omitted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
 /* Foldable response body (#150). */
 .json-tree {
   font-size: var(--font-size-xs);

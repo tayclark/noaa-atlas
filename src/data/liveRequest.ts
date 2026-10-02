@@ -35,7 +35,7 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError }: Li
     startedAt: number,
     startedAtPerf: number,
     status: RequestLogStatus,
-    extra: { httpStatus?: number; responseBody?: unknown; errorMessage?: string } = {},
+    extra: { httpStatus?: number; responseBody?: unknown; responseSize?: number; errorMessage?: string } = {},
   ): void {
     pushLogEntry({
       id: crypto.randomUUID(),
@@ -74,16 +74,18 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError }: Li
       throw httpError(res)
     }
 
-    const raw: unknown = await res.json()
+    // Read as text so the log knows the body's size (#265).
+    const text = await res.text()
+    const raw: unknown = JSON.parse(text)
     let value: T
     try {
       value = parse(raw)
     } catch (err) {
-      logRequest(url, path, startedAt, startedAtPerf, 'parse-error', { httpStatus: res.status, responseBody: raw })
+      logRequest(url, path, startedAt, startedAtPerf, 'parse-error', { httpStatus: res.status, responseBody: raw, responseSize: text.length })
       throw parseError(path, err)
     }
 
-    logRequest(url, path, startedAt, startedAtPerf, 'success', { httpStatus: res.status, responseBody: raw })
+    logRequest(url, path, startedAt, startedAtPerf, 'success', { httpStatus: res.status, responseBody: raw, responseSize: text.length })
     cache.set(url, { value, expiresAt: Date.now() + CACHE_TTL_MS })
     return value
   }

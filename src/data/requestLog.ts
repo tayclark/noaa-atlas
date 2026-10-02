@@ -15,17 +15,47 @@ export interface RequestLogEntry {
   status: RequestLogStatus
   httpStatus?: number
   responseBody?: unknown
+  /** Length of the response text, used to bound the bodies the log keeps (#265). */
+  responseSize?: number
+  /** Why `responseBody` was dropped: a newer response for the same URL, or the size budget. */
+  bodyOmitted?: 'superseded' | 'over-budget'
   errorMessage?: string
 }
 
 const MAX_ENTRIES = 50
+// About the newest OVATION grid (0.9M), active alerts (1.9M on a quiet day) and Kp together. A
+// parsed body costs several times its text in heap, so 50 copies of the globe's feeds came to
+// ~100 MB (#265).
+export const BODY_BUDGET = 4_000_000
 
 let entries: RequestLogEntry[] = []
 const listeners = new Set<() => void>()
 
+const omitBody = ({ responseBody: _dropped, ...entry }: RequestLogEntry, reason: 'superseded' | 'over-budget'): RequestLogEntry => ({
+  ...entry,
+  bodyOmitted: reason,
+})
+
+/**
+ * Drops the response bodies the log no longer needs to hold (#265): an older response for a URL
+ * that has a newer one, and, newest first, any body past `budget` characters of response text.
+ * The newest entry keeps its body however large it is. Entries without a body are returned as is.
+ */
+export function trimBodies(log: readonly RequestLogEntry[], budget = BODY_BUDGET): RequestLogEntry[] {
+  const urlsWithBody = new Set<string>()
+  let used = 0
+  return log.map((entry, i) => {
+    if (entry.responseBody === undefined) return entry
+    if (urlsWithBody.has(entry.url)) return omitBody(entry, 'superseded')
+    urlsWithBody.add(entry.url)
+    used += entry.responseSize ?? 0
+    return used > budget && i > 0 ? omitBody(entry, 'over-budget') : entry
+  })
+}
+
 /** Records a completed request/response (or failure) at the front of the log, capped at 50. */
 export function pushLogEntry(entry: RequestLogEntry): void {
-  entries = [entry, ...entries].slice(0, MAX_ENTRIES)
+  entries = trimBodies([entry, ...entries].slice(0, MAX_ENTRIES))
   for (const listener of listeners) listener()
 }
 
