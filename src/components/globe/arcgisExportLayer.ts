@@ -22,7 +22,19 @@ export interface ArcgisOverlay {
   attribution: string
 }
 
+// Table order is drawing order, bottom first (#288): the opaque charts go under the translucent
+// bands when one selection lights several overlays. The legend box follows the same order.
 export const ARCGIS_OVERLAYS: readonly ArcgisOverlay[] = [
+  {
+    key: 'arcgis-charts',
+    sourceId: 'arcgis-charts',
+    layerId: 'arcgis-charts-layer',
+    serviceUrl: 'https://gis.charttools.noaa.gov/arcgis/rest/services/MarineChart_Services/NOAACharts/MapServer',
+    layerIdsInService: [0],
+    opacity: 0.85,
+    title: 'NOAA nautical charts (not for navigation)',
+    attribution: 'Charts: <a href="https://nauticalcharts.noaa.gov/">NOAA Office of Coast Survey</a>',
+  },
   {
     key: 'arcgis-raster',
     sourceId: 'arcgis-raster',
@@ -44,16 +56,6 @@ export const ARCGIS_OVERLAYS: readonly ArcgisOverlay[] = [
     attribution: 'Outlook: <a href="https://www.cpc.ncep.noaa.gov/">NOAA/NWS Climate Prediction Center</a>',
   },
   {
-    key: 'arcgis-charts',
-    sourceId: 'arcgis-charts',
-    layerId: 'arcgis-charts-layer',
-    serviceUrl: 'https://gis.charttools.noaa.gov/arcgis/rest/services/MarineChart_Services/NOAACharts/MapServer',
-    layerIdsInService: [0],
-    opacity: 0.85,
-    title: 'NOAA nautical charts (not for navigation)',
-    attribution: 'Charts: <a href="https://nauticalcharts.noaa.gov/">NOAA Office of Coast Survey</a>',
-  },
-  {
     key: 'arcgis-habitat',
     sourceId: 'arcgis-habitat',
     layerId: 'arcgis-habitat-layer',
@@ -65,6 +67,33 @@ export const ARCGIS_OVERLAYS: readonly ArcgisOverlay[] = [
     attribution: 'Critical habitat: <a href="https://www.fisheries.noaa.gov/">NOAA Fisheries</a>',
   },
 ]
+
+/** The overlays a selection lights, in drawing order. A theme hub or task can light several (#288). */
+export function arcgisOverlaysFor(liveLayers: readonly LiveLayerKey[]): ArcgisOverlay[] {
+  return ARCGIS_OVERLAYS.filter((overlay) => liveLayers.includes(overlay.key))
+}
+
+export type ArcgisLegendState = { status: 'loading' } | { status: 'ok'; entries: ArcgisLegendEntry[] } | { status: 'error'; message: string }
+
+export type ArcgisLegendSection =
+  | { key: ArcgisOverlay['key']; title: string; entries: ArcgisLegendEntry[] }
+  | { key: ArcgisOverlay['key']; title: string; message: string }
+
+/**
+ * What the legend box lists: one section per lit overlay that has something to say. A legend still
+ * loading, or one with no labelled entries (the charts, critical habitat), adds nothing.
+ */
+export function arcgisLegendSections(
+  overlays: readonly ArcgisOverlay[],
+  states: Partial<Record<ArcgisOverlay['key'], ArcgisLegendState>>,
+): ArcgisLegendSection[] {
+  return overlays.flatMap((overlay): ArcgisLegendSection[] => {
+    const state = states[overlay.key]
+    if (state?.status === 'error') return [{ key: overlay.key, title: overlay.title, message: state.message }]
+    if (state?.status === 'ok' && state.entries.length > 0) return [{ key: overlay.key, title: overlay.title, entries: state.entries }]
+    return []
+  })
+}
 
 /** `{bbox-epsg-3857}` is MapLibre's placeholder for each tile's Web Mercator bounding box. */
 export function arcgisExportTileUrl(serviceUrl: string, sublayers: readonly number[]): string {

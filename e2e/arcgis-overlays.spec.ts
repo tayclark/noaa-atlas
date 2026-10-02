@@ -118,6 +118,29 @@ test('the NMFS node draws critical habitat, both areas and lines, with no legend
   await expect(page.getByRole('button', { name: /server\/rest\/services\/All_NMFS/ })).toBeVisible()
 })
 
+test('a theme hub that lights two overlays draws both, charts underneath, with the legend that has entries (#288)', async ({ page }) => {
+  const rasterTiles = await mockArcgisRaster(page)
+  const chartTiles = await mockArcgisCharts(page)
+  await page.goto('/')
+  await waitForGlobe(page)
+
+  await selectByKeyboard(page, 'theme-geospatial')
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'arcgis-charts arcgis-raster')
+  await expect.poll(() => rasterTiles.length).toBeGreaterThan(0)
+  await expect.poll(() => chartTiles.length).toBeGreaterThan(0)
+  const legend = page.getByRole('status', { name: 'Map overlay legend' })
+  await expect(legend).toContainText('Last 24 hours of rain and melt')
+  await expect(legend).toContainText('Greater than or equal to 10')
+  await expect(legend).not.toContainText('nautical charts')
+  const attribution = page.locator('.maplibregl-ctrl-attrib')
+  await expect(attribution).toContainText('River Forecast Centers')
+  await expect(attribution).toContainText('Office of Coast Survey')
+
+  await selectByKeyboard(page, 'nws-api')
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'hidden')
+  await expect(legend).toHaveCount(0)
+})
+
 test('fetches a real overlay tile @live', async ({ page }) => {
   let status = 0
   page.on('response', (res) => {

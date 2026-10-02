@@ -16,8 +16,17 @@ import type { NwsAlertCollection } from '../../data/nwsSchema'
 import { pollWhileVisible } from '../../data/pollWhileVisible'
 import { getDay1CategoricalOutlook, SPC_REFRESH_MS } from '../../data/spcClient'
 import { getArcgisLegend } from '../../data/arcgisClient'
-import { ARCGIS_OVERLAYS, ARCGIS_TILE_SIZE, arcgisExportTileUrl, describeArcgisFetchOutcome, legendEntriesFor } from './arcgisExportLayer'
-import type { ArcgisLegendEntry } from '../../data/arcgisSchema'
+import {
+  ARCGIS_OVERLAYS,
+  ARCGIS_TILE_SIZE,
+  arcgisExportTileUrl,
+  arcgisLegendSections,
+  arcgisOverlaysFor,
+  describeArcgisFetchOutcome,
+  legendEntriesFor,
+  type ArcgisLegendState,
+  type ArcgisOverlay,
+} from './arcgisExportLayer'
 import { getHiloPredictions, getWaterLevel } from '../../data/coopsClient'
 import { COOPS_STATIONS } from '../../data/coopsStations'
 import { DART_STATIONS } from '../../data/dartStations'
@@ -293,9 +302,7 @@ export function MapLibreGlobe() {
   // selection effect the aurora layer now exists.
   const ovationRef = useRef<SwpcOvation | null>(null)
   const [auroraCells, setAuroraCells] = useState<number | null>(null)
-  const [arcgisLegend, setArcgisLegend] = useState<
-    { status: 'loading' } | { status: 'ok'; entries: ArcgisLegendEntry[] } | { status: 'error'; message: string }
-  >({ status: 'loading' })
+  const [arcgisLegends, setArcgisLegends] = useState<Partial<Record<ArcgisOverlay['key'], ArcgisLegendState>>>({})
   const [spc, setSpc] = useState<
     { status: 'loading' } | { status: 'ok'; categories: SpcCategory[] } | { status: 'empty' } | { status: 'error'; message: string }
   >({ status: 'loading' })
@@ -970,29 +977,32 @@ export function MapLibreGlobe() {
     }
   }, [spcShown, mapLoaded])
 
-  // The ArcGIS overlay (#247) is drawn while its node is selected. Its legend is the one request
-  // the client logs; a failed legend leaves the overlay drawn.
-  const arcgisOverlay = ARCGIS_OVERLAYS.find((overlay) => liveLayers.includes(overlay.key)) ?? null
-  const arcgisKey = arcgisOverlay?.key ?? null
+  // The ArcGIS overlays (#247) are drawn while a selection lights them, every one of them when a
+  // hub or task lights several (#288). Their legends are the requests the client logs; a failed
+  // legend leaves its overlay drawn. The key is a string so the effect doesn't re-run per render.
+  const arcgisOverlays = arcgisOverlaysFor(liveLayers)
+  const arcgisKey = arcgisOverlays.map((overlay) => overlay.key).join(' ')
+  const arcgisSections = arcgisLegendSections(arcgisOverlays, arcgisLegends)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded) return
+    const keys = arcgisKey.split(' ')
+    const overlays = ARCGIS_OVERLAYS.filter((overlay) => keys.includes(overlay.key))
     for (const overlay of ARCGIS_OVERLAYS) {
-      if (map.getLayer(overlay.layerId)) map.setLayoutProperty(overlay.layerId, 'visibility', overlay.key === arcgisKey ? 'visible' : 'none')
+      if (map.getLayer(overlay.layerId)) map.setLayoutProperty(overlay.layerId, 'visibility', overlays.includes(overlay) ? 'visible' : 'none')
     }
-    const overlay = ARCGIS_OVERLAYS.find((o) => o.key === arcgisKey)
-    if (!overlay) return
     let cancelled = false
-    getArcgisLegend(overlay.serviceUrl)
-      .then((legend) => {
-        if (!cancelled) setArcgisLegend({ status: 'ok', entries: legendEntriesFor(legend, overlay.layerIdsInService) })
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setArcgisLegend({ status: 'error', message: describeArcgisFetchOutcome(err) })
-      })
+    const settle = (key: ArcgisOverlay['key'], state: ArcgisLegendState) => {
+      if (!cancelled) setArcgisLegends((prev) => ({ ...prev, [key]: state }))
+    }
+    for (const overlay of overlays) {
+      getArcgisLegend(overlay.serviceUrl)
+        .then((legend) => settle(overlay.key, { status: 'ok', entries: legendEntriesFor(legend, overlay.layerIdsInService) }))
+        .catch((err: unknown) => settle(overlay.key, { status: 'error', message: describeArcgisFetchOutcome(err) }))
+    }
     return () => {
       cancelled = true
-      setArcgisLegend({ status: 'loading' })
+      setArcgisLegends({})
     }
   }, [arcgisKey, mapLoaded])
 
@@ -1012,7 +1022,7 @@ export function MapLibreGlobe() {
         data-coverage-features={view.footprint.features.length}
         data-coops-stations={mapLoaded ? COOPS_STATIONS.length : undefined}
         data-dart-stations={mapLoaded ? (dartShown ? DART_STATIONS.length : 0) : undefined}
-        data-arcgis-overlay={mapLoaded ? (arcgisKey ?? 'hidden') : undefined}
+        data-arcgis-overlay={mapLoaded ? arcgisKey || 'hidden' : undefined}
         data-spc-outlook={mapLoaded ? (spcShown ? spc.status : 'hidden') : undefined}
         data-ndbc-stations={mapLoaded ? (ndbcShown ? NDBC_STATIONS.length : 0) : undefined}
         data-nowcoast-radar={mapLoaded ? (radarShown ? 'visible' : 'hidden') : undefined}
@@ -1127,24 +1137,32 @@ export function MapLibreGlobe() {
             {spc.message}
           </div>
         )}
-        {arcgisOverlay && arcgisLegend.status === 'ok' && arcgisLegend.entries.length > 0 && (
-          <div className="zone-only-alerts spc-legend arcgis-legend" role="status" aria-label="Map overlay legend">
-            <strong>{arcgisOverlay.title}</strong>
-            <ul>
-              {arcgisLegend.entries.map((entry) => (
-                <li key={entry.label}>
-                  <img className="arcgis-legend-swatch" src={`data:${entry.contentType};base64,${entry.imageData}`} alt="" />
-                  {entry.label.replace(/\s+/g, ' ').trim()}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {arcgisOverlay && arcgisLegend.status === 'error' && (
+        {arcgisSections.length === 1 && arcgisSections[0] && 'message' in arcgisSections[0] && (
           <div className="zone-only-alerts" role="status" aria-label="Map overlay legend">
-            {arcgisLegend.message}
+            {arcgisSections[0].message}
           </div>
         )}
+        {arcgisSections.some((section) => 'entries' in section) || arcgisSections.length > 1 ? (
+          <div className="zone-only-alerts spc-legend arcgis-legend" role="status" aria-label="Map overlay legend">
+            {arcgisSections.map((section) => (
+              <div key={section.key} className="arcgis-legend-section">
+                <strong>{section.title}</strong>
+                {'entries' in section ? (
+                  <ul>
+                    {section.entries.map((entry) => (
+                      <li key={entry.label}>
+                        <img className="arcgis-legend-swatch" src={`data:${entry.contentType};base64,${entry.imageData}`} alt="" />
+                        {entry.label.replace(/\s+/g, ' ').trim()}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>{section.message}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : null}
         {alertsStatus === 'error' && (
           <div className="zone-only-alerts" role="status" aria-label="Alerts status">
             {alertsErrorMessage}

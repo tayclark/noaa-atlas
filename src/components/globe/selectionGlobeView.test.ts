@@ -83,6 +83,11 @@ describe('describeSelectionForGlobe', () => {
     expect(view.card?.colors).toEqual([THEME_COLORS.ocean])
   })
 
+  it('lights both ArcGIS overlays of the geospatial hub (#288)', () => {
+    const view = describeSelectionForGlobe({ ...none, selectedNodeId: 'theme-geospatial' }, context)
+    expect(view.liveLayers).toEqual(expect.arrayContaining(['arcgis-raster', 'arcgis-charts']))
+  })
+
   it('says an empty theme has no services and draws nothing', () => {
     const withoutSpaceWeather = { ...context, nodes: nodes.filter((n) => n.theme !== 'space-weather') }
     const view = describeSelectionForGlobe({ ...none, selectedNodeId: 'theme-space-weather' }, withoutSpaceWeather)
