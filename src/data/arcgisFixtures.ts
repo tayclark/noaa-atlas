@@ -26,6 +26,17 @@ export function makeArcgisChartsLegend(): ArcgisLegend {
   return { layers: [{ layerId: 0, layerName: 'NOAA Charts', legend: [] }] }
 }
 
+// The real critical habitat legend gives each rollup one unlabeled swatch (curled 2026-10-02).
+export function makeArcgisHabitatLegend(): ArcgisLegend {
+  const swatch = { label: '', imageData: SWATCH, contentType: 'image/png' }
+  return {
+    layers: [
+      { layerId: 226, layerName: 'All_critical_habitat_poly_20230502', legend: [swatch] },
+      { layerId: 2, layerName: 'All_critical_habitat_line_20220404', legend: [swatch] },
+    ],
+  }
+}
+
 export function makeArcgisLegend(): ArcgisLegend {
   return {
     layers: [

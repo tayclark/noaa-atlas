@@ -2,7 +2,7 @@
 // this says what the globe shows for it, so a selection can emphasise the right layer and the
 // status card can name it. liveLayers.test.ts keeps it in step with graph.json's liveLayer flags.
 
-export type LiveLayerKey = 'nws-alerts' | 'aurora' | 'kp' | 'coops-stations' | 'nowcoast-radar' | 'dart-stations' | 'ndbc-stations' | 'wind' | 'spc-outlook' | 'arcgis-raster' | 'arcgis-vector' | 'arcgis-charts'
+export type LiveLayerKey = 'nws-alerts' | 'aurora' | 'kp' | 'coops-stations' | 'nowcoast-radar' | 'dart-stations' | 'ndbc-stations' | 'wind' | 'spc-outlook' | 'arcgis-raster' | 'arcgis-vector' | 'arcgis-charts' | 'arcgis-habitat'
 
 // `layer` is null for a node that is live only as a try-it in its detail panel (#240): nothing is drawn.
 export const LIVE_LAYERS: Readonly<Record<string, { layer: LiveLayerKey | null; status: string }>> = {
@@ -17,6 +17,7 @@ export const LIVE_LAYERS: Readonly<Record<string, { layer: LiveLayerKey | null; 
   'nws-raster-map-services': { layer: 'arcgis-raster', status: 'Its live layer, the last 24 hours of observed precipitation, is drawn on the globe while this is selected.' },
   'nws-gis-portal': { layer: 'arcgis-vector', status: 'Its live layer, the CPC 6-10 day temperature outlook, is drawn on the globe while this is selected.' },
   'noaa-chart-services': { layer: 'arcgis-charts', status: 'Its live layer, the NOAA nautical charts, is drawn on the globe while this is selected. Zoom in to a coast to see them. These charts are not for navigation.' },
+  'nmfs-arcgis-services': { layer: 'arcgis-habitat', status: 'Its live layer, ESA critical habitat for NMFS-listed species (areas plus stream and beach lines), is drawn on the globe while this is selected. Zoom in to a coast or river. Indicative only: official boundaries are in 50 CFR 226.' },
   'ndbc-dart-realtime': { layer: 'dart-stations', status: 'Its live layer, the DART tsunami buoys, is drawn on the globe while this is selected.' },
   'swpc-alerts-scales': { layer: null, status: 'Live in its detail panel: Run sample fetches the current scales and alerts. Nothing is drawn on the globe.' },
   'swpc-rtsw-solar-wind': { layer: null, status: 'Live in its detail panel: Run sample fetches the latest solar wind readings. Nothing is drawn on the globe.' },
