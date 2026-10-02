@@ -201,9 +201,18 @@
   stroke-width: 3;
 }
 
+/* Selection (#255) reuses this: everything outside the selected node(s) dims too. */
 .graph-node-dimmed,
 .graph-edge-dimmed {
   opacity: 0.25;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .graph-node,
+  .graph-org-node,
+  .graph-edge {
+    transition: opacity 150ms;
+  }
 }
 
 /* Label decluttering (#138): labels keep a constant on-screen size (the zoom handler sets
