@@ -43,6 +43,16 @@ export const ARCGIS_OVERLAYS: readonly ArcgisOverlay[] = [
     title: '6-10 day temperature outlook',
     attribution: 'Outlook: <a href="https://www.cpc.ncep.noaa.gov/">NOAA/NWS Climate Prediction Center</a>',
   },
+  {
+    key: 'arcgis-charts',
+    sourceId: 'arcgis-charts',
+    layerId: 'arcgis-charts-layer',
+    serviceUrl: 'https://gis.charttools.noaa.gov/arcgis/rest/services/MarineChart_Services/NOAACharts/MapServer',
+    layerIdInService: 0,
+    opacity: 0.85,
+    title: 'NOAA nautical charts (not for navigation)',
+    attribution: 'Charts: <a href="https://nauticalcharts.noaa.gov/">NOAA Office of Coast Survey</a>',
+  },
 ]
 
 /** `{bbox-epsg-3857}` is MapLibre's placeholder for each tile's Web Mercator bounding box. */

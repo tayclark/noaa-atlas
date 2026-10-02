@@ -2,7 +2,7 @@
 // tiles and legend, plus one `@live` smoke test that fetches a real tile.
 
 import { expect, test, type Page } from '@playwright/test'
-import { mockArcgisRaster, mockArcgisVector } from './fixtures/arcgis'
+import { mockArcgisCharts, mockArcgisRaster, mockArcgisVector } from './fixtures/arcgis'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 
@@ -84,6 +84,18 @@ test('the NWS GIS portal node draws the CPC outlook with its legend and logs the
 
   await page.getByRole('tab', { name: /Inspector/ }).click()
   await expect(page.getByRole('button', { name: /vector\/rest\/services\/outlooks/ })).toBeVisible()
+})
+
+test('the NOAA chart services node draws the charts and says they are not for navigation', async ({ page }) => {
+  const tiles = await mockArcgisCharts(page)
+  await page.goto('/')
+  await selectByKeyboard(page, 'noaa-chart-services')
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'arcgis-charts')
+  await expect(page.getByLabel('Selection status')).toContainText('not for navigation')
+  await expect.poll(() => tiles.length).toBeGreaterThan(0)
+  expect(tiles[0]).toContain('layers=show:0')
+  await expect(page.getByRole('status', { name: 'Map overlay legend' })).toHaveCount(0)
+  await expect(page.locator('.maplibregl-ctrl-attrib')).toContainText('Office of Coast Survey')
 })
 
 test('fetches a real overlay tile @live', async ({ page }) => {

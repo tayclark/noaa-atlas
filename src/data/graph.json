@@ -7141,7 +7141,7 @@
       ],
       "auth": {
         "type": "none",
-        "note": "Responses echo the request Origin in access-control-allow-origin (checked 2026-09-23). The tileservice.charts.noaa.gov tile URL pattern returned an HTML page and is not used."
+        "note": "Responses echo the request Origin in access-control-allow-origin (checked 2026-10-02). The globe draws the MarineChart_Services/NOAACharts MapServer through its export endpoint as raster tiles (checked 2026-10-02). The tileservice.charts.noaa.gov tile URL pattern returned an HTML page and is not used."
       },
       "coverage": {
         "type": "MultiPolygon",
@@ -7448,8 +7448,7 @@
         "url": "https://gis.charttools.noaa.gov/arcgis/rest/services/MarineChart_Services/NOAACharts/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
         "responseExcerpt": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Capabilities xmlns=\"http://www.opengis.net/wmts/1.0\" ... version=\"1.0.0\"> ..."
       },
-      "liveLayer": false,
-      "notLiveReason": "Deferred: outside the v1 live layers. CORS works and the NOAA chart WMTS is a plausible later basemap overlay. Charts are not for navigation.",
+      "liveLayer": true,
       "tags": [
         "charts",
         "nautical",

@@ -21,6 +21,11 @@ export function makeArcgisVectorLegend(): ArcgisLegend {
   }
 }
 
+// The real NOAACharts legend has a raster layer and no entries (curled 2026-10-02).
+export function makeArcgisChartsLegend(): ArcgisLegend {
+  return { layers: [{ layerId: 0, layerName: 'NOAA Charts', legend: [] }] }
+}
+
 export function makeArcgisLegend(): ArcgisLegend {
   return {
     layers: [

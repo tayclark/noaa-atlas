@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ArcgisHttpError, ArcgisParseError } from '../../data/arcgisClient'
-import { makeArcgisLegend } from '../../data/arcgisFixtures'
+import { makeArcgisChartsLegend, makeArcgisLegend } from '../../data/arcgisFixtures'
 import {
   ARCGIS_OVERLAYS,
   ARCGIS_TILE_SIZE,
@@ -50,6 +50,10 @@ describe('legendEntriesFor', () => {
 
   it('is empty when the service does not describe the sublayer', () => {
     expect(legendEntriesFor(makeArcgisLegend(), 99)).toEqual([])
+  })
+
+  it('returns no entries for the chart service, whose legend is empty', () => {
+    expect(legendEntriesFor(makeArcgisChartsLegend(), 0)).toEqual([])
   })
 })
 

@@ -2,7 +2,7 @@
 // route answering every tile with a 1x1 transparent PNG; the legend call is a separate route.
 
 import type { Page } from '@playwright/test'
-import { makeArcgisLegend, makeArcgisVectorLegend } from '../../src/data/arcgisFixtures'
+import { makeArcgisChartsLegend, makeArcgisLegend, makeArcgisVectorLegend } from '../../src/data/arcgisFixtures'
 
 const TRANSPARENT_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
@@ -42,5 +42,20 @@ export async function mockArcgisVector(page: Page, { legend = true } = {}) {
   await page.route(ARCGIS_VECTOR_LEGEND, (route) =>
     legend ? route.fulfill({ json: makeArcgisVectorLegend(), headers }) : route.fulfill({ status: 503, headers }),
   )
+  return requests
+}
+
+export const ARCGIS_CHARTS_EXPORT = '**/MarineChart_Services/NOAACharts/MapServer/export**'
+export const ARCGIS_CHARTS_LEGEND = '**/MarineChart_Services/NOAACharts/MapServer/legend**'
+
+/** The same mocks for the NOAA chart MapServer, whose real legend has no entries. */
+export async function mockArcgisCharts(page: Page) {
+  const requests: string[] = []
+  const headers = { 'access-control-allow-origin': '*' }
+  await page.route(ARCGIS_CHARTS_EXPORT, (route) => {
+    requests.push(route.request().url())
+    return route.fulfill({ contentType: 'image/png', body: TRANSPARENT_PNG, headers })
+  })
+  await page.route(ARCGIS_CHARTS_LEGEND, (route) => route.fulfill({ json: makeArcgisChartsLegend(), headers }))
   return requests
 }
