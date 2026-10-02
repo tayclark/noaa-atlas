@@ -5,6 +5,8 @@ import {
   ARCGIS_OVERLAYS,
   ARCGIS_TILE_SIZE,
   arcgisExportTileUrl,
+  arcgisLegendSections,
+  arcgisOverlaysFor,
   describeArcgisFetchOutcome,
   legendEntriesFor,
 } from './arcgisExportLayer'
@@ -40,6 +42,52 @@ describe('ARCGIS_OVERLAYS', () => {
     expect(ARCGIS_OVERLAYS.map((o) => o.key).sort()).toEqual([...keys].sort())
     expect(new Set(ARCGIS_OVERLAYS.map((o) => o.sourceId)).size).toBe(ARCGIS_OVERLAYS.length)
     expect(new Set(ARCGIS_OVERLAYS.map((o) => o.layerId)).size).toBe(ARCGIS_OVERLAYS.length)
+  })
+})
+
+describe('arcgisOverlaysFor (#288)', () => {
+  it('returns nothing when no overlay is lit, and ignores other live layers', () => {
+    expect(arcgisOverlaysFor([])).toEqual([])
+    expect(arcgisOverlaysFor(['nws-alerts', 'spc-outlook'])).toEqual([])
+  })
+
+  it('returns every lit overlay in drawing order, charts first', () => {
+    expect(arcgisOverlaysFor(['arcgis-raster', 'nws-alerts']).map((o) => o.key)).toEqual(['arcgis-raster'])
+    expect(arcgisOverlaysFor(['arcgis-raster', 'arcgis-charts']).map((o) => o.key)).toEqual(['arcgis-charts', 'arcgis-raster'])
+  })
+})
+
+describe('arcgisLegendSections (#288)', () => {
+  const overlay = (key: string) => {
+    const found = ARCGIS_OVERLAYS.find((o) => o.key === key)
+    if (!found) throw new Error(`no overlay "${key}"`)
+    return found
+  }
+  const [raster, vector, charts] = [overlay('arcgis-raster'), overlay('arcgis-vector'), overlay('arcgis-charts')]
+  const entry = { label: '1 to 2', contentType: 'image/png', imageData: 'AAAA' }
+
+  it('lists nothing while a legend loads or when it has no labelled entries', () => {
+    expect(arcgisLegendSections([raster], {})).toEqual([])
+    expect(arcgisLegendSections([raster], { 'arcgis-raster': { status: 'loading' } })).toEqual([])
+    expect(arcgisLegendSections([charts], { 'arcgis-charts': { status: 'ok', entries: [] } })).toEqual([])
+  })
+
+  it('gives a failed legend its message', () => {
+    expect(arcgisLegendSections([raster], { 'arcgis-raster': { status: 'error', message: 'down' } })).toEqual([
+      { key: 'arcgis-raster', title: raster.title, message: 'down' },
+    ])
+  })
+
+  it('lists one section per overlay with something to say, in the given order', () => {
+    const sections = arcgisLegendSections([charts, raster, vector], {
+      'arcgis-charts': { status: 'ok', entries: [] },
+      'arcgis-raster': { status: 'ok', entries: [entry] },
+      'arcgis-vector': { status: 'error', message: 'down' },
+    })
+    expect(sections).toEqual([
+      { key: 'arcgis-raster', title: raster.title, entries: [entry] },
+      { key: 'arcgis-vector', title: vector.title, message: 'down' },
+    ])
   })
 })
 
