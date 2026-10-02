@@ -64,6 +64,7 @@ import { GraphSearch, type SearchResult } from './GraphSearch'
 import { buildSearchIndex, matchNodeIds } from './searchMatch'
 import { DIAGONAL_OFFSET, LABEL_GAP, labelBudget, placeLabels, type Box, type LabelItem } from './labelPlacement'
 import { NodeDetailPanel } from './NodeDetailPanel'
+import { revealTransform, rovingOrder, rovingTabStop, rovingTarget } from './rovingFocus'
 import { useNarrowLayout } from '../useNarrowLayout'
 
 const graphFile = parseGraphFile(graphJson)
@@ -104,6 +105,8 @@ const TAP_REACH_PX = 22
 // The click a browser may send after a tap we already handled arrives this soon (ms) after it.
 const TAP_ECHO_MS = 700
 const ZOOM_MS = 250
+// How far inside the canvas edge (px) a node the arrow keys move to is kept (#284).
+const REVEAL_MARGIN = 40
 
 const tasks = parseTasksFile(tasksJson).tasks
 const searchIndex = buildSearchIndex(graph.nodes, tasks)
@@ -180,6 +183,9 @@ export function GraphView() {
   const initialSizeRef = useRef(size)
   const [legendOpen, setLegendOpen] = useState(false)
   const [mode, setMode] = useState<LayoutMode>('theme')
+  // The nodes share one Tab stop, and the arrow keys move between them (#284).
+  const focusOrder = useMemo(() => rovingOrder(drawnNodes, mode), [mode])
+  const [lastFocusedId, setLastFocusedId] = useState<string | null>(null)
   // Kept across selections, so a user who collapses the panel isn't fighting it on every click.
   // A phone has no floating card: its detail is a bottom sheet, which publishes its height (#78).
   const narrow = useNarrowLayout()
@@ -628,6 +634,28 @@ export function GraphView() {
     if (nudgeView(event.key)) event.preventDefault()
   }
 
+  // Only this node is in the Tab order. Arrow keys, Home and End move focus along `focusOrder`, and
+  // pan a node that is off the canvas, or under the detail panel, into view (#284).
+  const tabStopId = rovingTabStop(focusOrder, lastFocusedId, selection.selectedNodeId)
+  const onNodeKeyDown = (event: ReactKeyboardEvent<SVGGElement>, nodeId: string) => {
+    if (event.ctrlKey || event.metaKey || event.altKey) return
+    const targetId = rovingTarget(focusOrder, nodeId, event.key)
+    if (!targetId) return
+    event.preventDefault()
+    nodeElsRef.current.get(targetId)?.focus()
+    const svgEl = svgRef.current
+    const zoomBehavior = zoomBehaviorRef.current
+    const pos = nodePositionsRef.current.get(targetId)
+    if (!svgEl || !zoomBehavior || !pos) return
+    const current = zoomTransform(svgEl)
+    const inset = panelInset(detailPanelBox(svgEl, sheet), size.width, size.height)
+    const next = revealTransform({ x: current.x, y: current.y, k: current.k }, pos, size.width, size.height, REVEAL_MARGIN, inset)
+    if (!next) return
+    select(svgEl).call(zoomBehavior.transform, zoomIdentity.translate(next.x, next.y).scale(next.k))
+    initialFitDoneRef.current = true
+    userMovedRef.current = true
+  }
+
   return (
     <section className="graph-view" aria-label="Graph">
       <div className="graph-toolbar">
@@ -679,7 +707,8 @@ export function GraphView() {
       </div>
       <div className="graph-canvas" ref={containerRef}>
         <p id="graph-keyboard-hint" className="visually-hidden">
-          Tab moves between services. Enter selects one. With the graph focused, arrow keys pan and plus and minus zoom.
+          With the graph focused, arrow keys pan and plus and minus zoom. Tab again to reach the services: arrow keys move
+          between them, Home and End jump to the first and last, and Enter selects one.
         </p>
         <p className="visually-hidden" aria-live="polite" aria-atomic="true" data-testid="selection-announcement">
           {announcement}
@@ -728,7 +757,16 @@ export function GraphView() {
                     key={node.id}
                     className={`${hub ? 'graph-org-node' : 'graph-node'} graph-node-${node.kind}${hidden}${gated ? ' graph-node-gated' : ''}${highlightedIds.includes(node.id) ? ' graph-node-highlighted' : ''}${matchedIds?.has(node.id) ? ' graph-node-match' : ''}${dimClass[nodeDim(focus, near, node.id)]}`}
                     data-node-id={node.id}
-                    {...(hub ? {} : { role: 'button', tabIndex: 0, 'aria-label': node.name, 'aria-pressed': selection.selectedNodeId === node.id })}
+                    {...(hub
+                      ? {}
+                      : {
+                          role: 'button',
+                          tabIndex: node.id === tabStopId ? 0 : -1,
+                          'aria-label': node.name,
+                          'aria-pressed': selection.selectedNodeId === node.id,
+                          onFocus: () => setLastFocusedId(node.id),
+                          onKeyDown: (event: ReactKeyboardEvent<SVGGElement>) => onNodeKeyDown(event, node.id),
+                        })}
                     ref={(el) => {
                       if (el) nodeElsRef.current.set(node.id, el)
                       else nodeElsRef.current.delete(node.id)

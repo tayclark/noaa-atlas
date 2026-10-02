@@ -46,6 +46,65 @@ test('the skip link is the first Tab stop and moves focus to the main content', 
   await expect(page.locator('#main')).toBeFocused()
 })
 
+// The graph's nodes share one Tab stop (#284), so the map is a fixed walk from load however many
+// services the graph holds (it used to be a stop per node). Most of what's left
+// is the finder's task list, which grows with tasks.json, so the total cap is loose.
+test('the map canvas is a fixed number of Tab presses from load, past one stop for all the graph nodes', async ({ page }) => {
+  await openApp(page)
+  const map = page.locator('.maplibregl-canvas')
+  await expect(map).toBeVisible()
+  const stops: string[] = []
+  while (stops.length < 80 && stops.at(-1) !== 'map') {
+    await page.keyboard.press('Tab')
+    stops.push(
+      await page.evaluate(() => {
+        const el = document.activeElement
+        if (el?.classList.contains('maplibregl-canvas')) return 'map'
+        if (el?.classList.contains('graph-node')) return 'node'
+        return el?.getAttribute('aria-label') === 'Service graph' ? 'graph' : 'other'
+      }),
+    )
+  }
+  await expect(map).toBeFocused()
+  // The graph canvas, one node, the pane divider, then the map.
+  expect(stops.slice(stops.indexOf('graph'))).toEqual(['graph', 'node', 'other', 'map'])
+  expect(stops.length).toBeLessThanOrEqual(60)
+})
+
+test('the arrow keys walk the graph nodes and Enter selects one', async ({ page }) => {
+  await openApp(page)
+  await page.getByRole('group', { name: 'Service graph' }).focus()
+  await page.keyboard.press('Tab')
+  const focusedId = () => page.evaluate(() => document.activeElement?.getAttribute('data-node-id') ?? null)
+  expect(await focusedId()).toBe('noaa')
+
+  await page.keyboard.press('ArrowRight')
+  const second = await focusedId()
+  expect(second).not.toBe('noaa')
+  await page.keyboard.press('End')
+  const last = await focusedId()
+  expect(last).not.toBe(second)
+  await page.keyboard.press('ArrowRight')
+  expect(await focusedId()).toBe('noaa')
+  await page.keyboard.press('ArrowLeft')
+  expect(await focusedId()).toBe(last)
+
+  await page.keyboard.press('Enter')
+  const node = page.locator(`.graph-node[data-node-id="${last}"]`)
+  await expect(node).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('selection-announcement')).toHaveText(/^Selected /)
+  // The panned-to node is on screen, clear of the canvas edges.
+  const canvas = await page.locator('.graph-canvas svg').boundingBox()
+  const box = await node.locator('circle').boundingBox()
+  expect(canvas && box).toBeTruthy()
+  expect(box!.x).toBeGreaterThanOrEqual(canvas!.x)
+  expect(box!.x + box!.width).toBeLessThanOrEqual(canvas!.x + canvas!.width)
+
+  // Tab leaves the graph from the selected node rather than walking the rest.
+  await page.keyboard.press('Shift+Tab')
+  await expect(page.getByRole('group', { name: 'Service graph' })).toBeFocused()
+})
+
 test('the tabs move with the arrow keys', async ({ page }) => {
   await openApp(page)
   await page.getByRole('tab', { name: 'Explore' }).focus()
