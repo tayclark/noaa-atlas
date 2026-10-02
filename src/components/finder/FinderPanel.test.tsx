@@ -141,6 +141,67 @@ describe('FinderPanel', () => {
   })
 })
 
+// The tasks share one Tab stop (#300); the arrow keys, Home and End move focus without picking.
+describe('FinderPanel task list keyboard', () => {
+  const taskButtons = () => [...document.querySelectorAll<HTMLButtonElement>('.finder-task-item')]
+  const tabStops = () => taskButtons().filter((button) => button.tabIndex === 0)
+  const first = tasks[0]!
+  const second = tasks[1]!
+  const last = tasks.at(-1)!
+
+  it('puts only the first task in the Tab order, described by the keyboard hint', () => {
+    render(<FinderPanel />)
+    expect(tabStops()).toEqual([screen.getByText(first.label)])
+    expect(taskButtons().filter((button) => button.tabIndex === -1)).toHaveLength(tasks.length - 1)
+    expect(screen.getByText(first.label).getAttribute('aria-describedby')).toBe('finder-keyboard-hint')
+    expect(document.getElementById('finder-keyboard-hint')?.textContent).toMatch(/Arrow keys move between tasks/)
+  })
+
+  it('moves focus with the arrow keys, Home and End, wrapping at the ends', () => {
+    render(<FinderPanel />)
+    const firstButton = screen.getByText(first.label)
+    firstButton.focus()
+    fireEvent.keyDown(firstButton, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(screen.getByText(second.label))
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(firstButton)
+    fireEvent.keyDown(firstButton, { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(screen.getByText(last.label))
+    fireEvent.keyDown(document.activeElement!, { key: 'Home' })
+    expect(document.activeElement).toBe(firstButton)
+    fireEvent.keyDown(firstButton, { key: 'End' })
+    expect(document.activeElement).toBe(screen.getByText(last.label))
+    // The focused task holds the stop, so Shift+Tab and Tab come back to it.
+    expect(tabStops()).toEqual([screen.getByText(last.label)])
+  })
+
+  it('does not pick a task on focus, and ignores modified arrow keys', () => {
+    render(<FinderPanel />)
+    const firstButton = screen.getByText(first.label)
+    firstButton.focus()
+    fireEvent.keyDown(firstButton, { key: 'ArrowDown', altKey: true })
+    expect(document.activeElement).toBe(firstButton)
+    fireEvent.keyDown(firstButton, { key: 'ArrowDown' })
+    expect(getSelectionSnapshot().selectedTaskId).toBeNull()
+    expect(screen.getByText(second.label).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('gives the stop to the picked task, including one selected from elsewhere', () => {
+    selectTask(second.id)
+    render(<FinderPanel />)
+    expect(tabStops()).toEqual([screen.getByText(second.label)])
+    fireEvent.click(screen.getByText(last.label))
+    expect(tabStops()).toEqual([screen.getByText(last.label)])
+  })
+
+  it('shares one stop on a phone too', () => {
+    mockNarrowLayout(true)
+    render(<FinderPanel />)
+    expect(tabStops()).toEqual([screen.getByText(first.label)])
+    expect(screen.getByText(first.label).hasAttribute('aria-pressed')).toBe(false)
+  })
+})
+
 describe('FinderPanel on a phone (#78)', () => {
   const task = tasks[0]!
   const other = tasks[1]!

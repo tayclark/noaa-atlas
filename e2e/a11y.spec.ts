@@ -46,10 +46,9 @@ test('the skip link is the first Tab stop and moves focus to the main content', 
   await expect(page.locator('#main')).toBeFocused()
 })
 
-// The graph's nodes share one Tab stop (#284), so the map is a fixed walk from load however many
-// services the graph holds (it used to be a stop per node). Most of what's left
-// is the finder's task list, which grows with tasks.json, so the total cap is loose.
-test('the map canvas is a fixed number of Tab presses from load, past one stop for all the graph nodes', async ({ page }) => {
+// The graph's nodes (#284) and the finder's tasks (#300) each share one Tab stop, so the map is a
+// fixed walk from load however many services and tasks there are (it used to be a stop for each).
+test('the map canvas is a fixed number of Tab presses from load, past one stop each for the tasks and the graph nodes', async ({ page }) => {
   await openApp(page)
   const map = page.locator('.maplibregl-canvas')
   await expect(map).toBeVisible()
@@ -61,6 +60,7 @@ test('the map canvas is a fixed number of Tab presses from load, past one stop f
         const el = document.activeElement
         if (el?.classList.contains('maplibregl-canvas')) return 'map'
         if (el?.classList.contains('graph-node')) return 'node'
+        if (el?.classList.contains('finder-task-item')) return 'task'
         return el?.getAttribute('aria-label') === 'Service graph' ? 'graph' : 'other'
       }),
     )
@@ -68,7 +68,33 @@ test('the map canvas is a fixed number of Tab presses from load, past one stop f
   await expect(map).toBeFocused()
   // The graph canvas, one node, the pane divider, then the map.
   expect(stops.slice(stops.indexOf('graph'))).toEqual(['graph', 'node', 'other', 'map'])
-  expect(stops.length).toBeLessThanOrEqual(60)
+  expect(stops.filter((stop) => stop === 'task')).toHaveLength(1)
+  expect(stops.length).toBeLessThanOrEqual(20)
+})
+
+test('the arrow keys walk the finder tasks without picking one, and Enter picks one', async ({ page }) => {
+  await openApp(page)
+  const tasks = page.locator('.finder-task-item')
+  await page.getByRole('tab', { name: 'Explore' }).focus()
+  await page.keyboard.press('Tab')
+  await expect(tasks.first()).toBeFocused()
+
+  await page.keyboard.press('ArrowDown')
+  await expect(tasks.nth(1)).toBeFocused()
+  await expect(tasks.nth(1)).toHaveAttribute('aria-pressed', 'false')
+  await page.keyboard.press('End')
+  await expect(tasks.last()).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(tasks.first()).toBeFocused()
+  await page.keyboard.press('ArrowUp')
+  await expect(tasks.last()).toBeFocused()
+
+  await page.keyboard.press('Enter')
+  await expect(tasks.last()).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('list', { name: 'Recommended nodes' })).toBeVisible()
+  // Tab leaves the list from the picked task rather than walking the rest.
+  await page.keyboard.press('Shift+Tab')
+  await expect(page.getByRole('tab', { name: 'Explore' })).toBeFocused()
 })
 
 test('the arrow keys walk the graph nodes and Enter selects one', async ({ page }) => {

@@ -6,7 +6,7 @@
 // On a phone (#78) the finder is the whole Tasks tab, so it drills down instead of sharing the
 // pane: the task list, then a page for the picked task, with Back to the list.
 
-import { useRef, useState, useSyncExternalStore } from 'react'
+import { useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react'
 import graphJson from '../../data/graph.json'
 import { parseGraphFile, type ServiceNode } from '../../data/graphSchema'
 import { addCompare } from '../../data/compareStore'
@@ -14,10 +14,12 @@ import { clearSelection, getSelectionSnapshot, selectNode, selectTask, subscribe
 import { parseTasksFile, type Task } from '../../data/taskSchema'
 import tasksJson from '../../data/tasks.json'
 import { showView } from '../../data/viewStore'
+import { rovingTabStop, rovingTarget } from '../graph/rovingFocus'
 import { useNarrowLayout } from '../useNarrowLayout'
 import './FinderPanel.css'
 
 const tasks = parseTasksFile(tasksJson).tasks
+const taskOrder = tasks.map((task) => task.id)
 const nodesById = new Map<string, ServiceNode>(parseGraphFile(graphJson).nodes.map((node) => [node.id, node]))
 
 export function FinderPanel() {
@@ -50,22 +52,14 @@ export function FinderPanel() {
         <h2 className="finder-heading" id="finder-heading">
           I need to…
         </h2>
-        <ul className="finder-task-list" aria-labelledby="finder-heading">
-          {tasks.map((task) => (
-            <li key={task.id}>
-              <button
-                type="button"
-                className="finder-task-item"
-                onClick={() => {
-                  setSelectedTaskId(task.id)
-                  selectTask(task.id)
-                }}
-              >
-                {task.label}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <TaskList
+          selectedTaskId={null}
+          pressable={false}
+          onPick={(task) => {
+            setSelectedTaskId(task.id)
+            selectTask(task.id)
+          }}
+        />
         <FinderIntro compact />
       </div>
     )
@@ -76,26 +70,17 @@ export function FinderPanel() {
       <h2 className="finder-heading" id="finder-heading">
         I need to…
       </h2>
-      <ul className="finder-task-list" aria-labelledby="finder-heading">
-        {tasks.map((task) => (
-          <li key={task.id}>
-            <button
-              type="button"
-              className={`finder-task-item ${task.id === selectedTaskId ? 'finder-task-item-selected' : ''}`}
-              aria-pressed={task.id === selectedTaskId}
-              onClick={(event) => {
-                setSelectedTaskId(task.id)
-                selectTask(task.id)
-                // Show the new steps from the top, next to the task the user just picked (#161).
-                bodyRef.current?.scrollTo?.({ top: 0 })
-                event.currentTarget.scrollIntoView?.({ block: 'nearest' })
-              }}
-            >
-              {task.label}
-            </button>
-          </li>
-        ))}
-      </ul>
+      <TaskList
+        selectedTaskId={selectedTaskId}
+        pressable
+        onPick={(task, button) => {
+          setSelectedTaskId(task.id)
+          selectTask(task.id)
+          // Show the new steps from the top, next to the task the user just picked (#161).
+          bodyRef.current?.scrollTo?.({ top: 0 })
+          button.scrollIntoView?.({ block: 'nearest' })
+        }}
+      />
       {/* With only the intro inside there is nothing focusable, so the scroller takes focus itself
           (axe scrollable-region-focusable); the steps' buttons cover that once a task is picked. */}
       <div
@@ -118,6 +103,68 @@ export function FinderPanel() {
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * The tasks share one Tab stop (#300), like the graph's nodes (#284): only one task is in the Tab
+ * order, and the arrow keys, Home and End move focus between them. Focus doesn't pick a task, so
+ * walking the list doesn't reframe the graph; Enter or Space picks one.
+ */
+function TaskList({
+  selectedTaskId,
+  pressable,
+  onPick,
+}: {
+  selectedTaskId: string | null
+  /** Whether the tasks are toggle buttons (the desktop list); on a phone a pick opens the task's page. */
+  pressable: boolean
+  onPick: (task: Task, button: HTMLButtonElement) => void
+}) {
+  const [lastFocusedId, setLastFocusedId] = useState<string | null>(null)
+  const buttonsRef = useRef(new Map<string, HTMLButtonElement>())
+  const tabStopId = rovingTabStop(taskOrder, lastFocusedId, selectedTaskId)
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, taskId: string) => {
+    if (event.ctrlKey || event.metaKey || event.altKey) return
+    const targetId = rovingTarget(taskOrder, taskId, event.key)
+    if (!targetId) return
+    event.preventDefault()
+    const target = buttonsRef.current.get(targetId)
+    target?.focus()
+    target?.scrollIntoView?.({ block: 'nearest' })
+  }
+  return (
+    <>
+      <p id="finder-keyboard-hint" className="visually-hidden">
+        Arrow keys move between tasks, Home and End jump to the first and last, and Enter picks one.
+      </p>
+      <ul className="finder-task-list" aria-labelledby="finder-heading">
+        {tasks.map((task) => {
+          const selected = task.id === selectedTaskId
+          const isTabStop = task.id === tabStopId
+          return (
+            <li key={task.id}>
+              <button
+                type="button"
+                className={`finder-task-item${selected ? ' finder-task-item-selected' : ''}`}
+                aria-pressed={pressable ? selected : undefined}
+                tabIndex={isTabStop ? 0 : -1}
+                aria-describedby={isTabStop ? 'finder-keyboard-hint' : undefined}
+                ref={(el) => {
+                  if (el) buttonsRef.current.set(task.id, el)
+                  else buttonsRef.current.delete(task.id)
+                }}
+                onFocus={() => setLastFocusedId(task.id)}
+                onKeyDown={(event) => onKeyDown(event, task.id)}
+                onClick={(event) => onPick(task, event.currentTarget)}
+              >
+                {task.label}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </>
   )
 }
 
