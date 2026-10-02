@@ -207,6 +207,11 @@
   opacity: 0.25;
 }
 
+/* One edge from the selection: dimmed less than the rest, so what a node connects to still reads. */
+.graph-node-near {
+  opacity: 0.6;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .graph-node,
   .graph-org-node,

@@ -254,8 +254,14 @@ describe('GraphView', () => {
     const { container } = render(<GraphView />)
     const cls = (id: string) => container.querySelector(`[data-node-id="${id}"]`)?.getAttribute('class') ?? ''
     expect(cls('nws-api')).not.toContain('graph-node-dimmed')
-    expect(cls(other.id)).toContain('graph-node-dimmed')
+    const neighbour = expectedGraph.edges.find((e) => e.source === 'nws-api' || e.target === 'nws-api')
+    if (!neighbour) throw new Error('expected nws-api to have an edge')
+    const nearId = neighbour.source === 'nws-api' ? neighbour.target : neighbour.source
+    expect(cls(nearId)).toContain('graph-node-near')
+    expect(cls(nearId)).not.toContain('graph-node-dimmed')
+    expect(container.querySelectorAll('.graph-node-dimmed').length).toBeGreaterThan(0)
     act(() => clearSelection())
+    expect(container.querySelector('.graph-node-near')).toBeNull()
     expect(cls(other.id)).not.toContain('graph-node-dimmed')
   })
 

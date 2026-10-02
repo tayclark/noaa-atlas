@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { focusIds, isEdgeDimmed, isNodeDimmed } from './focusDim'
+import { focusIds, isEdgeDimmed, neighborIds, nodeDim } from './focusDim'
 
 describe('focusIds', () => {
   it('is null with no search and no selection', () => {
@@ -19,11 +19,36 @@ describe('focusIds', () => {
   })
 })
 
-describe('isNodeDimmed', () => {
-  it('dims only nodes outside a focus set', () => {
-    expect(isNodeDimmed(null, 'a')).toBe(false)
-    expect(isNodeDimmed(new Set(['a']), 'a')).toBe(false)
-    expect(isNodeDimmed(new Set(['a']), 'b')).toBe(true)
+describe('neighborIds', () => {
+  const edges = [
+    { source: 'a', target: 'b' },
+    { source: 'c', target: 'a' },
+    { source: 'd', target: 'e' },
+    { source: 'a', target: 'f' },
+  ]
+
+  it('collects nodes one edge from the highlighted ones, in either direction', () => {
+    expect(neighborIds(edges, ['a'], null)).toEqual(new Set(['b', 'c', 'f']))
+  })
+
+  it('excludes other highlighted nodes', () => {
+    expect(neighborIds(edges, ['a', 'b'], null)).toEqual(new Set(['c', 'f']))
+  })
+
+  it('is empty with no selection or during search', () => {
+    expect(neighborIds(edges, [], null).size).toBe(0)
+    expect(neighborIds(edges, ['a'], new Set(['x'])).size).toBe(0)
+  })
+})
+
+describe('nodeDim', () => {
+  it('has three levels: in focus, a neighbour, and the rest', () => {
+    const focus = new Set(['a'])
+    const near = new Set(['b'])
+    expect(nodeDim(null, near, 'z')).toBe('none')
+    expect(nodeDim(focus, near, 'a')).toBe('none')
+    expect(nodeDim(focus, near, 'b')).toBe('near')
+    expect(nodeDim(focus, near, 'z')).toBe('dim')
   })
 })
 

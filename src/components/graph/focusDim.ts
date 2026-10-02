@@ -4,8 +4,27 @@ export function focusIds(matchedIds: ReadonlySet<string> | null, highlightedIds:
   return highlightedIds.length > 0 ? new Set(highlightedIds) : null
 }
 
-export function isNodeDimmed(focus: ReadonlySet<string> | null, id: string): boolean {
-  return focus !== null && !focus.has(id)
+/** Nodes one edge away from a highlighted node. Empty during search, which dims by match alone. */
+export function neighborIds(
+  edges: readonly { source: string; target: string }[],
+  highlightedIds: readonly string[],
+  matchedIds: ReadonlySet<string> | null,
+): Set<string> {
+  const near = new Set<string>()
+  if (matchedIds || highlightedIds.length === 0) return near
+  const highlighted = new Set(highlightedIds)
+  for (const { source, target } of edges) {
+    if (highlighted.has(source) && !highlighted.has(target)) near.add(target)
+    else if (highlighted.has(target) && !highlighted.has(source)) near.add(source)
+  }
+  return near
+}
+
+export type NodeDim = 'none' | 'near' | 'dim'
+
+export function nodeDim(focus: ReadonlySet<string> | null, near: ReadonlySet<string>, id: string): NodeDim {
+  if (focus === null || focus.has(id)) return 'none'
+  return near.has(id) ? 'near' : 'dim'
 }
 
 /**
