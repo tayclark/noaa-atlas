@@ -2,7 +2,7 @@
 // tiles and legend, plus one `@live` smoke test that fetches a real tile.
 
 import { expect, test, type Page } from '@playwright/test'
-import { mockArcgisCharts, mockArcgisRaster, mockArcgisVector } from './fixtures/arcgis'
+import { mockArcgisCharts, mockArcgisHabitat, mockArcgisRaster, mockArcgisVector } from './fixtures/arcgis'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 
@@ -96,6 +96,21 @@ test('the NOAA chart services node draws the charts and says they are not for na
   expect(tiles[0]).toContain('layers=show:0')
   await expect(page.getByRole('status', { name: 'Map overlay legend' })).toHaveCount(0)
   await expect(page.locator('.maplibregl-ctrl-attrib')).toContainText('Office of Coast Survey')
+})
+
+test('the NMFS node draws critical habitat, both areas and lines, with no legend box', async ({ page }) => {
+  const tiles = await mockArcgisHabitat(page)
+  await page.goto('/')
+  await selectByKeyboard(page, 'nmfs-arcgis-services')
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'arcgis-habitat')
+  await expect(page.getByLabel('Selection status')).toContainText('50 CFR 226')
+  await expect.poll(() => tiles.length).toBeGreaterThan(0)
+  expect(tiles[0]).toContain('layers=show:226,2')
+  await expect(page.getByRole('status', { name: 'Map overlay legend' })).toHaveCount(0)
+  await expect(page.locator('.maplibregl-ctrl-attrib')).toContainText('NOAA Fisheries')
+
+  await page.getByRole('tab', { name: /Inspector/ }).click()
+  await expect(page.getByRole('button', { name: /server\/rest\/services\/All_NMFS/ })).toBeVisible()
 })
 
 test('fetches a real overlay tile @live', async ({ page }) => {

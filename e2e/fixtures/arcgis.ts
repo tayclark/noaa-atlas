@@ -2,7 +2,7 @@
 // route answering every tile with a 1x1 transparent PNG; the legend call is a separate route.
 
 import type { Page } from '@playwright/test'
-import { makeArcgisChartsLegend, makeArcgisLegend, makeArcgisVectorLegend } from '../../src/data/arcgisFixtures'
+import { makeArcgisChartsLegend, makeArcgisHabitatLegend, makeArcgisLegend, makeArcgisVectorLegend } from '../../src/data/arcgisFixtures'
 
 const TRANSPARENT_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
@@ -57,5 +57,20 @@ export async function mockArcgisCharts(page: Page) {
     return route.fulfill({ contentType: 'image/png', body: TRANSPARENT_PNG, headers })
   })
   await page.route(ARCGIS_CHARTS_LEGEND, (route) => route.fulfill({ json: makeArcgisChartsLegend(), headers }))
+  return requests
+}
+
+export const ARCGIS_HABITAT_EXPORT = '**/All_NMFS_Critical_Habitat/MapServer/export**'
+export const ARCGIS_HABITAT_LEGEND = '**/All_NMFS_Critical_Habitat/MapServer/legend**'
+
+/** The same mocks for the NMFS critical habitat MapServer, whose real legend swatches have no labels. */
+export async function mockArcgisHabitat(page: Page) {
+  const requests: string[] = []
+  const headers = { 'access-control-allow-origin': '*' }
+  await page.route(ARCGIS_HABITAT_EXPORT, (route) => {
+    requests.push(route.request().url())
+    return route.fulfill({ contentType: 'image/png', body: TRANSPARENT_PNG, headers })
+  })
+  await page.route(ARCGIS_HABITAT_LEGEND, (route) => route.fulfill({ json: makeArcgisHabitatLegend(), headers }))
   return requests
 }

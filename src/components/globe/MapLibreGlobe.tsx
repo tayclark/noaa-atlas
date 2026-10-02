@@ -447,7 +447,7 @@ export function MapLibreGlobe() {
       for (const overlay of ARCGIS_OVERLAYS) {
         map.addSource(overlay.sourceId, {
           type: 'raster',
-          tiles: [arcgisExportTileUrl(overlay.serviceUrl, overlay.layerIdInService)],
+          tiles: [arcgisExportTileUrl(overlay.serviceUrl, overlay.layerIdsInService)],
           tileSize: ARCGIS_TILE_SIZE,
           attribution: overlay.attribution,
         })
@@ -920,7 +920,7 @@ export function MapLibreGlobe() {
     let cancelled = false
     getArcgisLegend(overlay.serviceUrl)
       .then((legend) => {
-        if (!cancelled) setArcgisLegend({ status: 'ok', entries: legendEntriesFor(legend, overlay.layerIdInService) })
+        if (!cancelled) setArcgisLegend({ status: 'ok', entries: legendEntriesFor(legend, overlay.layerIdsInService) })
       })
       .catch((err: unknown) => {
         if (!cancelled) setArcgisLegend({ status: 'error', message: describeArcgisFetchOutcome(err) })

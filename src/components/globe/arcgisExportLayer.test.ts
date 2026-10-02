@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ArcgisHttpError, ArcgisParseError } from '../../data/arcgisClient'
-import { makeArcgisChartsLegend, makeArcgisLegend } from '../../data/arcgisFixtures'
+import { makeArcgisChartsLegend, makeArcgisHabitatLegend, makeArcgisLegend } from '../../data/arcgisFixtures'
 import {
   ARCGIS_OVERLAYS,
   ARCGIS_TILE_SIZE,
@@ -11,7 +11,7 @@ import {
 import { LIVE_LAYERS } from './liveLayers'
 
 describe('arcgisExportTileUrl', () => {
-  const url = arcgisExportTileUrl('https://example.test/rest/services/x/MapServer', 28)
+  const url = arcgisExportTileUrl('https://example.test/rest/services/x/MapServer', [28])
 
   it('asks the export endpoint for a transparent PNG in Web Mercator', () => {
     const parsed = new URL(url.replace('{bbox-epsg-3857}', '0,0,1,1'))
@@ -21,6 +21,10 @@ describe('arcgisExportTileUrl', () => {
     expect(parsed.searchParams.get('format')).toBe('png32')
     expect(parsed.searchParams.get('bboxSR')).toBe('3857')
     expect(parsed.searchParams.get('imageSR')).toBe('3857')
+  })
+
+  it('shows several sublayers as a comma-separated list', () => {
+    expect(arcgisExportTileUrl('https://example.test/MapServer', [226, 2])).toContain('layers=show:226,2')
   })
 
   it("keeps MapLibre's bbox placeholder, sizes the tile and shows one sublayer", () => {
@@ -41,7 +45,7 @@ describe('ARCGIS_OVERLAYS', () => {
 
 describe('legendEntriesFor', () => {
   it('returns the image entries of the drawn sublayer only', () => {
-    expect(legendEntriesFor(makeArcgisLegend(), 28).map((e) => e.label)).toEqual([
+    expect(legendEntriesFor(makeArcgisLegend(), [28]).map((e) => e.label)).toEqual([
       'Greater than or equal to 10',
       '0.1  to  0.25',
       'Missing data',
@@ -49,11 +53,15 @@ describe('legendEntriesFor', () => {
   })
 
   it('is empty when the service does not describe the sublayer', () => {
-    expect(legendEntriesFor(makeArcgisLegend(), 99)).toEqual([])
+    expect(legendEntriesFor(makeArcgisLegend(), [99])).toEqual([])
+  })
+
+  it('drops unlabeled swatches, as in the critical habitat legend', () => {
+    expect(legendEntriesFor(makeArcgisHabitatLegend(), [226, 2])).toEqual([])
   })
 
   it('returns no entries for the chart service, whose legend is empty', () => {
-    expect(legendEntriesFor(makeArcgisChartsLegend(), 0)).toEqual([])
+    expect(legendEntriesFor(makeArcgisChartsLegend(), [0])).toEqual([])
   })
 })
 
