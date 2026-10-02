@@ -14,6 +14,9 @@ import { parseGraphFile, type ServiceNode } from '../../data/graphSchema'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
 import { pollWhileVisible } from '../../data/pollWhileVisible'
 import { getDay1CategoricalOutlook, SPC_REFRESH_MS } from '../../data/spcClient'
+import { getArcgisLegend } from '../../data/arcgisClient'
+import { ARCGIS_OVERLAYS, ARCGIS_TILE_SIZE, arcgisExportTileUrl, describeArcgisFetchOutcome, legendEntriesFor } from './arcgisExportLayer'
+import type { ArcgisLegendEntry } from '../../data/arcgisSchema'
 import { getHiloPredictions, getWaterLevel } from '../../data/coopsClient'
 import { COOPS_STATIONS } from '../../data/coopsStations'
 import { DART_STATIONS } from '../../data/dartStations'
@@ -289,6 +292,9 @@ export function MapLibreGlobe() {
   // selection effect the aurora layer now exists.
   const ovationRef = useRef<SwpcOvation | null>(null)
   const [auroraCells, setAuroraCells] = useState<number | null>(null)
+  const [arcgisLegend, setArcgisLegend] = useState<
+    { status: 'loading' } | { status: 'ok'; entries: ArcgisLegendEntry[] } | { status: 'error'; message: string }
+  >({ status: 'loading' })
   const [spc, setSpc] = useState<
     { status: 'loading' } | { status: 'ok'; categories: SpcCategory[] } | { status: 'empty' } | { status: 'error'; message: string }
   >({ status: 'loading' })
@@ -436,6 +442,23 @@ export function MapLibreGlobe() {
         layout: { visibility: 'none' },
         paint: { 'line-color': ['get', 'stroke'], 'line-width': 1.5 },
       })
+      // ArcGIS overlays (#247) draw over the SPC outlook and under the stations and alerts. Hidden
+      // layers fetch no tiles, so nothing is requested until a node is selected.
+      for (const overlay of ARCGIS_OVERLAYS) {
+        map.addSource(overlay.sourceId, {
+          type: 'raster',
+          tiles: [arcgisExportTileUrl(overlay.serviceUrl, overlay.layerIdInService)],
+          tileSize: ARCGIS_TILE_SIZE,
+          attribution: overlay.attribution,
+        })
+        map.addLayer({
+          id: overlay.layerId,
+          type: 'raster',
+          source: overlay.sourceId,
+          layout: { visibility: 'none' },
+          paint: { 'raster-opacity': overlay.opacity, 'raster-fade-duration': 0 },
+        })
+      }
       // Under the alerts, which are added later. Stations are static, so the layer needs no fetch.
       map.addSource(COOPS_SOURCE_ID, { type: 'geojson', data: stationsToGeoJSON(COOPS_STATIONS) })
       map.addLayer({
@@ -882,6 +905,32 @@ export function MapLibreGlobe() {
     }
   }, [spcShown, mapLoaded])
 
+  // The ArcGIS overlay (#247) is drawn while its node is selected. Its legend is the one request
+  // the client logs; a failed legend leaves the overlay drawn.
+  const arcgisOverlay = ARCGIS_OVERLAYS.find((overlay) => liveLayers.includes(overlay.key)) ?? null
+  const arcgisKey = arcgisOverlay?.key ?? null
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded) return
+    for (const overlay of ARCGIS_OVERLAYS) {
+      if (map.getLayer(overlay.layerId)) map.setLayoutProperty(overlay.layerId, 'visibility', overlay.key === arcgisKey ? 'visible' : 'none')
+    }
+    const overlay = ARCGIS_OVERLAYS.find((o) => o.key === arcgisKey)
+    if (!overlay) return
+    let cancelled = false
+    getArcgisLegend(overlay.serviceUrl)
+      .then((legend) => {
+        if (!cancelled) setArcgisLegend({ status: 'ok', entries: legendEntriesFor(legend, overlay.layerIdInService) })
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setArcgisLegend({ status: 'error', message: describeArcgisFetchOutcome(err) })
+      })
+    return () => {
+      cancelled = true
+      setArcgisLegend({ status: 'loading' })
+    }
+  }, [arcgisKey, mapLoaded])
+
   const ndbcShown = liveLayers.includes('ndbc-stations')
   useEffect(() => {
     const map = mapRef.current
@@ -898,6 +947,7 @@ export function MapLibreGlobe() {
         data-coverage-features={view.footprint.features.length}
         data-coops-stations={mapLoaded ? COOPS_STATIONS.length : undefined}
         data-dart-stations={mapLoaded ? (dartShown ? DART_STATIONS.length : 0) : undefined}
+        data-arcgis-overlay={mapLoaded ? (arcgisKey ?? 'hidden') : undefined}
         data-spc-outlook={mapLoaded ? (spcShown ? spc.status : 'hidden') : undefined}
         data-ndbc-stations={mapLoaded ? (ndbcShown ? NDBC_STATIONS.length : 0) : undefined}
         data-nowcoast-radar={mapLoaded ? (radarShown ? 'visible' : 'hidden') : undefined}
@@ -999,6 +1049,24 @@ export function MapLibreGlobe() {
         {spcShown && spc.status === 'error' && (
           <div className="zone-only-alerts" role="status" aria-label="Convective outlook status">
             {spc.message}
+          </div>
+        )}
+        {arcgisOverlay && arcgisLegend.status === 'ok' && arcgisLegend.entries.length > 0 && (
+          <div className="zone-only-alerts spc-legend arcgis-legend" role="status" aria-label="Map overlay legend">
+            <strong>{arcgisOverlay.title}</strong>
+            <ul>
+              {arcgisLegend.entries.map((entry) => (
+                <li key={entry.label}>
+                  <img className="arcgis-legend-swatch" src={`data:${entry.contentType};base64,${entry.imageData}`} alt="" />
+                  {entry.label.replace(/\s+/g, ' ').trim()}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {arcgisOverlay && arcgisLegend.status === 'error' && (
+          <div className="zone-only-alerts" role="status" aria-label="Map overlay legend">
+            {arcgisLegend.message}
           </div>
         )}
         {alertsStatus === 'error' && (
