@@ -65,7 +65,7 @@ import { useWindForecast } from './useWindForecast'
 import { WindControl, type ForecastLayer } from './WindControl'
 import { NOWCOAST_CAPABILITIES_URL, frameForTime, parseRadarFrames } from './radarTimes'
 import { ForecastTimeline } from './ForecastTimeline'
-import { getTimeSnapshot, setTime, subscribeTime } from '../../data/timeStore'
+import { getTimeSnapshot, setTime, stopPlayer, subscribeTime } from '../../data/timeStore'
 import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePopup'
 import { hitBox, hitPadding, nearestCandidate } from './hitPick'
 import { describeGeolocationError, GEOLOCATE_MAX_ZOOM, GEOLOCATE_POSITION_OPTIONS } from './geolocation'
@@ -852,7 +852,8 @@ export function MapLibreGlobe() {
 
   // The radar's frame list (#74) is fetched while the layer is shown, and refreshed as frames age
   // out for as long as the globe is looked at (#78). A failed fetch leaves the latest-frame layer
-  // without a slider. Leaving resets to latest.
+  // without a slider. Leaving resets to latest (#286): the shared time returns to now and a radar
+  // loop stops, so the point timeline and the wind also start from now after the radar goes.
   const loadRadarFrames = useCallback((signal?: AbortSignal) => {
     fetch(NOWCOAST_CAPABILITIES_URL, signal ? { signal } : undefined)
       .then((res) => (res.ok ? res.text() : Promise.reject(new Error(String(res.status)))))
@@ -866,6 +867,8 @@ export function MapLibreGlobe() {
     return () => {
       controller.abort()
       setRadarFrames([])
+      stopPlayer('radar')
+      setTime(null)
     }
   }, [radarShown, loadRadarFrames])
   useEffect(() => {
