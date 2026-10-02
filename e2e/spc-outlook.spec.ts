@@ -59,6 +59,13 @@ test('a click on the outlook shows its category and the request lands in the Ins
   await expect(popup).toContainText('Test Forecaster')
   await expect(popup).not.toContainText('APIs covering this point')
 
+  // Like an alert, the outlook area selects the point under it, and the outlook stays drawn (#274).
+  await expect(page.getByLabel('Selection status')).toContainText('Selected point')
+  await expect(page).toHaveURL(/#point=/)
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-spc-outlook', 'ok')
+  await expect(page.getByRole('status', { name: 'Convective outlook legend' })).toBeVisible()
+  await expect(popup).toContainText('Slight Risk')
+
   await page.getByRole('tab', { name: /Inspector/ }).click()
   await expect(page.getByRole('button', { name: /day1otlk_cat/ })).toBeVisible()
 })
