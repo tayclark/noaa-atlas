@@ -3,6 +3,7 @@
 // back when the tab is seen. The radar slider has finger-sized steps.
 
 import { expect, test, type Page } from '@playwright/test'
+import { GLOBE, waitForGlobe } from './fixtures/globe'
 import { RADAR_FRAMES, mockRadar } from './fixtures/nowcoast'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc, mockSwpcRefresh } from './fixtures/swpc'
@@ -10,7 +11,6 @@ import { mockSwpc, mockSwpcRefresh } from './fixtures/swpc'
 // The graph is only used to pick a node here, so skip its ~6.5 s animated settle.
 test.use({ reducedMotion: 'reduce' })
 
-const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
 const NOWCOAST = 'nowcoast-map-services'
 
 async function selectNowcoast(page: Page) {
@@ -84,6 +84,7 @@ test('the space-weather readout is not refreshed while the globe is hidden, and 
   await mockSwpcRefresh(page)
   await page.goto('/')
   await page.getByRole('tab', { name: /Globe/ }).tap()
+  await waitForGlobe(page)
   const readout = page.getByLabel('Geomagnetic activity')
   await expect(readout).toContainText('Kp 6.7')
 

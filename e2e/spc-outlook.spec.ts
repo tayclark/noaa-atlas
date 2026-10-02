@@ -2,6 +2,7 @@
 // a legend, a click popup and an Inspector entry.
 
 import { expect, test, type Page } from '@playwright/test'
+import { GLOBE, waitForGlobe } from './fixtures/globe'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
 import { mockSpcOutlook, SPC_URL } from './fixtures/spc'
@@ -10,7 +11,6 @@ import { mockSwpc } from './fixtures/swpc'
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
 
-const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
 const POPUP = '.maplibregl-popup-content'
 
 async function selectByKeyboard(page: Page, nodeId: string) {
@@ -49,6 +49,7 @@ test('the outlook is requested and drawn only while the SPC node is selected', a
 test('a click on the outlook shows its category and the request lands in the Inspector', async ({ page }) => {
   await mockSpcOutlook(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, 'spc-gis-data')
   await expect(page.locator(GLOBE)).toHaveAttribute('data-spc-outlook', 'ok')
 
@@ -65,12 +66,14 @@ test('a click on the outlook shows its category and the request lands in the Ins
 test('a quiet day and a failed fetch say so', async ({ page }) => {
   await mockSpcOutlook(page, { type: 'FeatureCollection', features: [] })
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, 'spc-gis-data')
   await expect(page.getByRole('status', { name: 'Convective outlook status' })).toContainText('No convective outlook areas')
 
   await page.unroute(SPC_URL)
   await page.route(SPC_URL, (route) => route.fulfill({ status: 503, body: '' }))
   await page.reload()
+  await waitForGlobe(page)
   await selectByKeyboard(page, 'spc-gis-data')
   await expect(page.getByRole('status', { name: 'Convective outlook status' })).toContainText('unavailable')
 })

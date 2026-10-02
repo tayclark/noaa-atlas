@@ -3,6 +3,7 @@
 
 import { expect, test, type Page } from '@playwright/test'
 import { mockGfs } from './fixtures/gfs'
+import { GLOBE, waitForGlobe } from './fixtures/globe'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 
@@ -11,7 +12,6 @@ test.use({ reducedMotion: 'reduce' })
 // Decoding the JPEG 2000 wave field on the main thread took seconds on a CI runner, so loads get more room.
 const LOADED = { timeout: 30_000 }
 
-const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
 const NODE = 'gfs-aws-open-data'
 
 async function selectByKeyboard(page: Page, nodeId: string) {
@@ -27,6 +27,7 @@ test.beforeEach(async ({ page }) => {
 test('shows wind first and requests no wave data until Waves is chosen', async ({ page }) => {
   const seen = await mockGfs(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, NODE)
   await expect(page.locator(GLOBE)).toHaveAttribute('data-wind', 'visible', LOADED)
   await expect(page.locator(GLOBE)).toHaveAttribute('data-waves', 'hidden')
@@ -36,6 +37,7 @@ test('shows wind first and requests no wave data until Waves is chosen', async (
 test('Waves loads the HTSGW field with one Range request and swaps the slider and legend', async ({ page }) => {
   const seen = await mockGfs(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, NODE)
   await expect(page.locator(GLOBE)).toHaveAttribute('data-wind', 'visible', LOADED)
 
@@ -54,6 +56,7 @@ test('Waves loads the HTSGW field with one Range request and swaps the slider an
 test('the slider loads the wave hours around the shared time', async ({ page }) => {
   const seen = await mockGfs(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, NODE)
   await page.locator('.wind-layer-toggle').getByRole('button', { name: 'Waves' }).click()
   await expect(page.locator(GLOBE)).toHaveAttribute('data-waves', 'visible', LOADED)
@@ -69,6 +72,7 @@ test('says so when the wave files are unreachable, and wind still works', async 
   await mockGfs(page)
   await page.route('https://noaa-gfs-bdp-pds.s3.amazonaws.com/**/wave/**', (route) => route.fulfill({ status: 503, body: '' }))
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, NODE)
   await page.locator('.wind-layer-toggle').getByRole('button', { name: 'Waves' }).click()
   await expect(page.getByLabel('Wave status')).toContainText('could not be loaded')
