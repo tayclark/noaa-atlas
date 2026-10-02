@@ -65,7 +65,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
-      - run: npm run test:e2e
+      - run: npm run test:e2e:mocked
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

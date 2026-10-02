@@ -1,0 +1,47 @@
+name: Live e2e
+
+# The `@live` specs hit the real NWS, SWPC, CO-OPS, nowCOAST and ArcGIS servers, so an outage on
+# their side would fail CI for unchanged code. They run here, daily and on demand, instead of on
+# every PR (#268). Nothing requires this check, so a red run is visible but blocks no merge.
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-e2e
+  cancel-in-progress: true
+
+jobs:
+  live-e2e:
+    name: live-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - id: playwright-version
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+      - if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - run: npm run test:e2e:live
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report-live
+          path: playwright-report/
+          retention-days: 7
