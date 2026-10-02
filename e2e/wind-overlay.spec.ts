@@ -3,13 +3,13 @@
 
 import { expect, test, type Page } from '@playwright/test'
 import { mockGfs } from './fixtures/gfs'
+import { GLOBE, waitForGlobe } from './fixtures/globe'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
 
-const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
 const NODE = 'gfs-aws-open-data'
 
 async function selectByKeyboard(page: Page, nodeId: string) {
@@ -33,6 +33,7 @@ test('requests no wind data until the GFS node is selected', async ({ page }) =>
 test('selecting GFS loads the field with Range requests and shows the slider and legend', async ({ page }) => {
   const seen = await mockGfs(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, NODE)
 
   await expect(page.locator(GLOBE)).toHaveAttribute('data-wind', 'visible')
@@ -46,6 +47,7 @@ test('selecting GFS loads the field with Range requests and shows the slider and
 test('the slider moves the shared time and loads the hours around it', async ({ page }) => {
   const seen = await mockGfs(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, NODE)
   await expect(page.locator(GLOBE)).toHaveAttribute('data-wind', 'visible')
   const before = seen.length
@@ -65,6 +67,7 @@ test('the slider moves the shared time and loads the hours around it', async ({ 
 test('selecting another service hides the overlay and its controls', async ({ page }) => {
   await mockGfs(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, NODE)
   await expect(page.locator(GLOBE)).toHaveAttribute('data-wind', 'visible')
 
@@ -76,6 +79,7 @@ test('selecting another service hides the overlay and its controls', async ({ pa
 test('says so when the bucket is unreachable', async ({ page }) => {
   await page.route('https://noaa-gfs-bdp-pds.s3.amazonaws.com/**', (route) => route.fulfill({ status: 503, body: '' }))
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, NODE)
   await expect(page.getByLabel('Wind status')).toContainText('could not be loaded')
 })

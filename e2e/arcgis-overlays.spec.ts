@@ -3,13 +3,13 @@
 
 import { expect, test, type Page } from '@playwright/test'
 import { mockArcgisCharts, mockArcgisHabitat, mockArcgisRaster, mockArcgisVector } from './fixtures/arcgis'
+import { GLOBE, waitForGlobe } from './fixtures/globe'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
 
-const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
 const NODE = 'nws-raster-map-services'
 
 async function selectByKeyboard(page: Page, nodeId: string) {
@@ -34,6 +34,7 @@ test('requests no overlay tiles or legend until the node is selected', async ({ 
 test('selecting the node draws the overlay with its legend, and selecting something else hides it', async ({ page }) => {
   const tiles = await mockArcgisRaster(page)
   await page.goto('/')
+  await waitForGlobe(page)
 
   await selectByKeyboard(page, NODE)
   await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'arcgis-raster')
@@ -53,6 +54,7 @@ test('selecting the node draws the overlay with its legend, and selecting someth
 test('the legend call lands in the Inspector', async ({ page }) => {
   await mockArcgisRaster(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, NODE)
   await expect(page.getByRole('status', { name: 'Map overlay legend' })).toBeVisible()
   await page.getByRole('tab', { name: /Inspector/ }).click()
@@ -62,6 +64,7 @@ test('the legend call lands in the Inspector', async ({ page }) => {
 test('the overlay still draws, with a message, when the legend fails', async ({ page }) => {
   const tiles = await mockArcgisRaster(page, { legend: false })
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, NODE)
   await expect(page.getByRole('status', { name: 'Map overlay legend' })).toContainText('legend could not be loaded')
   await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'arcgis-raster')
@@ -89,6 +92,7 @@ test('the NWS GIS portal node draws the CPC outlook with its legend and logs the
 test('the NOAA chart services node draws the charts and says they are not for navigation', async ({ page }) => {
   const tiles = await mockArcgisCharts(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, 'noaa-chart-services')
   await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'arcgis-charts')
   await expect(page.getByLabel('Selection status')).toContainText('not for navigation')
@@ -101,6 +105,7 @@ test('the NOAA chart services node draws the charts and says they are not for na
 test('the NMFS node draws critical habitat, both areas and lines, with no legend box', async ({ page }) => {
   const tiles = await mockArcgisHabitat(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, 'nmfs-arcgis-services')
   await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'arcgis-habitat')
   await expect(page.getByLabel('Selection status')).toContainText('50 CFR 226')
@@ -119,6 +124,7 @@ test('fetches a real overlay tile @live', async ({ page }) => {
     if (res.url().includes('/rfc_qpe/MapServer/export')) status = res.status()
   })
   await page.goto('/')
+  await waitForGlobe(page)
   await selectByKeyboard(page, NODE)
   await expect.poll(() => status, { timeout: 30_000 }).toBe(200)
 })
