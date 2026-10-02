@@ -2,39 +2,22 @@
 // readable size and inside the canvas, and a hidden label shows on hover.
 
 import { expect, test, type Page } from '@playwright/test'
+import { overlapping, switchView, visibleLabels, waitForSettledLayout } from './fixtures/graphLabels'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 
 // Reduced motion lays the graph out in one go instead of animating the ~6.5 s settle, and these
 // specs assert the settled layout, not the animation.
 test.use({ reducedMotion: 'reduce' })
 
-interface LabelBox {
-  id: string
-  x: number
-  y: number
-  w: number
-  h: number
-  fontSize: number
-}
-
-// The simulation runs for several seconds and labels are only re-placed every few ticks, so a
-// snapshot taken mid-layout can catch two labels drifting together. Wait for the final placement.
-async function waitForSettledLayout(page: Page) {
-  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
-}
-
-async function visibleLabels(page: Page): Promise<{ labels: LabelBox[]; canvas: DOMRect }> {
-  return page.evaluate(() => {
-    const canvas = document.querySelector('.graph-canvas')!.getBoundingClientRect()
-    const labels = [...document.querySelectorAll<SVGTextElement>('.graph-node text')]
-      .filter((el) => getComputedStyle(el).visibility !== 'hidden')
-      .map((el) => {
-        const r = el.getBoundingClientRect()
-        const id = el.closest<SVGGElement>('.graph-node')!.dataset.nodeId!
-        return { id, x: r.x, y: r.y, w: r.width, h: r.height, fontSize: parseFloat(getComputedStyle(el).fontSize) * (el.getScreenCTM()?.a ?? 1) }
-      })
-    return { labels, canvas: canvas.toJSON() as DOMRect }
-  })
+async function expectTidyLabels(page: Page) {
+  const { labels, canvas } = await visibleLabels(page)
+  expect(overlapping(labels)).toEqual([])
+  for (const l of labels) {
+    expect(l.fontSize, l.id).toBeGreaterThanOrEqual(11)
+    expect(l.x, l.id).toBeGreaterThanOrEqual(canvas.x - 1)
+    expect(l.x + l.w, l.id).toBeLessThanOrEqual(canvas.x + canvas.width + 1)
+  }
+  return labels
 }
 
 test('visible labels do not overlap, stay legible and fit inside the canvas', async ({ page }) => {
@@ -42,23 +25,28 @@ test('visible labels do not overlap, stay legible and fit inside the canvas', as
   await page.goto('/')
   await waitForSettledLayout(page)
 
-  const { labels, canvas } = await visibleLabels(page)
+  const labels = await expectTidyLabels(page)
   expect(labels.filter((l) => l.id.startsWith('theme-'))).toHaveLength(10)
-
-  const overlaps: string[] = []
-  for (const [i, a] of labels.entries()) {
-    for (const b of labels.slice(i + 1)) {
-      if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) overlaps.push(`${a.id} / ${b.id}`)
-    }
-  }
-  expect(overlaps).toEqual([])
-
-  for (const l of labels) {
-    expect(l.fontSize, l.id).toBeGreaterThanOrEqual(11)
-    expect(l.x, l.id).toBeGreaterThanOrEqual(canvas.x - 1)
-    expect(l.x + l.w, l.id).toBeLessThanOrEqual(canvas.x + canvas.width + 1)
-  }
 })
+
+// #292: the access hubs are `.graph-org-node`s, which the check above never saw.
+const ACCESS_HUBS = ['access-rest', 'access-arcgis-rest', 'access-ogc', 'access-cloud-bucket', 'access-file-download']
+
+for (const viewport of [null, { width: 1400, height: 900 }]) {
+  test.describe(viewport ? `at ${viewport.width}x${viewport.height}` : 'at the default viewport', () => {
+    if (viewport) test.use({ viewport })
+
+    test('the access view labels every hub, with no labels overlapping', async ({ page }) => {
+      await mockAlerts(page, emptyAlertsFixture())
+      await page.goto('/')
+      await waitForSettledLayout(page)
+      await switchView(page, 'Access view')
+
+      const labels = await expectTidyLabels(page)
+      expect(labels.filter((l) => l.id.startsWith('access-')).map((l) => l.id).sort()).toEqual([...ACCESS_HUBS].sort())
+    })
+  })
+}
 
 test('hovering a node reveals its hidden label', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
