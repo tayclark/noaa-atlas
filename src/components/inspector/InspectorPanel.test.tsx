@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { InspectorPanel } from './InspectorPanel'
 import { clearRequestLog, pushLogEntry, type RequestLogEntry } from '../../data/requestLog'
@@ -119,12 +119,12 @@ describe('InspectorPanel', () => {
     render(<InspectorPanel />)
     fireEvent.click(screen.getByRole('button', { name: /\/alerts\/active/ }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy as curl' }))
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Copy as curl' })))
     expect(writeText).toHaveBeenCalledWith(
       "curl -H 'Accept: application/geo+json' 'https://api.weather.gov/alerts/active'",
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy as fetch' }))
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Copy as fetch' })))
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('fetch('))
     vi.unstubAllGlobals()
   })
