@@ -50,9 +50,13 @@ test('selecting nowCOAST draws the radar with its credit, and selecting somethin
 test('a time slider scrubs the radar through earlier frames, and goes with the layer', async ({ page }) => {
   const tiles = await mockRadar(page)
   await page.goto('/')
+  // `data-radar-time` is set before the map loads, so wait for the map (#286): otherwise the tile
+  // poll below has to cover a slow map load too.
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-nowcoast-radar', 'hidden')
   await expect(page.getByRole('slider', { name: 'Radar frame' })).toHaveCount(0)
 
   await selectByKeyboard(page, NODE)
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-nowcoast-radar', 'visible')
   const slider = page.getByRole('slider', { name: 'Radar frame' })
   await expect(slider).toHaveValue(String(RADAR_FRAMES.length - 1))
   await expect(page.locator(GLOBE)).toHaveAttribute('data-radar-time', 'latest')
@@ -66,15 +70,19 @@ test('a time slider scrubs the radar through earlier frames, and goes with the l
   await selectByKeyboard(page, 'nws-api')
   await expect(slider).toHaveCount(0)
   await selectByKeyboard(page, NODE)
+  // Only a loaded frame list can put the time back on an earlier frame, so wait for it (the slider
+  // returns) before checking that leaving reset the time to the latest frame.
+  await expect(slider).toHaveValue(String(RADAR_FRAMES.length - 1))
   await expect(page.locator(GLOBE)).toHaveAttribute('data-radar-time', 'latest')
 })
 
 test('the radar still draws, without a slider, when the frame list fails', async ({ page }) => {
   await mockRadar(page, { capabilities: false })
   await page.goto('/')
+  const capabilities = page.waitForResponse((res) => res.url().includes('request=GetCapabilities'))
   await selectByKeyboard(page, NODE)
   await expect(page.locator(GLOBE)).toHaveAttribute('data-nowcoast-radar', 'visible')
-  await page.waitForTimeout(500)
+  expect((await capabilities).status()).toBe(503)
   await expect(page.getByRole('slider', { name: 'Radar frame' })).toHaveCount(0)
 })
 
@@ -82,6 +90,7 @@ test('fetches a real radar tile @live', async ({ page }) => {
   const tile = page.waitForResponse((res) => res.url().includes('/geoserver/weather_radar/wms') && res.url().includes('request=GetMap'), { timeout: 30_000 })
   await page.route(RADAR_TILES, (route) => route.continue())
   await page.goto('/')
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-nowcoast-radar', 'hidden', { timeout: 20_000 })
   await selectByKeyboard(page, NODE)
   const res = await tile
   expect(res.ok()).toBe(true)
