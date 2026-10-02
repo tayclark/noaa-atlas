@@ -228,6 +228,45 @@ describe('GraphView', () => {
     expect(getSelectionSnapshot().selectedNodeId).toBeNull()
   })
 
+  const tabStops = (container: HTMLElement) => [...container.querySelectorAll('.graph-node[tabindex="0"]')].map((el) => el.getAttribute('data-node-id'))
+
+  it('puts one node in the Tab order, the selected one when there is a selection (#284)', () => {
+    const { container } = render(<GraphView />)
+    expect(tabStops(container)).toEqual(['noaa'])
+    expect(container.querySelectorAll('.graph-node[tabindex="-1"]')).toHaveLength(expectedGraph.nodes.length - 1)
+    act(() => selectNode('nws-api'))
+    expect(tabStops(container)).toEqual(['nws-api'])
+  })
+
+  it('moves focus and the Tab stop between nodes with the arrow keys, Home and End (#284)', () => {
+    const { container } = render(<GraphView />)
+    const node = (id: string) => container.querySelector<SVGGElement>(`.graph-node[data-node-id="${id}"]`)!
+    act(() => node('nws-api').focus())
+    expect(tabStops(container)).toEqual(['nws-api'])
+
+    const notCanceled = fireEvent.keyDown(node('nws-api'), { key: 'ArrowRight' })
+    expect(notCanceled).toBe(false)
+    const next = document.activeElement?.getAttribute('data-node-id')
+    expect(next).not.toBe('nws-api')
+    expect(tabStops(container)).toEqual([next])
+
+    fireEvent.keyDown(document.activeElement!, { key: 'Home' })
+    expect(document.activeElement?.getAttribute('data-node-id')).toBe('noaa')
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowLeft' })
+    expect(document.activeElement?.getAttribute('data-node-id')).toBe(tabStops(container)[0])
+    expect(document.activeElement?.getAttribute('data-node-id')).not.toBe('noaa')
+    // Moving focus doesn't select.
+    expect(getSelectionSnapshot().selectedNodeId).toBeNull()
+  })
+
+  it('leaves the arrow keys alone with a modifier held (#284)', () => {
+    const { container } = render(<GraphView />)
+    const nws = container.querySelector<SVGGElement>('.graph-node[data-node-id="nws-api"]')!
+    act(() => nws.focus())
+    expect(fireEvent.keyDown(nws, { key: 'ArrowRight', altKey: true })).toBe(true)
+    expect(document.activeElement).toBe(nws)
+  })
+
   // jsdom's SVG implementation doesn't support the geometry APIs (e.g. viewBox.baseVal) that
   // d3-zoom/d3-drag read from real pointer events, so wheel/mousedown simulation here would
   // surface jsdom-only errors rather than exercising real behavior. Pan/zoom/drag — including
