@@ -29,4 +29,9 @@ test('non-live node shows a static sample; live node can run it', async ({ page 
   await sample.getByRole('button', { name: 'Run sample' }).click()
   await expect(sample).toContainText('Live response (parsed)')
   await expect(sample).toContainText('"gridId": "TOP"')
+
+  // The run result belongs to nws-api; the next node starts from its own static sample (#262).
+  await selectByKeyboard(page, 'wpc-gis-products')
+  await expect(sample).toContainText('Static sample')
+  await expect(sample).not.toContainText('"gridId"')
 })
