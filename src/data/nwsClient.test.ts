@@ -206,6 +206,7 @@ describe('request log', () => {
     expect(entry.url).toBe('https://api.weather.gov/alerts/active')
     expect(entry.httpStatus).toBe(200)
     expect(entry.responseBody).toEqual(makeAlertCollection())
+    expect(entry.responseSize).toBe(JSON.stringify(makeAlertCollection()).length)
   })
 
   it('does not log cache hits', async () => {
