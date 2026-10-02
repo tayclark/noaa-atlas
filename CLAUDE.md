@@ -20,7 +20,7 @@ Stack: React 19, TypeScript, Vite, MapLibre GL, d3-force / d3-zoom / d3-drag (SV
 - `npm run ncei-datasets`: rewrites `src/data/nceiDatasets.json` from the NCEI search v1 catalog (about 100 datasets, one page). `npm run onestop-datasets` and `npm run aws-open-data-datasets` do the same for `onestopDatasets.json` and `awsOpenDataDatasets.json`.
 - `npm run coverage-geometry -- --preset <us-coastal-waters|contiguous-us|alaska|hawaii|worldwide> --out file.json`: writes schema-valid coverage geometry.
 
-CI (`.github/workflows/ci.yml`) runs on every PR and on pushes to `main`. The `ci` job runs typecheck → lint → `test:coverage` → build, and the `e2e` job runs Playwright in Chromium. Both must pass.
+CI (`.github/workflows/ci.yml`) runs on every PR and on pushes to `main`. The `ci` job runs typecheck → lint → `test:coverage` → build, and the `e2e` job runs `test:e2e:mocked` in Chromium. Both must pass. The `@live` specs run only in `live-e2e.yml` (daily cron plus `workflow_dispatch`), which no merge depends on; GitHub disables a scheduled workflow after 60 days without repo activity.
 
 ## Architecture
 

@@ -222,7 +222,7 @@ Stack: React 19, TypeScript, Vite, MapLibre GL (globe), d3-force / d3-zoom / d3-
 | `npm test` | Unit tests (Vitest) |
 | `npm run test:coverage` | Unit tests with a 75% gate on lines, statements, functions and branches |
 | `npm run test:e2e:mocked` | Playwright against mocked NWS, SWPC and CO-OPS responses, on desktop Chrome and the Pixel 7 phone emulation |
-| `npm run test:e2e:live` | Playwright tests tagged `@live` that hit the real NWS, SWPC and CO-OPS APIs |
+| `npm run test:e2e:live` | Playwright tests tagged `@live` that hit the real NWS, SWPC, CO-OPS, nowCOAST and ArcGIS services |
 | `npm run check:budget` | Bundle size budget, run after `npm run build` |
 | `npm run coverage-geometry` | Coverage geometry generator (see above) |
 | `npm run coops-stations` | Regenerates the CO-OPS station snapshot (needs the network) |
@@ -241,7 +241,9 @@ The Playwright config starts the dev server on port 5173 (reusing one if it is a
 GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and push to `main`:
 
 - **ci**: typecheck, lint, unit tests with the coverage gate (summary posted to the run), production build, bundle size budget.
-- **e2e**: Playwright (Chromium) with the report uploaded on failure.
+- **e2e**: the mocked Playwright suite (`npm run test:e2e:mocked`, Chromium) with the report uploaded on failure.
+
+The `@live` specs depend on NOAA's servers being up, so they don't run on pull requests. The **Live e2e** workflow (`.github/workflows/live-e2e.yml`) runs `npm run test:e2e:live` daily and on demand (`workflow_dispatch`). Its failures show in the Actions tab but don't block merges.
 
 ## License
 
