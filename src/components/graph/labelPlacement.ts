@@ -42,9 +42,17 @@ export const DOT_OVERLAP_TOLERANCE = 0.5
 
 /** Priority from which a label is always eligible, whatever the budget: the selection, search matches and theme hubs. */
 export const BUDGET_EXEMPT_PRIORITY = 3
-/** Labels allowed at the least zoom: the root and a handful of hubs. */
+/**
+ * Labels allowed at the least zoom. The default fit lands at k ≈ 0.4-0.7 in every view at
+ * 1280x720, 1400x900 and a 390x844 phone (#292), where the k² term below gives only 3-8, so this
+ * floor sets the first view: the exempt hubs plus up to eight service labels (fewer where space
+ * runs out), none overlapping.
+ */
 const MIN_LABEL_BUDGET = 8
-/** Labels allowed at zoom 1; the budget grows with the screen area, so with k squared. */
+/**
+ * Labels allowed at zoom 1. The budget grows with the screen area, so with k squared, and takes
+ * over from the floor only once the user zooms in (#292 checked the steps stay legible).
+ */
 const LABELS_AT_UNIT_ZOOM = 16
 
 /** How many labels the graph may show at zoom level k, so a zoomed-out view keeps only its biggest nodes' labels. */
@@ -57,6 +65,12 @@ export interface Box {
   y0: number
   x1: number
   y1: number
+}
+
+/** A screen rect as a Box in the space of `origin` (the SVG's rect), or null for an empty (unrendered) rect. */
+export function boxRelativeTo(rect: DOMRectReadOnly, origin: DOMRectReadOnly): Box | null {
+  if (rect.width === 0 || rect.height === 0) return null
+  return { x0: rect.left - origin.left, y0: rect.top - origin.top, x1: rect.right - origin.left, y1: rect.bottom - origin.top }
 }
 
 const intersects = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1

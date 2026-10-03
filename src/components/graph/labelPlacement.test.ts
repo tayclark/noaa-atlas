@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { labelBudget, placeLabels, type LabelItem } from './labelPlacement'
+import { boxRelativeTo, labelBudget, placeLabels, type LabelItem } from './labelPlacement'
 
 const item = (id: string, x: number, y: number, priority = 0, width = 60): LabelItem => ({
   id,
@@ -75,6 +75,17 @@ describe('placeLabels', () => {
   it('keeps labels out of obstacle areas', () => {
     const panel = { x0: 100, y0: 0, x1: 400, y1: 300 }
     expect(placeLabels([item('a', 90, 50)], bounds, [panel]).get('a')).toBe('left')
+  })
+
+  it('maps an overlay rect into the canvas space, and skips an unrendered one (#292)', () => {
+    const rect = (left: number, top: number, width: number, height: number) =>
+      ({ left, top, width, height, right: left + width, bottom: top + height }) as DOMRectReadOnly
+    const svg = rect(10, 100, 400, 300)
+    const controls = boxRelativeTo(rect(354, 112, 44, 148), svg)
+    expect(controls).toEqual({ x0: 344, y0: 12, x1: 388, y1: 160 })
+    expect(boxRelativeTo(rect(0, 0, 0, 0), svg)).toBeNull()
+    // A label that would run right, under the controls, goes left instead.
+    expect(placeLabels([item('a', 300, 50)], bounds, [controls!]).get('a')).toBe('left')
   })
 
   it('is deterministic for equal priorities regardless of input order', () => {
