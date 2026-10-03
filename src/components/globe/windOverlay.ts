@@ -6,15 +6,15 @@
 import type { CanvasSource, Map as MapLibreMap } from 'maplibre-gl'
 import { AURORA_RASTER_COORDINATES } from './auroraLayer'
 import {
-  advanceParticle,
-  latToMercatorRow,
   makeRandom,
+  makeWindSampler,
   renderSpeedShading,
-  sampleBlended,
   spawnParticle,
+  stepSwarm,
+  swarmRows,
   type Particle,
-  type Wind,
   type WindFieldInput,
+  type WindSampler,
 } from './windField'
 
 export const WIND_SHADING_SOURCE_ID = 'wind-shading'
@@ -32,12 +32,16 @@ const PARTICLE_COUNT = 3500
 const SECONDS_PER_FRAME = 4500
 /** Frames drawn at once when motion is reduced, so the field shows as static streaks. */
 const STATIC_FRAMES = 40
+/** Static frames drawn per task, so a redraw yields to the page instead of being one long task (#318). */
+const STATIC_FRAMES_PER_TASK = 10
 
 export interface WindOverlay {
   setField: (field: WindFieldInput | null) => void
   setVisible: (visible: boolean) => void
   /** Stops the animation without hiding the layers, for a globe that is out of sight. */
   setPaused: (paused: boolean) => void
+  /** Stops the animation and any queued redraw, before the map is removed. */
+  dispose: () => void
 }
 
 export function pushCanvas(map: MapLibreMap, id: string): void {
@@ -79,18 +83,21 @@ export function createWindOverlay(map: MapLibreMap, reducedMotion: boolean, befo
 
   const random = makeRandom(229)
   const swarm: Particle[] = Array.from({ length: PARTICLE_COUNT }, () => spawnParticle(random))
-  let field: WindFieldInput | null = null
+  const rows = swarmRows(swarm, PARTICLE_SIZE)
+  let sample: WindSampler | null = null
   let visible = false
   let paused = false
   let frame = 0
+  /** The next part of a reduced-motion redraw, which runs over several tasks. */
+  let pendingStatic: ReturnType<typeof setTimeout> | undefined
 
-  const windAt = (lat: number, lon: number): Wind =>
-    field ? sampleBlended(field.a, field.b, field.t, lat, lon) : { u: 0, v: 0 }
-  const px = (lon: number) => ((lon + 180) / 360) * PARTICLE_SIZE
-  const py = (lat: number) => latToMercatorRow(lat) * PARTICLE_SIZE
+  const segment = (x0: number, y0: number, x1: number, y1: number) => {
+    pctx?.moveTo(x0, y0)
+    pctx?.lineTo(x1, y1)
+  }
 
   function step(fade: boolean): void {
-    if (!pctx || !field) return
+    if (!pctx || !sample) return
     if (fade) {
       pctx.globalCompositeOperation = 'destination-out'
       pctx.fillStyle = 'rgba(0, 0, 0, 0.07)'
@@ -100,16 +107,7 @@ export function createWindOverlay(map: MapLibreMap, reducedMotion: boolean, befo
     pctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'
     pctx.lineWidth = 1
     pctx.beginPath()
-    for (const p of swarm) {
-      const x0 = px(p.lon)
-      const y0 = py(p.lat)
-      const moved = advanceParticle(p, windAt(p.lat, p.lon), SECONDS_PER_FRAME, random)
-      const x1 = px(p.lon)
-      // Skip the segment of a particle that respawned or wrapped across the antimeridian.
-      if (!moved || Math.abs(x1 - x0) > PARTICLE_SIZE / 2) continue
-      pctx.moveTo(x0, y0)
-      pctx.lineTo(x1, py(p.lat))
-    }
+    stepSwarm(swarm, rows, sample, SECONDS_PER_FRAME, random, PARTICLE_SIZE, segment)
     pctx.stroke()
   }
 
@@ -132,15 +130,33 @@ export function createWindOverlay(map: MapLibreMap, reducedMotion: boolean, befo
     ;(map.getSource(WIND_PARTICLES_SOURCE_ID) as CanvasSource | undefined)?.pause()
   }
 
+  function cancelStatic(): void {
+    clearTimeout(pendingStatic)
+    pendingStatic = undefined
+  }
+
   function drawStatic(): void {
+    cancelStatic()
     pctx?.clearRect(0, 0, PARTICLE_SIZE, PARTICLE_SIZE)
-    for (let i = 0; i < STATIC_FRAMES; i++) step(false)
-    pushCanvas(map, WIND_PARTICLES_SOURCE_ID)
+    drawStaticFrom(0)
+  }
+
+  // The canvas is only uploaded by pushCanvas, so the map never shows a part-drawn redraw.
+  function drawStaticFrom(start: number): void {
+    const end = Math.min(STATIC_FRAMES, start + STATIC_FRAMES_PER_TASK)
+    for (let i = start; i < end; i++) step(false)
+    if (end < STATIC_FRAMES) {
+      pendingStatic = setTimeout(() => drawStaticFrom(end), 0)
+    } else {
+      pendingStatic = undefined
+      pushCanvas(map, WIND_PARTICLES_SOURCE_ID)
+    }
   }
 
   return {
     setField(next) {
-      field = next
+      sample = next ? makeWindSampler(next) : null
+      cancelStatic()
       const ctx = shading.getContext('2d')
       if (!ctx) return
       if (!next) {
@@ -150,7 +166,7 @@ export function createWindOverlay(map: MapLibreMap, reducedMotion: boolean, befo
         ctx.putImageData(new ImageData(pixels, SHADING_SIZE, SHADING_SIZE), 0, 0)
       }
       pushCanvas(map, WIND_SHADING_SOURCE_ID)
-      if (reducedMotion && visible && next) drawStatic()
+      if (reducedMotion && visible && next) pendingStatic = setTimeout(drawStatic, 0)
     },
     setVisible(next) {
       visible = next
@@ -158,10 +174,11 @@ export function createWindOverlay(map: MapLibreMap, reducedMotion: boolean, befo
       map.setLayoutProperty(WIND_SHADING_LAYER_ID, 'visibility', value)
       map.setLayoutProperty(WIND_PARTICLES_LAYER_ID, 'visibility', value)
       if (!next) {
+        cancelStatic()
         stopLoop()
         pctx?.clearRect(0, 0, PARTICLE_SIZE, PARTICLE_SIZE)
       } else if (reducedMotion) {
-        if (field) drawStatic()
+        if (sample) drawStatic()
       } else {
         startLoop()
       }
@@ -170,6 +187,11 @@ export function createWindOverlay(map: MapLibreMap, reducedMotion: boolean, befo
       paused = next
       if (next) stopLoop()
       else startLoop()
+    },
+    dispose() {
+      cancelStatic()
+      if (frame) cancelAnimationFrame(frame)
+      frame = 0
     },
   }
 }

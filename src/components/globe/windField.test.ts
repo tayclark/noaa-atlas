@@ -4,13 +4,18 @@ import {
   advanceParticle,
   latToMercatorRow,
   makeRandom,
+  makeWindSampler,
   mercatorRowLat,
   renderSpeedShading,
   sampleBlended,
   sampleWind,
   spawnParticle,
+  stepSwarm,
+  swarmRows,
   windColor,
   windSpeed,
+  type Particle,
+  type Wind,
   type WindFieldInput,
   type WindGrid,
 } from './windField'
@@ -220,5 +225,91 @@ describe('particles', () => {
     const polar = { lat: 85, lon: 0, life: 50 }
     expect(advanceParticle(polar, { u: 0, v: 50 }, 3600, makeRandom(3))).toBe(false)
     expect(Math.abs(polar.lat)).toBeLessThan(85.0511)
+  })
+})
+
+describe('makeWindSampler', () => {
+  const a = windGrid(36, 17, 0)
+  const b = windGrid(36, 17, 1.3)
+
+  // Every point is compared exactly: the sampler must not change a single particle path.
+  function expectSameAsBlended(input: WindFieldInput): void {
+    const sample = makeWindSampler(input)
+    const out: Wind = { u: 0, v: 0 }
+    for (let lat = -89; lat <= 89; lat += 7.3) {
+      for (let lon = -200; lon <= 200; lon += 11.7) {
+        sample(lat, lon, out)
+        const w = sampleBlended(input.a, input.b, input.t, lat, lon)
+        expect(out.u, `u at ${lat}, ${lon}`).toBe(w.u)
+        expect(out.v, `v at ${lat}, ${lon}`).toBe(w.v)
+      }
+    }
+  }
+
+  it.each([0, 0.3, 1])('matches sampleBlended when blending at t = %s', (t) => expectSameAsBlended({ a, b, t }))
+  it('matches sampleBlended for a single hour', () => expectSameAsBlended({ a, b: null, t: 0.5 }))
+  it('matches sampleBlended off the antimeridian', () =>
+    expectSameAsBlended({ a: windGrid(36, 17, 2, { lon1: 175 }), b: null, t: 0 }))
+  it('matches sampleBlended on a south-to-north grid', () =>
+    expectSameAsBlended({ a: windGrid(36, 17, 3, { lat1: -80, southToNorth: true }), b: null, t: 0 }))
+  it('falls back to sampleBlended across different grids', () => {
+    expectSameAsBlended({ a, b: windGrid(72, 33, 4), t: 0.6 })
+    expectSameAsBlended({ a: { u: a.u, v: windGrid(72, 33, 5).v }, b: null, t: 0 })
+  })
+})
+
+describe('stepSwarm', () => {
+  const SIZE = 1024
+  const SECONDS = 4500
+  type Segment = [number, number, number, number]
+
+  function makeSwarm(seed: number, count: number): { swarm: Particle[]; random: () => number } {
+    const random = makeRandom(seed)
+    return { swarm: Array.from({ length: count }, () => spawnParticle(random)), random }
+  }
+
+  // The streak loop as it was before #318: sampleBlended and two projections per particle.
+  function referenceFrame(swarm: Particle[], input: WindFieldInput, random: () => number): Segment[] {
+    const segments: Segment[] = []
+    const px = (lon: number) => ((lon + 180) / 360) * SIZE
+    const py = (lat: number) => latToMercatorRow(lat) * SIZE
+    for (const p of swarm) {
+      const x0 = px(p.lon)
+      const y0 = py(p.lat)
+      const moved = advanceParticle(p, sampleBlended(input.a, input.b, input.t, p.lat, p.lon), SECONDS, random)
+      const x1 = px(p.lon)
+      if (!moved || Math.abs(x1 - x0) > SIZE / 2) continue
+      segments.push([x0, y0, x1, py(p.lat)])
+    }
+    return segments
+  }
+
+  it('draws exactly the streaks of the per-particle loop', () => {
+    const input = { a: windGrid(36, 17, 0), b: windGrid(36, 17, 1.3), t: 0.4 }
+    const ref = makeSwarm(229, 300)
+    const fast = makeSwarm(229, 300)
+    const rows = swarmRows(fast.swarm, SIZE)
+    const sample = makeWindSampler(input)
+    for (let frame = 0; frame < 40; frame++) {
+      const segments: Segment[] = []
+      stepSwarm(fast.swarm, rows, sample, SECONDS, fast.random, SIZE, (...s) => segments.push(s))
+      expect(segments, `frame ${frame}`).toEqual(referenceFrame(ref.swarm, input, ref.random))
+    }
+    expect(fast.swarm).toEqual(ref.swarm)
+  })
+
+  it('skips respawns and antimeridian wraps but keeps each row current', () => {
+    const swarm: Particle[] = [
+      { lat: 0, lon: 179.9, life: 10 },
+      { lat: 10, lon: 0, life: 1 },
+      { lat: 20, lon: 0, life: 10 },
+    ]
+    const rows = swarmRows(swarm, SIZE)
+    const segments: Segment[] = []
+    const eastward = makeWindSampler({ a: uniform(10, 0), b: null, t: 0 })
+    stepSwarm(swarm, rows, eastward, 3600, makeRandom(1), SIZE, (...s) => segments.push(s))
+    expect(segments).toHaveLength(1)
+    expect(segments[0][0]).toBeCloseTo(512, 6)
+    swarm.forEach((p, i) => expect(rows[i]).toBe(latToMercatorRow(p.lat) * SIZE))
   })
 })

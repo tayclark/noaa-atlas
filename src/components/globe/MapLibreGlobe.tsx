@@ -736,6 +736,8 @@ export function MapLibreGlobe() {
       canvas.removeEventListener('blur', onCanvasBlur)
       mapRef.current = null
       geolocateRef.current = null
+      windRef.current?.dispose()
+      windRef.current = null
       map.remove()
     }
   }, [])
