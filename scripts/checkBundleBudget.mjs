@@ -7,7 +7,9 @@
 // PR that adds the weight, and say why. Total JS 700 to 720 kB: the GFS-Wave layer (#229) adds a
 // lazily loaded JPEG 2000 decoder (about 9 kB gzip) plus its overlay code. 720 to 592 kB:
 // MapLibre's shared chunk ships once instead of twice (#263), 714.0 to 585.6 kB. Initial budgets
-// added when the globe went lazy (#264): 228.1 kB JS and 5.8 kB CSS.
+// added when the globe went lazy (#264): 228.1 kB JS and 5.8 kB CSS. Initial JS 251 to 203 kB: the
+// dataset catalogs load on first search focus or Datasets section (#269), 228.2 to 184.0 kB. The
+// buoy lists left the globe chunk too; Total JS went 588.0 to 589.4 kB on the chunks' own overhead.
 
 import { readdirSync, readFileSync } from 'node:fs'
 import { extname, join, relative } from 'node:path'
@@ -19,7 +21,7 @@ const JS = ['.js', '.mjs']
 const CSS = ['.css']
 
 export const BUDGETS = [
-  { name: 'Initial JavaScript', scope: 'initial', ext: JS, maxGzipBytes: 251 * KB },
+  { name: 'Initial JavaScript', scope: 'initial', ext: JS, maxGzipBytes: 203 * KB },
   { name: 'Initial CSS', scope: 'initial', ext: CSS, maxGzipBytes: 6.4 * KB },
   { name: 'Total JavaScript', scope: 'total', ext: JS, maxGzipBytes: 592 * KB },
   { name: 'Total CSS', scope: 'total', ext: CSS, maxGzipBytes: 19 * KB },
