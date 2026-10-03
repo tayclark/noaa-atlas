@@ -2,9 +2,11 @@
 // (#229). The bucket sends `access-control-allow-origin: *` and honours Range requests, so no proxy
 // is needed: the `.idx` sidecar gives each field's byte range and only that field (~80 kB for wind,
 // ~430 kB for waves) is fetched.
-// Requests are logged to requestLog.ts for the Inspector, like the other live clients.
+// Requests are logged to requestLog.ts for the Inspector, like the other live clients. The wave
+// field's JPEG 2000 decode runs in a worker (gribDecodeClient.ts, #291).
 
-import { decodeGribField, decodeGribFieldAsync, type GribField } from './grib2'
+import { decodeGribField, type GribField } from './grib2'
+import { decodeWaveField } from './gribDecodeClient'
 import { findGribField, parseGribIdx, rangeHeader } from './gribIdx'
 import { pushLogEntry, type RequestLogStatus } from './requestLog'
 
@@ -161,7 +163,7 @@ export function getWaveField(cycle: number, hour: number): Promise<GribField> {
     if (!entry) throw new Error('GFS-Wave index has no HTSGW')
     const headers = { Range: rangeHeader(entry) }
     const res = await logged(path, headers, async (r) => ({ name: 'HTSGW', bytes: (await r.arrayBuffer()).byteLength }))
-    return decodeGribFieldAsync(await res.arrayBuffer())
+    return decodeWaveField(await res.arrayBuffer())
   })()
   waveCache.set(path, pending)
   pending.catch(() => waveCache.delete(path))

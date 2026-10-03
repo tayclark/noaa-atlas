@@ -46,6 +46,9 @@ export default defineConfig({
   plugins: [react(), maplibreExternal()],
   // scripts/checkBundleBudget.mjs reads the manifest to tell the initial load from lazy chunks (#264).
   build: { manifest: true },
+  // The GRIB decode worker (#291) imports the JPEG 2000 decoder lazily, and only ES-format workers
+  // can split a chunk out.
+  worker: { format: 'es' },
   // maplibre-gl loads its tile-parsing worker as a separate ESM chunk at
   // runtime; Vite's dep pre-bundling doesn't discover that chunk, so the
   // worker 404s unless maplibre-gl is excluded from pre-bundling. (#82 spike)

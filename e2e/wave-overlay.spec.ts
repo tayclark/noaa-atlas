@@ -9,7 +9,7 @@ import { mockSwpc } from './fixtures/swpc'
 
 test.use({ reducedMotion: 'reduce' })
 
-// Decoding the JPEG 2000 wave field on the main thread took seconds on a CI runner, so loads get more room.
+// Decoding the JPEG 2000 wave field takes seconds on a CI runner (in a worker since #291), so loads get more room.
 const LOADED = { timeout: 30_000 }
 
 const NODE = 'gfs-aws-open-data'
@@ -41,7 +41,9 @@ test('Waves loads the HTSGW field with one Range request and swaps the slider an
   await selectByKeyboard(page, NODE)
   await expect(page.locator(GLOBE)).toHaveAttribute('data-wind', 'visible', LOADED)
 
+  const decoder = page.waitForEvent('worker', { predicate: (w) => w.url().includes('gribDecode.worker'), ...LOADED })
   await page.locator('.wind-layer-toggle').getByRole('button', { name: 'Waves' }).click()
+  await decoder
   await expect(page.locator(GLOBE)).toHaveAttribute('data-waves', 'visible', LOADED)
   await expect(page.locator(GLOBE)).toHaveAttribute('data-wind', 'hidden')
   await expect(page.getByRole('slider', { name: 'Wave forecast hour' })).toBeVisible()
@@ -66,6 +68,21 @@ test('the slider loads the wave hours around the shared time', async ({ page }) 
   await page.keyboard.press('End')
   await expect(page.locator('.wind-control .radar-time-label')).toContainText('+120 h')
   await expect.poll(() => seen.some((r) => r.url.includes('/wave/') && r.url.includes('.f120.grib2')), LOADED).toBe(true)
+})
+
+test('decodes on the main thread when the decode worker fails to start', async ({ page }) => {
+  await mockGfs(page)
+  let refused = 0
+  await page.route(/\/src\/data\/gribDecode\.worker\.ts/, (route) => {
+    refused++
+    return route.fulfill({ status: 500, body: '' })
+  })
+  await page.goto('/')
+  await waitForGlobe(page)
+  await selectByKeyboard(page, NODE)
+  await page.locator('.wind-layer-toggle').getByRole('button', { name: 'Waves' }).click()
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-waves', 'visible', LOADED)
+  expect(refused).toBe(1)
 })
 
 test('says so when the wave files are unreachable, and wind still works', async ({ page }) => {
