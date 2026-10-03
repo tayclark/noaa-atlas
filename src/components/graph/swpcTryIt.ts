@@ -2,8 +2,8 @@
 // swpcClient (so the call is in the Inspector) and reduces the payload to a small table for the
 // detail panel.
 
-import { getGoesXrays, getNoaaScales, getSolarWind, getSpaceWeatherAlerts } from '../../data/swpcClient'
-import type { SwpcAlerts, SwpcScaleCell, SwpcScales, SwpcSolarWind, SwpcXrays } from '../../data/swpcSchema'
+import { getGoesXrays, getNoaaScales, getSolarWind, getSolarWindMag, getSpaceWeatherAlerts } from '../../data/swpcClient'
+import type { SwpcAlerts, SwpcScaleCell, SwpcScales, SwpcSolarWind, SwpcSolarWindMag, SwpcXrays } from '../../data/swpcSchema'
 
 export interface TryItTable {
   caption: string
@@ -58,17 +58,25 @@ function everyNth<T>(rows: readonly T[]): T[] {
   return rows.filter((_, i) => i % SERIES_STEP === 0).slice(0, SERIES_ROWS)
 }
 
-export function solarWindTable(rows: SwpcSolarWind): TryItTable {
+/** The plasma rows with the magnetometer file's Bt and Bz joined on by minute (n/a where it has no reading). */
+export function solarWindTable(rows: SwpcSolarWind, mag: SwpcSolarWindMag = []): TryItTable {
   const source = rows[0]?.source ?? 'no active spacecraft'
+  const magByTime = new Map(mag.map((m) => [m.time_tag, m]))
+  const value = (v: number | null | undefined) => (v == null ? 'n/a' : String(v))
   return {
     caption: `Solar wind at L1, ${source}, every ${SERIES_STEP} minutes (UTC)`,
-    columns: ['Time', 'Speed (km/s)', 'Density (p/cm³)', 'Temperature (K)'],
-    rows: everyNth(rows).map((r) => [
-      r.time_tag.slice(11, 16),
-      String(r.proton_speed),
-      r.proton_density === null ? 'n/a' : String(r.proton_density),
-      r.proton_temperature === null ? 'n/a' : String(Math.round(r.proton_temperature)),
-    ]),
+    columns: ['Time', 'Speed (km/s)', 'Density (p/cm³)', 'Temp. (K)', 'Bt (nT)', 'Bz GSM (nT)'],
+    rows: everyNth(rows).map((r) => {
+      const m = magByTime.get(r.time_tag)
+      return [
+        r.time_tag.slice(11, 16),
+        String(r.proton_speed),
+        value(r.proton_density),
+        r.proton_temperature === null ? 'n/a' : String(Math.round(r.proton_temperature)),
+        value(m?.bt),
+        value(m?.bz_gsm),
+      ]
+    }),
   }
 }
 
@@ -113,6 +121,9 @@ export const SWPC_TRY_ITS: Readonly<Partial<Record<string, () => Promise<TryItTa
     const [scales, alerts] = await Promise.all([getNoaaScales(), getSpaceWeatherAlerts()])
     return [scalesTable(scales), alertsTable(alerts)]
   },
-  'swpc-rtsw-solar-wind': async () => [solarWindTable(await getSolarWind())],
+  'swpc-rtsw-solar-wind': async () => {
+    const [wind, mag] = await Promise.all([getSolarWind(), getSolarWindMag()])
+    return [solarWindTable(wind, mag)]
+  },
   'swpc-goes-space-environment': async () => [xraysTable(await getGoesXrays())],
 }

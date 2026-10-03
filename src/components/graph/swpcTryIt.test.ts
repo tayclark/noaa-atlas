@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
-import { parseAlerts, parseScales, parseSolarWind, parseXrays } from '../../data/swpcSchema'
-import { makeAlerts, makeScales, makeSolarWindRows, makeXrayRows } from '../../data/swpcFixtures'
+import { parseAlerts, parseScales, parseSolarWind, parseSolarWindMag, parseXrays } from '../../data/swpcSchema'
+import { makeAlerts, makeScales, makeSolarWindMagRows, makeSolarWindRows, makeXrayRows } from '../../data/swpcFixtures'
 import { alertsTable, flareClass, scalesTable, solarWindTable, SWPC_TRY_ITS, xraysTable } from './swpcTryIt'
 
 vi.mock('../../data/swpcClient', () => ({
   getNoaaScales: () => Promise.resolve(parseScales(makeScales())),
   getSpaceWeatherAlerts: () => Promise.resolve(parseAlerts(makeAlerts())),
   getSolarWind: () => Promise.resolve(parseSolarWind(makeSolarWindRows(12))),
+  getSolarWindMag: () => Promise.resolve(parseSolarWindMag(makeSolarWindMagRows(12))),
   getGoesXrays: () => Promise.resolve(parseXrays(makeXrayRows(12))),
 }))
 
@@ -47,7 +48,16 @@ describe('solarWindTable', () => {
     const table = solarWindTable(parseSolarWind(makeSolarWindRows(12)))
     expect(table.caption).toContain('SOLAR1')
     expect(table.rows.map((r) => r[0])).toEqual(['17:44', '17:39', '17:34'])
-    expect(table.rows[0]).toEqual(['17:44', '430', '7.9', '129322'])
+    expect(table.rows[0]).toEqual(['17:44', '430', '7.9', '129322', 'n/a', 'n/a'])
+  })
+
+  it('joins the magnetometer readings on by minute', () => {
+    const mag = parseSolarWindMag(makeSolarWindMagRows(12)).filter((m) => m.time_tag !== '2026-10-01T17:39:00')
+    const table = solarWindTable(parseSolarWind(makeSolarWindRows(12)), mag)
+    expect(table.columns.slice(-2)).toEqual(['Bt (nT)', 'Bz GSM (nT)'])
+    expect(table.rows[0].slice(-2)).toEqual(['6.39', '-2'])
+    expect(table.rows[1].slice(-2)).toEqual(['n/a', 'n/a'])
+    expect(table.rows[2].slice(-2)).toEqual(['6.39', '-12'])
   })
 
   it('handles a file with no active readings', () => {
@@ -85,6 +95,7 @@ describe('SWPC_TRY_ITS', () => {
   it('runs one loader per node, the alerts node returning scales and alerts', async () => {
     expect(Object.keys(SWPC_TRY_ITS).sort()).toEqual(['swpc-alerts-scales', 'swpc-goes-space-environment', 'swpc-rtsw-solar-wind'])
     expect(await SWPC_TRY_ITS['swpc-alerts-scales']?.()).toHaveLength(2)
-    expect(await SWPC_TRY_ITS['swpc-rtsw-solar-wind']?.()).toHaveLength(1)
+    const [wind] = (await SWPC_TRY_ITS['swpc-rtsw-solar-wind']?.()) ?? []
+    expect(wind.rows[0].slice(-2)).toEqual(['6.39', '-2'])
   })
 })

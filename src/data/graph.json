@@ -8150,10 +8150,10 @@
         "note": "One-minute data, roughly the past day per file (rtsw_wind_1m.json, rtsw_mag_1m.json), newest first, with one row per spacecraft per minute. The active field marks the spacecraft SWPC currently treats as primary (SOLAR1 at the time of checking); ACE and IMAP rows are interleaved and can have null readings."
       },
       "docUrl": "https://www.spaceweather.gov/products/solar-wind",
-      "lastVerified": "2026-10-01",
+      "lastVerified": "2026-10-02",
       "sample": {
         "url": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
-        "responseExcerpt": "[\n  {\n    \"time_tag\": \"2026-09-24T23:40:00\",\n    \"active\": true,\n    \"source\": \"SOLAR1\",\n    \"proton_speed\": 432.8,\n    \"proton_temperature\": 129322,\n    \"proton_density\": 7.92,\n    \"proton_vx_gse\": -432.0,\n    ...\n  },\n  ...\n]\n(trimmed: each row also has GSM components, alpha-particle fields and quality flags)"
+        "responseExcerpt": "[\n  {\n    \"time_tag\": \"2026-09-24T23:40:00\",\n    \"active\": true,\n    \"source\": \"SOLAR1\",\n    \"proton_speed\": 432.8,\n    \"proton_temperature\": 129322,\n    \"proton_density\": 7.92,\n    \"proton_vx_gse\": -432.0,\n    ...\n  },\n  ...\n]\n(trimmed: each row also has GSM components, alpha-particle fields and quality flags. The magnetic field is in rtsw_mag_1m.json, with the same rows and fields such as \"bt\": 7.29, \"bz_gsm\": -2.51 in nT)"
       },
       "liveLayer": true,
       "tags": [

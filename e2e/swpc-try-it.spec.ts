@@ -5,7 +5,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
-import { makeAlerts, makeScales, makeSolarWindRows, makeXrayRows } from '../src/data/swpcFixtures'
+import { makeAlerts, makeScales, makeSolarWindMagRows, makeSolarWindRows, makeXrayRows } from '../src/data/swpcFixtures'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
@@ -23,6 +23,7 @@ test.beforeEach(async ({ page }) => {
   await page.route(/services\.swpc\.noaa\.gov\/products\/noaa-scales\.json/, (route) => route.fulfill(json(makeScales())))
   await page.route(/services\.swpc\.noaa\.gov\/products\/alerts\.json/, (route) => route.fulfill(json(makeAlerts())))
   await page.route(/services\.swpc\.noaa\.gov\/json\/rtsw\/rtsw_wind_1m\.json/, (route) => route.fulfill(json(makeSolarWindRows(12))))
+  await page.route(/services\.swpc\.noaa\.gov\/json\/rtsw\/rtsw_mag_1m\.json/, (route) => route.fulfill(json(makeSolarWindMagRows(12))))
   await page.route(/services\.swpc\.noaa\.gov\/json\/goes\/primary\/xrays-6-hour\.json/, (route) => route.fulfill(json(makeXrayRows(12))))
 })
 
@@ -42,7 +43,10 @@ test('the solar wind and GOES nodes each show a series table', async ({ page }) 
   await selectByKeyboard(page, 'swpc-rtsw-solar-wind')
   const sample = page.getByRole('region', { name: 'Sample call' })
   await sample.getByRole('button', { name: 'Run sample' }).click()
-  await expect(sample.getByRole('table', { name: /Solar wind at L1/ })).toContainText('430')
+  const wind = sample.getByRole('table', { name: /Solar wind at L1/ })
+  await expect(wind).toContainText('430')
+  await expect(wind).toContainText('Bz GSM (nT)')
+  await expect(wind).toContainText('-12')
 
   await selectByKeyboard(page, 'swpc-goes-space-environment')
   await sample.getByRole('button', { name: 'Run sample' }).click()
