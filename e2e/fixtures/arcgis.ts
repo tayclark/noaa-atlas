@@ -2,7 +2,7 @@
 // route answering every tile with a 1x1 transparent PNG; the legend call is a separate route.
 
 import type { Page } from '@playwright/test'
-import { makeArcgisChartsLegend, makeArcgisHabitatLegend, makeArcgisLegend, makeArcgisVectorLegend } from '../../src/data/arcgisFixtures'
+import { makeArcgisHabitatLegend, makeArcgisLegend, makeArcgisVectorLegend } from '../../src/data/arcgisFixtures'
 
 const TRANSPARENT_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
@@ -45,19 +45,26 @@ export async function mockArcgisVector(page: Page, { legend = true } = {}) {
   return requests
 }
 
-export const ARCGIS_CHARTS_EXPORT = '**/MarineChart_Services/NOAACharts/MapServer/export**'
-export const ARCGIS_CHARTS_LEGEND = '**/MarineChart_Services/NOAACharts/MapServer/legend**'
+export const ARCGIS_CHARTS_EXPORT = '**/MaritimeChartService/MapServer/export**'
+export const ARCGIS_CHARTS_LEGEND = '**/MaritimeChartService/MapServer/legend**'
 
-/** The same mocks for the NOAA chart MapServer, whose real legend has no entries. */
+/**
+ * The same mocks for the ENC chart service (#309). It has no legend endpoint, so `legendRequests`
+ * records any call that is made anyway (the real one answers with an error body).
+ */
 export async function mockArcgisCharts(page: Page) {
   const requests: string[] = []
+  const legendRequests: string[] = []
   const headers = { 'access-control-allow-origin': '*' }
   await page.route(ARCGIS_CHARTS_EXPORT, (route) => {
     requests.push(route.request().url())
     return route.fulfill({ contentType: 'image/png', body: TRANSPARENT_PNG, headers })
   })
-  await page.route(ARCGIS_CHARTS_LEGEND, (route) => route.fulfill({ json: makeArcgisChartsLegend(), headers }))
-  return requests
+  await page.route(ARCGIS_CHARTS_LEGEND, (route) => {
+    legendRequests.push(route.request().url())
+    return route.fulfill({ json: { error: { code: 400, message: 'Invalid URL', details: [] } }, headers })
+  })
+  return Object.assign(requests, { legendRequests })
 }
 
 export const ARCGIS_HABITAT_EXPORT = '**/All_NMFS_Critical_Habitat/MapServer/export**'

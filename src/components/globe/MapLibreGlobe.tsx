@@ -1014,6 +1014,7 @@ export function MapLibreGlobe() {
       if (!cancelled) setArcgisLegends((prev) => ({ ...prev, [key]: state }))
     }
     for (const overlay of overlays) {
+      if (overlay.hasLegend === false) continue
       getArcgisLegend(overlay.serviceUrl)
         .then((legend) => settle(overlay.key, { status: 'ok', entries: legendEntriesFor(legend, overlay.layerIdsInService) }))
         .catch((err: unknown) => settle(overlay.key, { status: 'error', message: describeArcgisFetchOutcome(err) }))
