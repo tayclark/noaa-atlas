@@ -64,6 +64,62 @@ export function sampleBlended(a: WindGrid, b: WindGrid | null, t: number, lat: n
   return { u: wa.u + (wb.u - wa.u) * t, v: wa.v + (wb.v - wa.v) * t }
 }
 
+/** Writes the wind at a point into `out`, so a caller sampling in a loop allocates nothing. */
+export type WindSampler = (lat: number, lon: number, out: Wind) => void
+
+/**
+ * `sampleBlended` for one field input, without its closures and allocations (#318). On a shared
+ * grid it works out the indices once for all four fields, in `sampleField`'s operation order, so
+ * its results are identical to `sampleBlended`'s.
+ */
+export function makeWindSampler(input: WindFieldInput): WindSampler {
+  const { a, b, t } = input
+  const blend = b !== null && t > 0
+  const g = a.u
+  if (!sameGrid(g, a.v) || (blend && (!sameGrid(g, b.u) || !sameGrid(g, b.v)))) {
+    return (lat, lon, out) => {
+      const w = sampleBlended(a, b, t, lat, lon)
+      out.u = w.u
+      out.v = w.v
+    }
+  }
+  const { ni, nj, lat1, lon1, di, dj, southToNorth } = g
+  const au = a.u.values
+  const av = a.v.values
+  const bu = blend ? b.u.values : null
+  const bv = blend ? b.v.values : null
+  return (lat, lon, out) => {
+    const rowF = (southToNorth ? lat - lat1 : lat1 - lat) / dj
+    const colF = (((lon - lon1) % 360) + 360) % 360 / di
+    const row = Math.min(nj - 1, Math.max(0, rowF))
+    const r0 = Math.floor(row)
+    const top = r0 * ni
+    const bottom = Math.min(nj - 1, r0 + 1) * ni
+    const c0 = Math.floor(colF) % ni
+    const c1 = (c0 + 1) % ni
+    const fr = row - r0
+    const fc = colF - Math.floor(colF)
+    let u =
+      (au[top + c0] * (1 - fc) + au[top + c1] * fc) * (1 - fr) +
+      (au[bottom + c0] * (1 - fc) + au[bottom + c1] * fc) * fr
+    let v =
+      (av[top + c0] * (1 - fc) + av[top + c1] * fc) * (1 - fr) +
+      (av[bottom + c0] * (1 - fc) + av[bottom + c1] * fc) * fr
+    if (bu && bv) {
+      const ub =
+        (bu[top + c0] * (1 - fc) + bu[top + c1] * fc) * (1 - fr) +
+        (bu[bottom + c0] * (1 - fc) + bu[bottom + c1] * fc) * fr
+      const vb =
+        (bv[top + c0] * (1 - fc) + bv[top + c1] * fc) * (1 - fr) +
+        (bv[bottom + c0] * (1 - fc) + bv[bottom + c1] * fc) * fr
+      u += (ub - u) * t
+      v += (vb - v) * t
+    }
+    out.u = u
+    out.v = v
+  }
+}
+
 export function windSpeed(w: Wind): number {
   return Math.hypot(w.u, w.v)
 }
@@ -251,4 +307,38 @@ export function advanceParticle(
   p.lat = nextLat
   p.lon = ((((nextLon + 180) % 360) + 360) % 360) - 180
   return true
+}
+
+/** Each particle's row in pixels on a `size`-pixel Mercator canvas, the `rows` that `stepSwarm` carries. */
+export function swarmRows(swarm: readonly Particle[], size: number): Float64Array {
+  return Float64Array.from(swarm, (p) => latToMercatorRow(p.lat) * size)
+}
+
+/**
+ * Moves every particle one frame and reports each streak segment on a `size`-pixel Mercator
+ * canvas. `rows` carries each particle's pixel row from one frame to the next, so the Mercator
+ * projection runs once per particle per frame rather than twice (#318). No segment is reported for
+ * a particle that respawned or wrapped across the antimeridian.
+ */
+export function stepSwarm(
+  swarm: readonly Particle[],
+  rows: Float64Array,
+  sample: WindSampler,
+  secondsPerFrame: number,
+  random: () => number,
+  size: number,
+  segment: (x0: number, y0: number, x1: number, y1: number) => void,
+): void {
+  const wind: Wind = { u: 0, v: 0 }
+  for (let i = 0; i < swarm.length; i++) {
+    const p = swarm[i]
+    const x0 = ((p.lon + 180) / 360) * size
+    const y0 = rows[i]
+    sample(p.lat, p.lon, wind)
+    const moved = advanceParticle(p, wind, secondsPerFrame, random)
+    const x1 = ((p.lon + 180) / 360) * size
+    const y1 = latToMercatorRow(p.lat) * size
+    rows[i] = y1
+    if (moved && Math.abs(x1 - x0) <= size / 2) segment(x0, y0, x1, y1)
+  }
 }
