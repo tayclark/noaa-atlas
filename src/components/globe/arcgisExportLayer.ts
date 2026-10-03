@@ -17,6 +17,8 @@ export interface ArcgisOverlay {
   serviceUrl: string
   /** The sublayers drawn and described by the legend. */
   layerIdsInService: readonly number[]
+  /** False when the service has no `/legend` endpoint, so no legend is fetched or logged. */
+  hasLegend?: false
   opacity: number
   title: string
   attribution: string
@@ -29,8 +31,12 @@ export const ARCGIS_OVERLAYS: readonly ArcgisOverlay[] = [
     key: 'arcgis-charts',
     sourceId: 'arcgis-charts',
     layerId: 'arcgis-charts-layer',
-    serviceUrl: 'https://gis.charttools.noaa.gov/arcgis/rest/services/MarineChart_Services/NOAACharts/MapServer',
-    layerIdsInService: [0],
+    // The ENC display of the Maritime Chart Service extension (#309). The MarineChart_Services/NOAACharts
+    // export draws only blank tiles. Sublayers 0-7 are the service's default display; it has no legend.
+    serviceUrl:
+      'https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/NOAAChartDisplay/MapServer/exts/MaritimeChartService/MapServer',
+    layerIdsInService: [0, 1, 2, 3, 4, 5, 6, 7],
+    hasLegend: false,
     opacity: 0.85,
     title: 'NOAA nautical charts (not for navigation)',
     attribution: 'Charts: <a href="https://nauticalcharts.noaa.gov/">NOAA Office of Coast Survey</a>',

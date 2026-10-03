@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ArcgisHttpError, ArcgisParseError } from '../../data/arcgisClient'
-import { makeArcgisChartsLegend, makeArcgisHabitatLegend, makeArcgisLegend } from '../../data/arcgisFixtures'
+import { makeArcgisHabitatLegend, makeArcgisLegend } from '../../data/arcgisFixtures'
 import {
   ARCGIS_OVERLAYS,
   ARCGIS_TILE_SIZE,
@@ -43,6 +43,14 @@ describe('ARCGIS_OVERLAYS', () => {
     expect(new Set(ARCGIS_OVERLAYS.map((o) => o.sourceId)).size).toBe(ARCGIS_OVERLAYS.length)
     expect(new Set(ARCGIS_OVERLAYS.map((o) => o.layerId)).size).toBe(ARCGIS_OVERLAYS.length)
   })
+
+  it('draws the charts from the ENC chart service, which has no legend (#309)', () => {
+    expect(ARCGIS_OVERLAYS.filter((o) => o.hasLegend === false).map((o) => o.key)).toEqual(['arcgis-charts'])
+    const charts = ARCGIS_OVERLAYS.find((o) => o.key === 'arcgis-charts')
+    const url = charts ? arcgisExportTileUrl(charts.serviceUrl, charts.layerIdsInService) : ''
+    expect(url).toContain('/exts/MaritimeChartService/MapServer/export?')
+    expect(url).toContain('layers=show:0,1,2,3,4,5,6,7')
+  })
 })
 
 describe('arcgisOverlaysFor (#288)', () => {
@@ -63,13 +71,15 @@ describe('arcgisLegendSections (#288)', () => {
     if (!found) throw new Error(`no overlay "${key}"`)
     return found
   }
-  const [raster, vector, charts] = [overlay('arcgis-raster'), overlay('arcgis-vector'), overlay('arcgis-charts')]
+  const [raster, vector, charts, habitat] = ['arcgis-raster', 'arcgis-vector', 'arcgis-charts', 'arcgis-habitat'].map(overlay)
   const entry = { label: '1 to 2', contentType: 'image/png', imageData: 'AAAA' }
 
   it('lists nothing while a legend loads or when it has no labelled entries', () => {
     expect(arcgisLegendSections([raster], {})).toEqual([])
     expect(arcgisLegendSections([raster], { 'arcgis-raster': { status: 'loading' } })).toEqual([])
-    expect(arcgisLegendSections([charts], { 'arcgis-charts': { status: 'ok', entries: [] } })).toEqual([])
+    expect(arcgisLegendSections([habitat], { 'arcgis-habitat': { status: 'ok', entries: [] } })).toEqual([])
+    // The charts have no legend to fetch, so they never get a state (#309).
+    expect(arcgisLegendSections([charts], {})).toEqual([])
   })
 
   it('gives a failed legend its message', () => {
@@ -80,7 +90,6 @@ describe('arcgisLegendSections (#288)', () => {
 
   it('lists one section per overlay with something to say, in the given order', () => {
     const sections = arcgisLegendSections([charts, raster, vector], {
-      'arcgis-charts': { status: 'ok', entries: [] },
       'arcgis-raster': { status: 'ok', entries: [entry] },
       'arcgis-vector': { status: 'error', message: 'down' },
     })
@@ -108,9 +117,6 @@ describe('legendEntriesFor', () => {
     expect(legendEntriesFor(makeArcgisHabitatLegend(), [226, 2])).toEqual([])
   })
 
-  it('returns no entries for the chart service, whose legend is empty', () => {
-    expect(legendEntriesFor(makeArcgisChartsLegend(), [0])).toEqual([])
-  })
 })
 
 describe('describeArcgisFetchOutcome', () => {

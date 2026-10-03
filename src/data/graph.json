@@ -7140,7 +7140,7 @@
       ],
       "auth": {
         "type": "none",
-        "note": "Responses echo the request Origin in access-control-allow-origin (checked 2026-10-02). The globe draws the MarineChart_Services/NOAACharts MapServer through its export endpoint as raster tiles (checked 2026-10-02). The tileservice.charts.noaa.gov tile URL pattern returned an HTML page and is not used."
+        "note": "Responses echo the request Origin in access-control-allow-origin (checked 2026-10-03). The globe draws the electronic navigational charts (ENC) from the MCS/NOAAChartDisplay Maritime Chart Service export as raster tiles (checked 2026-10-03); that service has no legend endpoint. The MarineChart_Services/NOAACharts export returns only blank images, and the tileservice.charts.noaa.gov tile URL pattern returned an HTML page, so neither is used."
       },
       "coverage": {
         "type": "MultiPolygon",
@@ -7442,7 +7442,7 @@
         "note": "Chart data is refreshed as Coast Survey publishes chart updates."
       },
       "docUrl": "https://nauticalcharts.noaa.gov/data/gis-data-and-services.html",
-      "lastVerified": "2026-09-30",
+      "lastVerified": "2026-10-03",
       "sample": {
         "url": "https://gis.charttools.noaa.gov/arcgis/rest/services/MarineChart_Services/NOAACharts/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
         "responseExcerpt": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Capabilities xmlns=\"http://www.opengis.net/wmts/1.0\" ... version=\"1.0.0\"> ..."

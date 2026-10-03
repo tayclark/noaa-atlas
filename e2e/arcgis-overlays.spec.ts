@@ -98,7 +98,7 @@ test('the NWS GIS portal node draws the CPC outlook with its legend and logs the
   await expect(page.getByRole('button', { name: /vector\/rest\/services\/outlooks/ })).toBeVisible()
 })
 
-test('the NOAA chart services node draws the charts and says they are not for navigation', async ({ page }) => {
+test('the NOAA chart services node draws the ENC charts, says they are not for navigation, and asks for no legend', async ({ page }) => {
   const tiles = await mockArcgisCharts(page)
   await page.goto('/')
   await waitForGlobe(page)
@@ -106,9 +106,10 @@ test('the NOAA chart services node draws the charts and says they are not for na
   await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'arcgis-charts')
   await expect(page.getByLabel('Selection status')).toContainText('not for navigation')
   await expect.poll(() => tiles.length).toBeGreaterThan(0)
-  expect(tiles[0]).toContain('layers=show:0')
+  expect(tiles[0]).toContain('layers=show:0,1,2,3,4,5,6,7')
   await expect(page.getByRole('status', { name: 'Map overlay legend' })).toHaveCount(0)
   await expect(page.locator('.maplibregl-ctrl-attrib')).toContainText('Office of Coast Survey')
+  expect(tiles.legendRequests).toHaveLength(0)
 })
 
 test('the NMFS node draws critical habitat, both areas and lines, with no legend box', async ({ page }) => {
@@ -193,13 +194,21 @@ test('draws real critical habitat tiles @live', async ({ page }) => {
   await expect(page.getByRole('status', { name: 'Map overlay legend' })).toHaveCount(0)
 })
 
-// The charts export draws only blank tiles (largest 885 B); un-fixme this when #309 moves the overlay
-// to an endpoint that draws.
-test.fixme('draws real nautical chart tiles @live', async ({ page }) => {
-  const tiles = collectArcgisTiles(page, 'MarineChart_Services/NOAACharts')
+// The old NOAACharts export drew only blank tiles (#309), which a 200 PNG alone wouldn't catch. The
+// ENC draws nothing below about zoom 5, so zoom in on the Gulf coast (Florida, in the node's framing).
+test('draws real nautical chart tiles @live', async ({ page }) => {
+  const tiles = collectArcgisTiles(page, 'MaritimeChartService')
   await page.goto('/')
   await waitForGlobe(page)
   await selectByKeyboard(page, 'noaa-chart-services')
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'arcgis-charts')
+  const box = await page.locator(`${GLOBE} canvas`).boundingBox()
+  if (!box) throw new Error('no globe canvas')
+  await page.mouse.move(box.x + box.width * 0.79, box.y + box.height * 0.69)
+  for (let i = 0; i < 4; i++) {
+    await page.mouse.wheel(0, -500)
+    await page.waitForTimeout(300)
+  }
   await expect.poll(() => largestTileBytes(tiles), { timeout: 20_000 }).toBeGreaterThan(BLANK_TILE_MAX_BYTES)
   expectAllPng(tiles)
 })
