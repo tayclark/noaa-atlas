@@ -1,7 +1,17 @@
-import { describe, expect, it } from 'vitest'
-import { NDBC_STATIONS } from './ndbcStations'
+import { beforeAll, describe, expect, it } from 'vitest'
+import { loadNdbcStations, type NdbcStation } from './ndbcStations'
 
-describe('NDBC_STATIONS', () => {
+let NDBC_STATIONS: NdbcStation[]
+
+beforeAll(async () => {
+  NDBC_STATIONS = await loadNdbcStations()
+})
+
+describe('loadNdbcStations', () => {
+  it('loads the snapshot once', () => {
+    expect(loadNdbcStations()).toBe(loadNdbcStations())
+  })
+
   it('is a validated snapshot of unique stations', () => {
     expect(NDBC_STATIONS.length).toBeGreaterThan(50)
     expect(new Set(NDBC_STATIONS.map((s) => s.id)).size).toBe(NDBC_STATIONS.length)

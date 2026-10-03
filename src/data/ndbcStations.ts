@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import stationsJson from './ndbcStations.json'
 
 // The snapshot in ndbcStations.json (scripts/ndbc-stations.mjs).
 const stationSchema = z.strictObject({
@@ -10,5 +9,19 @@ const stationSchema = z.strictObject({
 })
 export type NdbcStation = z.infer<typeof stationSchema>
 
-// Validated once at module scope: the snapshot is small and static.
-export const NDBC_STATIONS: NdbcStation[] = z.array(stationSchema).parse(stationsJson)
+let pending: Promise<NdbcStation[]> | null = null
+
+/**
+ * Loads and validates the snapshot once, the first time its layer is shown (#269). A failed load is
+ * forgotten, so the next call retries.
+ */
+export function loadNdbcStations(): Promise<NdbcStation[]> {
+  pending ??= import('./ndbcStations.json').then(
+    (json) => z.array(stationSchema).parse(json.default),
+    (err: unknown) => {
+      pending = null
+      throw err
+    },
+  )
+  return pending
+}

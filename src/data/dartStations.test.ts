@@ -1,7 +1,17 @@
-import { describe, expect, it } from 'vitest'
-import { DART_STATIONS } from './dartStations'
+import { beforeAll, describe, expect, it } from 'vitest'
+import { loadDartStations, type DartStation } from './dartStations'
 
-describe('DART_STATIONS', () => {
+let DART_STATIONS: DartStation[]
+
+beforeAll(async () => {
+  DART_STATIONS = await loadDartStations()
+})
+
+describe('loadDartStations', () => {
+  it('loads the snapshot once', () => {
+    expect(loadDartStations()).toBe(loadDartStations())
+  })
+
   it('is a validated snapshot of unique stations', () => {
     expect(DART_STATIONS.length).toBeGreaterThan(50)
     expect(new Set(DART_STATIONS.map((s) => s.id)).size).toBe(DART_STATIONS.length)

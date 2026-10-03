@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import stationsJson from './dartStations.json'
 
 // The snapshot in dartStations.json (scripts/dart-stations.mjs).
 const stationSchema = z.strictObject({
@@ -10,5 +9,19 @@ const stationSchema = z.strictObject({
 })
 export type DartStation = z.infer<typeof stationSchema>
 
-// Validated once at module scope: the snapshot is small and static.
-export const DART_STATIONS: DartStation[] = z.array(stationSchema).parse(stationsJson)
+let pending: Promise<DartStation[]> | null = null
+
+/**
+ * Loads and validates the snapshot once, the first time its layer is shown (#269). A failed load is
+ * forgotten, so the next call retries.
+ */
+export function loadDartStations(): Promise<DartStation[]> {
+  pending ??= import('./dartStations.json').then(
+    (json) => z.array(stationSchema).parse(json.default),
+    (err: unknown) => {
+      pending = null
+      throw err
+    },
+  )
+  return pending
+}

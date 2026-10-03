@@ -14,6 +14,8 @@ const MAX_RESULTS = 6
 interface GraphSearchProps {
   query: string
   onQueryChange: (query: string) => void
+  /** Called when the box gains focus, e.g. to start loading what search needs (#269). */
+  onFocus?: () => void
   matchCount: number | null
   /** The matches to list under the box, where dimmed dots are too small to read or tap. Omit for none. */
   results?: SearchResult[]
@@ -21,7 +23,7 @@ interface GraphSearchProps {
   placeholder?: string
 }
 
-export function GraphSearch({ query, onQueryChange, matchCount, results, onPick, placeholder = 'Search APIs, tags, tasks…' }: GraphSearchProps) {
+export function GraphSearch({ query, onQueryChange, onFocus, matchCount, results, onPick, placeholder = 'Search APIs, tags, tasks…' }: GraphSearchProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   // The list closes on a tap anywhere else (the graph, say) and opens again as the query changes.
@@ -61,6 +63,7 @@ export function GraphSearch({ query, onQueryChange, matchCount, results, onPick,
           autoCapitalize="off"
           spellCheck={false}
           value={query}
+          onFocus={onFocus}
           onChange={(event) => change(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Escape') change('')

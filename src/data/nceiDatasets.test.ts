@@ -1,9 +1,38 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import graph from './graph.json'
+import type { NceiDataset } from './nceiDatasetSchema'
 import { parseNceiDatasets } from './nceiDatasetSchema'
-import { AWS_DATASETS, NCEI_DATASETS, ONESTOP_DATASETS, datasetsForService } from './nceiDatasets'
+import { getDatasetCatalog, loadDatasetCatalog, subscribeDatasetCatalog, type DatasetCatalog } from './nceiDatasets'
 
-describe('NCEI_DATASETS', () => {
+let NCEI_DATASETS: NceiDataset[]
+let ONESTOP_DATASETS: NceiDataset[]
+let AWS_DATASETS: NceiDataset[]
+let datasetsForService: DatasetCatalog['forService']
+
+describe('loadDatasetCatalog (#269)', () => {
+  it('loads once, notifies subscribers and then serves the same catalog', async () => {
+    expect(getDatasetCatalog()).toBeNull()
+    let notified = 0
+    const unsubscribe = subscribeDatasetCatalog(() => notified++)
+    const first = loadDatasetCatalog()
+    expect(loadDatasetCatalog()).toBe(first)
+    const catalog = await first
+    unsubscribe()
+    expect(notified).toBe(1)
+    expect(getDatasetCatalog()).toBe(catalog)
+    expect(await loadDatasetCatalog()).toBe(catalog)
+  })
+})
+
+describe('the dataset catalog', () => {
+  beforeAll(async () => {
+    const catalog = await loadDatasetCatalog()
+    NCEI_DATASETS = catalog.ncei
+    ONESTOP_DATASETS = catalog.onestop
+    AWS_DATASETS = catalog.aws
+    datasetsForService = catalog.forService
+  })
+
   it('is a validated snapshot of unique datasets', () => {
     expect(NCEI_DATASETS.length).toBeGreaterThan(50)
     expect(new Set(NCEI_DATASETS.map((d) => d.id)).size).toBe(NCEI_DATASETS.length)

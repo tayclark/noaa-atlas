@@ -34,6 +34,13 @@ describe('GraphSearch', () => {
     expect(box().getAttribute('spellcheck')).toBe('false')
   })
 
+  it('reports focus, so the page can start loading the dataset rows (#269)', () => {
+    const onFocus = vi.fn()
+    render(<GraphSearch query="" onQueryChange={() => {}} onFocus={onFocus} matchCount={null} />)
+    box().focus()
+    expect(onFocus).toHaveBeenCalledTimes(1)
+  })
+
   it('shows a clear button only while there is something to clear, and refocuses the box', () => {
     render(<Harness />)
     expect(screen.queryByRole('button', { name: 'Clear search' })).toBeNull()

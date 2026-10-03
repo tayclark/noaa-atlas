@@ -19,6 +19,7 @@ import { buildAccessHierarchy } from '../../data/accessHierarchy'
 import { buildOrgHierarchy } from '../../data/orgHierarchy'
 import { graph, graphFile, tasks } from '../../data/graphData'
 import { THEME_LABELS } from '../../data/graphSchema'
+import { getDatasetCatalog, loadDatasetCatalog, subscribeDatasetCatalog } from '../../data/nceiDatasets'
 import { getNeighbors } from '../../data/neighbors'
 import {
   clearSelection,
@@ -103,7 +104,6 @@ const ZOOM_MS = 250
 // How far inside the canvas edge (px) a node the arrow keys move to is kept (#284).
 const REVEAL_MARGIN = 40
 
-const searchIndex = buildSearchIndex(graph.nodes, tasks)
 const nodeNameById = new Map(graph.nodes.map((node) => [node.id, node.name]))
 const taskLabelById = new Map(tasks.map((task) => [task.id, task.label]))
 
@@ -199,7 +199,10 @@ export function GraphView() {
   const pathPairs = taskPath.slice(1).map((target, i) => ({ source: taskPath[i] as string, target }))
   const announcement = selectionAnnouncement(selection, nodeNameById, taskLabelById, highlightedIds.length)
   const [query, setQuery] = useState('')
-  const matchedIds = useMemo(() => matchNodeIds(searchIndex, query), [query])
+  // The dataset rows load on the search box's first focus (#269); the index gains their words then.
+  const datasetCatalog = useSyncExternalStore(subscribeDatasetCatalog, getDatasetCatalog)
+  const searchIndex = useMemo(() => buildSearchIndex(graph.nodes, tasks, datasetCatalog), [datasetCatalog])
+  const matchedIds = useMemo(() => matchNodeIds(searchIndex, query), [searchIndex, query])
   const focus = focusIds(matchedIds, highlightedIds)
   const near = neighborIds(drawnEdges, highlightedIds, matchedIds)
   // What a phone lists under the search box: the matches by name, with where each sits (#78).
@@ -659,6 +662,7 @@ export function GraphView() {
         <GraphSearch
           query={query}
           onQueryChange={setQuery}
+          onFocus={() => void loadDatasetCatalog()}
           matchCount={matchedIds?.size ?? null}
           {...(narrow
             ? {
