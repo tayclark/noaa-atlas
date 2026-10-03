@@ -39,6 +39,13 @@ describe('GraphView', () => {
     expect(node.querySelector('title')?.textContent).toMatch(/^MRMS multi-radar/)
   })
 
+  it('gives an unshortened node no tooltip, so its name is not read twice (#290)', () => {
+    const { container } = render(<GraphView />)
+    const node = container.querySelector<SVGGElement>('.graph-node[data-node-id="nws-api"]')!
+    expect(node.getAttribute('aria-label')).toBe('NWS API')
+    expect(node.querySelector('title')).toBeNull()
+  })
+
   it('announces the selection and marks the selected node pressed (#86)', () => {
     const { container } = render(<GraphView />)
     const announcement = screen.getByTestId('selection-announcement')

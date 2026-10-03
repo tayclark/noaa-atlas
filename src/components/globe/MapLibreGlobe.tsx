@@ -407,6 +407,8 @@ export function MapLibreGlobe() {
     // has keyboard focus. Escape closes the popup (escapeDismiss.ts), before it clears the selection.
     const canvas = map.getCanvas()
     canvas.setAttribute('aria-keyshortcuts', 'Enter')
+    // The centre hint is visual only, so screen readers get the keys from this description (#290).
+    canvas.setAttribute('aria-describedby', 'globe-keyboard-hint')
     const onCanvasKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Enter' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !loaded) return
       event.preventDefault()
@@ -1068,6 +1070,10 @@ export function MapLibreGlobe() {
         data-aurora-cells={auroraCells ?? undefined}
         style={{ width: '100%', height: '100%' }}
       />
+      <p id="globe-keyboard-hint" className="visually-hidden">
+        With the map focused, arrow keys pan and plus and minus zoom. Enter looks up the forecast and coverage at the
+        centre of the map, and Escape closes the popup.
+      </p>
       {keyboardFocus && (
         <div className="globe-centre" aria-hidden="true">
           <span className="globe-centre-mark" />
