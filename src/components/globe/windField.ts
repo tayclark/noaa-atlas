@@ -9,6 +9,13 @@ export interface WindGrid {
   v: GribField
 }
 
+export interface WindFieldInput {
+  a: WindGrid
+  b: WindGrid | null
+  /** 0 at `a`, 1 at `b`. */
+  t: number
+}
+
 export interface Wind {
   /** Eastward and northward components, m/s. */
   u: number
@@ -18,6 +25,14 @@ export interface Wind {
 const WEB_MERCATOR_MAX_LAT = 85.0511
 
 export const METERS_PER_DEGREE = 111_320
+
+/** True when two fields share a grid, so one set of row and column indices serves both. */
+export function sameGrid(a: GribField, b: GribField): boolean {
+  return (
+    a.ni === b.ni && a.nj === b.nj && a.lat1 === b.lat1 && a.lon1 === b.lon1 &&
+    a.di === b.di && a.dj === b.dj && a.southToNorth === b.southToNorth
+  )
+}
 
 export function sampleField(f: GribField, lat: number, lon: number): number {
   // Row 0 is the first latitude; rows step by `dj` toward the south unless `southToNorth`.
@@ -96,24 +111,94 @@ export function latToMercatorRow(lat: number): number {
   return (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2
 }
 
-/** RGBA pixels (a Web Mercator image, `width` by `height`) shading the wind speed. */
+// The paint covers about a quarter of a million pixels per field and reruns on every slider step
+// (#316), so colours come from a table in LUT_STEPS_PER_MS steps rather than from `windColor`,
+// which allocates on every call.
+const LUT_STEPS_PER_MS = 100
+const LUT_SIZE = STOPS[STOPS.length - 1][0] * LUT_STEPS_PER_MS + 1
+const COLOR_LUT = new Uint8Array(LUT_SIZE * 3)
+for (let k = 0; k < LUT_SIZE; k++) COLOR_LUT.set(windColor(k / LUT_STEPS_PER_MS), k * 3)
+
+/** Fills one pixel from the colour table. NaN takes the last colour, as it does in `windColor`. */
+function paint(out: Uint8ClampedArray, i: number, speed: number, alpha: number): void {
+  const step = Number.isNaN(speed) ? LUT_SIZE - 1 : Math.round(speed * LUT_STEPS_PER_MS)
+  const k = Math.min(LUT_SIZE - 1, Math.max(0, step)) * 3
+  out[i] = COLOR_LUT[k]
+  out[i + 1] = COLOR_LUT[k + 1]
+  out[i + 2] = COLOR_LUT[k + 2]
+  out[i + 3] = alpha
+}
+
+/**
+ * RGBA pixels (a Web Mercator image, `width` by `height`) shading the wind speed. Matches
+ * `sampleBlended` + `windColor` per pixel, but works out the grid rows and columns once per row
+ * and column instead of four times per pixel (#316).
+ */
 export function renderSpeedShading(
   width: number,
   height: number,
-  windAt: (lat: number, lon: number) => Wind,
+  input: WindFieldInput,
   alpha = 90,
 ): Uint8ClampedArray<ArrayBuffer> {
   const out = new Uint8ClampedArray(width * height * 4)
+  const { a, b, t } = input
+  const blend = b !== null && t > 0
+  const g = a.u
+  if (!sameGrid(g, a.v) || (blend && (!sameGrid(g, b.u) || !sameGrid(g, b.v)))) {
+    // Fields on different grids can't share the indices below; sample each pixel instead.
+    for (let y = 0; y < height; y++) {
+      const lat = mercatorRowLat((y + 0.5) / height)
+      for (let x = 0; x < width; x++) {
+        const w = sampleBlended(a, b, t, lat, ((x + 0.5) / width) * 360 - 180)
+        paint(out, (y * width + x) * 4, windSpeed(w), alpha)
+      }
+    }
+    return out
+  }
+
+  // The same index maths as `sampleField`, split into its column and row halves.
+  const c0s = new Int32Array(width)
+  const c1s = new Int32Array(width)
+  const fcs = new Float64Array(width)
+  for (let x = 0; x < width; x++) {
+    const lon = ((x + 0.5) / width) * 360 - 180
+    const colF = (((lon - g.lon1) % 360) + 360) % 360 / g.di
+    c0s[x] = Math.floor(colF) % g.ni
+    c1s[x] = (c0s[x] + 1) % g.ni
+    fcs[x] = colF - Math.floor(colF)
+  }
+  const au = a.u.values
+  const av = a.v.values
+  const bu = blend ? b.u.values : null
+  const bv = blend ? b.v.values : null
   for (let y = 0; y < height; y++) {
     const lat = mercatorRowLat((y + 0.5) / height)
+    const row = Math.min(g.nj - 1, Math.max(0, (g.southToNorth ? lat - g.lat1 : g.lat1 - lat) / g.dj))
+    const r0 = Math.floor(row)
+    const top = r0 * g.ni
+    const bottom = Math.min(g.nj - 1, r0 + 1) * g.ni
+    const fr = row - r0
     for (let x = 0; x < width; x++) {
-      const lon = ((x + 0.5) / width) * 360 - 180
-      const [r, g, b] = windColor(windSpeed(windAt(lat, lon)))
-      const i = (y * width + x) * 4
-      out[i] = r
-      out[i + 1] = g
-      out[i + 2] = b
-      out[i + 3] = alpha
+      const c0 = c0s[x]
+      const c1 = c1s[x]
+      const fc = fcs[x]
+      let u =
+        (au[top + c0] * (1 - fc) + au[top + c1] * fc) * (1 - fr) +
+        (au[bottom + c0] * (1 - fc) + au[bottom + c1] * fc) * fr
+      let v =
+        (av[top + c0] * (1 - fc) + av[top + c1] * fc) * (1 - fr) +
+        (av[bottom + c0] * (1 - fc) + av[bottom + c1] * fc) * fr
+      if (bu && bv) {
+        const ub =
+          (bu[top + c0] * (1 - fc) + bu[top + c1] * fc) * (1 - fr) +
+          (bu[bottom + c0] * (1 - fc) + bu[bottom + c1] * fc) * fr
+        const vb =
+          (bv[top + c0] * (1 - fc) + bv[top + c1] * fc) * (1 - fr) +
+          (bv[bottom + c0] * (1 - fc) + bv[bottom + c1] * fc) * fr
+        u += (ub - u) * t
+        v += (vb - v) * t
+      }
+      paint(out, (y * width + x) * 4, Math.hypot(u, v), alpha)
     }
   }
   return out
