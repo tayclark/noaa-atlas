@@ -3,7 +3,7 @@
 // into this. Land is NaN in the grid, so it samples as NaN and draws transparent.
 
 import type { GribField } from '../../data/grib2'
-import { mercatorRowLat, sampleField } from './windField'
+import { mercatorRowLat, sameGrid, sampleField } from './windField'
 
 export interface WaveFieldInput {
   a: GribField
@@ -53,13 +53,6 @@ const LUT_STEPS_PER_M = 100
 const LUT_SIZE = STOPS[STOPS.length - 1][0] * LUT_STEPS_PER_M + 1
 const COLOR_LUT = new Uint8Array(LUT_SIZE * 3)
 for (let k = 0; k < LUT_SIZE; k++) COLOR_LUT.set(waveColor(k / LUT_STEPS_PER_M), k * 3)
-
-function sameGrid(a: GribField, b: GribField): boolean {
-  return (
-    a.ni === b.ni && a.nj === b.nj && a.lat1 === b.lat1 && a.lon1 === b.lon1 &&
-    a.di === b.di && a.dj === b.dj && a.southToNorth === b.southToNorth
-  )
-}
 
 /** Fills one pixel from the colour table; `h` must not be NaN. */
 function paint(out: Uint8ClampedArray, i: number, h: number, alpha: number): void {

@@ -14,7 +14,7 @@ import {
   spawnParticle,
   type Particle,
   type Wind,
-  type WindGrid,
+  type WindFieldInput,
 } from './windField'
 
 export const WIND_SHADING_SOURCE_ID = 'wind-shading'
@@ -32,13 +32,6 @@ const PARTICLE_COUNT = 3500
 const SECONDS_PER_FRAME = 4500
 /** Frames drawn at once when motion is reduced, so the field shows as static streaks. */
 const STATIC_FRAMES = 40
-
-export interface WindFieldInput {
-  a: WindGrid
-  b: WindGrid | null
-  /** 0 at `a`, 1 at `b`. */
-  t: number
-}
 
 export interface WindOverlay {
   setField: (field: WindFieldInput | null) => void
@@ -153,7 +146,7 @@ export function createWindOverlay(map: MapLibreMap, reducedMotion: boolean, befo
       if (!next) {
         ctx.clearRect(0, 0, SHADING_SIZE, SHADING_SIZE)
       } else {
-        const pixels = renderSpeedShading(SHADING_SIZE, SHADING_SIZE, windAt)
+        const pixels = renderSpeedShading(SHADING_SIZE, SHADING_SIZE, next)
         ctx.putImageData(new ImageData(pixels, SHADING_SIZE, SHADING_SIZE), 0, 0)
       }
       pushCanvas(map, WIND_SHADING_SOURCE_ID)
