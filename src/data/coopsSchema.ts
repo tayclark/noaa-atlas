@@ -77,3 +77,63 @@ export type CoopsStation = z.infer<typeof stationSchema>
 export function parseStations(raw: unknown): CoopsStation[] {
   return z.array(stationSchema).parse(raw)
 }
+
+// Metadata API (mdapi, #241): a station with expand=details,datums,floodlevels and units=metric.
+// An unknown station is an HTTP 404, so there is no 200 error body to model here.
+const nullableNumber = z.number().nullable()
+const stationMetadataSchema = z.object({
+  stations: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        state: z.string(),
+        details: z.object({ established: z.string().nullable(), noaachart: z.string().nullable() }),
+        // Great Lakes stations have no tidal epoch (e.g. 9063020).
+        datums: z.object({
+          epoch: z.string().nullable(),
+          units: z.string(),
+          datums: z.array(z.object({ name: z.string(), description: z.string(), value: nullableNumber })),
+        }),
+        floodlevels: z.object({ nos_minor: nullableNumber, nos_moderate: nullableNumber, nos_major: nullableNumber }),
+      }),
+    )
+    .min(1),
+})
+export type CoopsStationMetadata = z.infer<typeof stationMetadataSchema>['stations'][number]
+
+export function parseStationMetadata(raw: unknown): CoopsStationMetadata {
+  return stationMetadataSchema.parse(raw).stations[0]
+}
+
+// Derived Product API (dpapi, #241). An unknown station is a 200 with an empty list.
+const seaLevelTrendSchema = z.object({
+  SeaLvlTrends: z.array(
+    z.object({
+      stationName: z.string(),
+      trend: z.number(),
+      trendError: z.number(),
+      trendUnits: z.string(),
+      startDate: z.string(),
+      endDate: z.string(),
+    }),
+  ),
+})
+export type CoopsSeaLevelTrend = z.infer<typeof seaLevelTrendSchema>['SeaLvlTrends'][number]
+
+export function parseSeaLevelTrend(raw: unknown): CoopsResult<CoopsSeaLevelTrend> {
+  const trend = seaLevelTrendSchema.parse(raw).SeaLvlTrends[0]
+  return trend ? { ok: true, value: trend } : { ok: false, message: 'CO-OPS has no sea level trend for this station.' }
+}
+
+const htfAnnualSchema = z.object({
+  AnnualFloodCount: z.array(
+    z.object({ year: z.number(), minCount: nullableNumber, modCount: nullableNumber, majCount: nullableNumber }),
+  ),
+})
+export type CoopsFloodYear = z.infer<typeof htfAnnualSchema>['AnnualFloodCount'][number]
+
+/** High tide flood days per year, oldest first. */
+export function parseHtfAnnual(raw: unknown): CoopsFloodYear[] {
+  return htfAnnualSchema.parse(raw).AnnualFloodCount
+}

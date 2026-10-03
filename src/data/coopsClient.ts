@@ -1,9 +1,23 @@
-// Typed wrapper around the CO-OPS Data API (#51; see the coops-data-api node in graph.json). It
-// sends access-control-allow-origin: *, so no special headers are needed. Station positions come
-// from the coopsStations.json snapshot rather than the Metadata API (see scripts/coops-stations.mjs).
+// Typed wrapper around the CO-OPS Data API (#51; see the coops-data-api node in graph.json), plus the
+// Metadata and Derived Product API calls behind their nodes' try-its (#241). All three send
+// access-control-allow-origin: *, so no special headers are needed. Station positions come from the
+// coopsStations.json snapshot rather than the Metadata API (see scripts/coops-stations.mjs).
 
 import { createLiveClient } from './liveRequest'
-import { parseHourlyPredictions, parsePredictions, parseWaterLevel, type CoopsReading, type CoopsResult, type CoopsTide } from './coopsSchema'
+import {
+  parseHourlyPredictions,
+  parseHtfAnnual,
+  parsePredictions,
+  parseSeaLevelTrend,
+  parseStationMetadata,
+  parseWaterLevel,
+  type CoopsFloodYear,
+  type CoopsReading,
+  type CoopsResult,
+  type CoopsSeaLevelTrend,
+  type CoopsStationMetadata,
+  type CoopsTide,
+} from './coopsSchema'
 
 export class CoopsHttpError extends Error {
   readonly status: number
@@ -65,4 +79,19 @@ export function getHourlyPredictions(station: string, begin: string, end: string
     dataPath(station, 'predictions', { interval: 'h', begin_date: begin, end_date: end }),
     parseHourlyPredictions,
   )
+}
+
+/** The station's details, datums and NOS flood thresholds from the Metadata API, in metres. */
+export function getStationMetadata(station: string): Promise<CoopsStationMetadata> {
+  return request(`/mdapi/prod/webapi/stations/${encodeURIComponent(station)}.json?expand=details,datums,floodlevels&units=metric`, parseStationMetadata)
+}
+
+/** The station's long-term sea level trend from the Derived Product API, in mm/yr. */
+export function getSeaLevelTrend(station: string): Promise<CoopsResult<CoopsSeaLevelTrend>> {
+  return request(`/dpapi/prod/webapi/product/sealvltrends.json?station=${encodeURIComponent(station)}&units=metric`, parseSeaLevelTrend)
+}
+
+/** High tide flood days per year at the station, from the Derived Product API. */
+export function getHtfAnnual(station: string): Promise<CoopsFloodYear[]> {
+  return request(`/dpapi/prod/webapi/htf/htf_annual.json?station=${encodeURIComponent(station)}`, parseHtfAnnual)
 }
