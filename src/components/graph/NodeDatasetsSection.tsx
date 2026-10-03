@@ -1,8 +1,15 @@
-import { datasetsForService } from '../../data/nceiDatasets'
+import { useEffect, useSyncExternalStore } from 'react'
+import { getDatasetCatalog, loadDatasetCatalog, subscribeDatasetCatalog } from '../../data/nceiDatasets'
 import { datasetLink, formatDatasetFrequency, formatDatasetRange } from './nodeDetailFormat'
 
 export function NodeDatasetsSection({ serviceId }: { serviceId: string }) {
-  const datasets = datasetsForService(serviceId)
+  // The rows load on first use (#269), so the section appears once they arrive. A failed load leaves
+  // it out; the next mount retries.
+  const catalog = useSyncExternalStore(subscribeDatasetCatalog, getDatasetCatalog)
+  useEffect(() => {
+    if (!catalog) loadDatasetCatalog().catch(() => {})
+  }, [catalog])
+  const datasets = catalog?.forService(serviceId) ?? []
   if (datasets.length === 0) return null
 
   return (

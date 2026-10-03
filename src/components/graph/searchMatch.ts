@@ -2,12 +2,13 @@
 // query term must appear somewhere in a node's haystack.
 
 import { THEME_LABELS, type GraphNode } from '../../data/graphSchema'
-import { datasetsForService } from '../../data/nceiDatasets'
+import type { DatasetCatalog } from '../../data/nceiDatasets'
 import type { Task } from '../../data/taskSchema'
 
 export type SearchIndex = Map<string, string>
 
-export function buildSearchIndex(nodes: GraphNode[], tasks: Task[]): SearchIndex {
+/** Dataset words are added only once the catalog has loaded (#269); until then nodes match on their own fields. */
+export function buildSearchIndex(nodes: GraphNode[], tasks: Task[], datasets: DatasetCatalog | null = null): SearchIndex {
   const taskLabelsByNode = new Map<string, string[]>()
   for (const task of tasks) {
     for (const { nodeId } of task.nodes) {
@@ -30,7 +31,7 @@ export function buildSearchIndex(nodes: GraphNode[], tasks: Task[]): SearchIndex
             THEME_LABELS[node.theme],
             ...(taskLabelsByNode.get(node.id) ?? []),
             // Datasets (#70) are reached through their service, so a dataset term highlights it.
-            ...datasetsForService(node.id).flatMap((d) => [d.name, ...d.observationTypes]),
+            ...(datasets?.forService(node.id) ?? []).flatMap((d) => [d.name, ...d.observationTypes]),
           ]
         : [node.name]
     index.set(node.id, parts.join(' ').toLowerCase())

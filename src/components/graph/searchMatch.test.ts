@@ -1,17 +1,31 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import graphJson from '../../data/graph.json'
 import tasksJson from '../../data/tasks.json'
 import { buildGraph } from '../../data/buildGraph'
-import { datasetsForService } from '../../data/nceiDatasets'
+import { loadDatasetCatalog, type DatasetCatalog } from '../../data/nceiDatasets'
 import { parseGraphFile } from '../../data/graphSchema'
 import { parseTasksFile } from '../../data/taskSchema'
 import { buildSearchIndex, matchNodeIds } from './searchMatch'
 
 const graph = buildGraph(parseGraphFile(graphJson))
 const { tasks } = parseTasksFile(tasksJson)
-const index = buildSearchIndex(graph.nodes, tasks)
+let index: ReturnType<typeof buildSearchIndex>
+let datasetsForService: DatasetCatalog['forService']
+
+beforeAll(async () => {
+  const catalog = await loadDatasetCatalog()
+  datasetsForService = catalog.forService
+  index = buildSearchIndex(graph.nodes, tasks, catalog)
+})
 
 describe('matchNodeIds', () => {
+  it('leaves dataset words out until the catalog has loaded (#269)', () => {
+    const dataset = datasetsForService('hrrr-aws-open-data')[0]
+    const withoutDatasets = buildSearchIndex(graph.nodes, tasks)
+    expect(matchNodeIds(withoutDatasets, dataset.name)?.has('hrrr-aws-open-data')).toBe(false)
+    expect(matchNodeIds(withoutDatasets, 'tornado')?.has('spc-gis-data')).toBe(true)
+  })
+
   it('matches a dataset name through its owning service (#70)', () => {
     const dataset = datasetsForService('ncei-access-data-service')[0]
     const term = dataset.name.split(' ').find((w) => w.length > 6) ?? dataset.name
