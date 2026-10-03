@@ -58,7 +58,6 @@
 /* Compact layout (#78): the header keeps one line (the tagline gives way first) with an ⓘ for the
    full disclaimer, and the footer is one tappable line instead of 76px of small print. */
 .app-about-button,
-.app-footer-compact a,
 .app-footer-compact button {
   display: inline-flex;
   align-items: center;
@@ -93,7 +92,6 @@
   justify-content: center;
 }
 
-.app-footer-compact a,
 .app-footer-compact button {
   min-width: 0;
 }

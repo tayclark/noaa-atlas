@@ -99,7 +99,7 @@ describe('App', () => {
       const footer = screen.getByRole('contentinfo')
       expect(footer.textContent).toContain('Not for emergencies')
       expect(footer.textContent).not.toContain('Not an official NOAA product')
-      expect(screen.getByRole('link', { name: 'weather.gov' }).getAttribute('href')).toBe('https://www.weather.gov')
+      expect(footer.querySelector('a')).toBeNull()
 
       const dialog = document.querySelector('dialog')!
       expect(dialog.hasAttribute('open')).toBe(false)
@@ -107,6 +107,7 @@ describe('App', () => {
       expect(dialog.hasAttribute('open')).toBe(true)
       expect(dialog.textContent).toContain('Not an official NOAA product')
       expect(dialog.textContent).toContain('Not for emergency or life-safety')
+      expect(dialog.querySelector('a[href="https://www.weather.gov"]')).not.toBeNull()
       expect(screen.getAllByRole('link', { name: 'Data terms' })[0]?.getAttribute('href')).toContain('#data-terms-and-attribution')
 
       fireEvent.click(screen.getByRole('button', { name: 'Close' }))
