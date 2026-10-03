@@ -22,6 +22,9 @@ test('Enter on the focused map looks up its centre, and Escape closes the popup 
   await canvas.focus()
   await expect(page.locator('.globe-centre')).toBeVisible()
   await expect(canvas).toHaveAttribute('aria-keyshortcuts', 'Enter')
+  // The visible centre hint is aria-hidden; screen readers get the keys from a description (#290).
+  await expect(canvas).toHaveAttribute('aria-describedby', 'globe-keyboard-hint')
+  await expect(page.locator('#globe-keyboard-hint')).toContainText('Enter looks up')
 
   const pointRequest = page.waitForRequest((req) => req.url().includes('/points/'))
   await page.keyboard.press('Enter')

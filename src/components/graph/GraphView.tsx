@@ -107,7 +107,9 @@ const REVEAL_MARGIN = 40
 const nodeNameById = new Map(graph.nodes.map((node) => [node.id, node.name]))
 const taskLabelById = new Map(tasks.map((task) => [task.id, task.label]))
 
-// The on-graph label; the full name stays in the tooltip, aria-label and detail panel (#141).
+// The on-graph label; the full name stays in the aria-label and detail panel, and in a tooltip when the
+// label is shortened (#141). An unshortened node gets no <title>, which screen readers would read as a
+// description repeating its name (#290).
 const labelText = (node: LayoutNode) => (node.kind === 'service' ? (node.shortName ?? node.name) : node.name)
 
 // Positions the synthetic task-path connectors (#34) from the live node positions. The lines are
@@ -773,7 +775,7 @@ export function GraphView() {
                       else nodeElsRef.current.delete(node.id)
                     }}
                   >
-                    <title>{node.name}</title>
+                    {labelText(node) !== node.name && <title>{node.name}</title>}
                     <circle r={nodeRadius(node)} style={{ fill: nodeColor(node) }} />
                     <text x={nodeRadius(node) + 4} y={4}>
                       {labelText(node)}
