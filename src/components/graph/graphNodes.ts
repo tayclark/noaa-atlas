@@ -1,11 +1,9 @@
 // The graph's nodes as the detail views see them: services, theme hubs and the NOAA root, parsed
-// and built once (#30, #78).
+// and built once (#30, #78, #270).
 
-import graphJson from '../../data/graph.json'
-import { buildGraph } from '../../data/buildGraph'
-import { parseGraphFile } from '../../data/graphSchema'
+import { graph } from '../../data/graphData'
 
-const graphNodes = buildGraph(parseGraphFile(graphJson)).nodes
+const graphNodes = graph.nodes
 
 export type DetailNode = (typeof graphNodes)[number]
 

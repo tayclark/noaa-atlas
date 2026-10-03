@@ -15,14 +15,11 @@ import { select } from 'd3-selection'
 import { zoom as d3zoom, zoomIdentity, zoomTransform, type ZoomBehavior, type ZoomTransform } from 'd3-zoom'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import './GraphView.css'
-import graphJson from '../../data/graph.json'
-import tasksJson from '../../data/tasks.json'
-import { buildGraph } from '../../data/buildGraph'
 import { buildAccessHierarchy } from '../../data/accessHierarchy'
 import { buildOrgHierarchy } from '../../data/orgHierarchy'
-import { parseGraphFile, THEME_LABELS } from '../../data/graphSchema'
+import { graph, graphFile, tasks } from '../../data/graphData'
+import { THEME_LABELS } from '../../data/graphSchema'
 import { getNeighbors } from '../../data/neighbors'
-import { parseTasksFile } from '../../data/taskSchema'
 import {
   clearSelection,
   getHighlightedNodeIds,
@@ -67,8 +64,6 @@ import { NodeDetailPanel } from './NodeDetailPanel'
 import { revealTransform, rovingOrder, rovingTabStop, rovingTarget } from './rovingFocus'
 import { useNarrowLayout } from '../useNarrowLayout'
 
-const graphFile = parseGraphFile(graphJson)
-const graph = buildGraph(graphFile)
 const graphNodeById = new Map(graph.nodes.map((node) => [node.id, node]))
 // The org (#58) and access-method (#60) hubs are only drawn: search, neighbours and the detail panel keep reading `graph`.
 const orgHierarchy = buildOrgHierarchy(graphFile)
@@ -108,7 +103,6 @@ const ZOOM_MS = 250
 // How far inside the canvas edge (px) a node the arrow keys move to is kept (#284).
 const REVEAL_MARGIN = 40
 
-const tasks = parseTasksFile(tasksJson).tasks
 const searchIndex = buildSearchIndex(graph.nodes, tasks)
 const nodeNameById = new Map(graph.nodes.map((node) => [node.id, node.name]))
 const taskLabelById = new Map(tasks.map((task) => [task.id, task.label]))

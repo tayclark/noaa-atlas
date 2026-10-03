@@ -2,15 +2,14 @@
 // and requestLog.ts, read with `useSyncExternalStore`. Kept apart from the selection, which is a
 // single value shared by the finder, graph and globe: a comparison set outlives any one selection.
 
-import graphJson from './graph.json'
-import { parseGraphFile } from './graphSchema'
+import { graphFile } from './graphData'
 
 /** More columns than this stop fitting side by side, even in a wide pane. */
 export const MAX_COMPARE = 6
 
 const serviceIds = new Set(
-  parseGraphFile(graphJson)
-    .nodes.filter((node) => node.kind === 'service')
+  graphFile.nodes
+    .filter((node) => node.kind === 'service')
     .map((node) => node.id),
 )
 

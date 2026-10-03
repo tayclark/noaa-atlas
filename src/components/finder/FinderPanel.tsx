@@ -7,20 +7,18 @@
 // pane: the task list, then a page for the picked task, with Back to the list.
 
 import { useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react'
-import graphJson from '../../data/graph.json'
-import { parseGraphFile, type ServiceNode } from '../../data/graphSchema'
+import { graphFile, tasks } from '../../data/graphData'
+import type { ServiceNode } from '../../data/graphSchema'
 import { addCompare } from '../../data/compareStore'
 import { clearSelection, getSelectionSnapshot, selectNode, selectTask, subscribeSelection } from '../../data/selectionStore'
-import { parseTasksFile, type Task } from '../../data/taskSchema'
-import tasksJson from '../../data/tasks.json'
+import type { Task } from '../../data/taskSchema'
 import { showView } from '../../data/viewStore'
 import { rovingTabStop, rovingTarget } from '../graph/rovingFocus'
 import { useNarrowLayout } from '../useNarrowLayout'
 import './FinderPanel.css'
 
-const tasks = parseTasksFile(tasksJson).tasks
 const taskOrder = tasks.map((task) => task.id)
-const nodesById = new Map<string, ServiceNode>(parseGraphFile(graphJson).nodes.map((node) => [node.id, node]))
+const nodesById = new Map<string, ServiceNode>(graphFile.nodes.map((node) => [node.id, node]))
 
 export function FinderPanel() {
   const compact = useNarrowLayout()
