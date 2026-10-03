@@ -253,7 +253,7 @@ The Playwright config starts the dev server on port 5173 (reusing one if it is a
 GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and push to `main`:
 
 - **ci**: typecheck, lint, unit tests with the coverage gate (summary posted to the run), production build, bundle size budget.
-- **e2e**: the mocked Playwright suite (`npm run test:e2e:mocked`, Chromium) with the report uploaded on failure.
+- **e2e**: the mocked Playwright suite (`npm run test:e2e:mocked`, Chromium), split across three `e2e shard N/3` jobs. The `e2e` job waits for them and, on a failure, merges their blob reports into one `playwright-report` artifact.
 
 The `@live` specs depend on NOAA's servers being up, so they don't run on pull requests. The **Live e2e** workflow (`.github/workflows/live-e2e.yml`) runs `npm run test:e2e:live` daily and on demand (`workflow_dispatch`). Its failures show in the Actions tab but don't block merges.
 
@@ -263,4 +263,4 @@ MIT, see `LICENSE`. That covers this code only: NOAA data and the third-party ma
 
 ## Hosting
 
-The site is static, so it is served from GitHub Pages at https://tayclark.github.io/noaa-atlas/. Pages is free for a public repo and needs no extra vendor or secrets. `.github/workflows/deploy.yml` runs the unit tests, builds with `VITE_BASE=/noaa-atlas/` (the Pages sub-path) and deploys on every push to `main`. The build leaves `maplibre-gl` out of the bundle and copies MapLibre's own main, shared and worker files to `dist/maplibre/<version>/` (`maplibreExternal` in `vite.config.ts`), so the main thread and the worker share one copy of the shared chunk, and a MapLibre upgrade changes the path instead of mixing cached old files with a new bundle.
+The site is static, so it is served from GitHub Pages at https://tayclark.github.io/noaa-atlas/. Pages is free for a public repo and needs no extra vendor or secrets. `.github/workflows/deploy.yml` runs after each successful CI run on `main` (or on demand), builds the commit CI tested with `VITE_BASE=/noaa-atlas/` (the Pages sub-path) and deploys it. The build leaves `maplibre-gl` out of the bundle and copies MapLibre's own main, shared and worker files to `dist/maplibre/<version>/` (`maplibreExternal` in `vite.config.ts`), so the main thread and the worker share one copy of the shared chunk, and a MapLibre upgrade changes the path instead of mixing cached old files with a new bundle.

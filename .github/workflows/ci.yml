@@ -43,10 +43,16 @@ jobs:
       - run: npm run build
       - run: npm run check:budget
 
-  e2e:
-    name: e2e
+  # The mocked suite is split across three runners (#273): two workers is the most one 4-vCPU
+  # runner takes before the software-rendered map starves, so more shards add CPUs instead.
+  e2e-shard:
+    name: e2e shard ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
@@ -65,10 +71,46 @@ jobs:
         run: npx playwright install --with-deps chromium
       - if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
-      - run: npm run test:e2e:mocked
+      # The CLI reporters replace the config's, so live-e2e.yml keeps its HTML report.
+      - run: npm run test:e2e:mocked -- --shard=${{ matrix.shard }}/3 --reporter=list,github,blob
       - uses: actions/upload-artifact@v7
-        if: failure()
+        if: ${{ !cancelled() }}
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: blob-report/
+          retention-days: 1
+
+  # One stable `e2e` check for branch protection. It always runs, because a skipped required
+  # job counts as passing, and on failure it merges the shards' blobs into one HTML report.
+  e2e:
+    name: e2e
+    needs: e2e-shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        if: needs.e2e-shard.result != 'success'
+      - uses: actions/setup-node@v4
+        if: needs.e2e-shard.result != 'success'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - if: needs.e2e-shard.result != 'success'
+        run: npm ci
+      - uses: actions/download-artifact@v8
+        if: needs.e2e-shard.result != 'success'
+        with:
+          pattern: blob-report-*
+          merge-multiple: true
+          path: all-blob-reports
+      - if: needs.e2e-shard.result != 'success'
+        run: npx playwright merge-reports --reporter html ./all-blob-reports
+      - uses: actions/upload-artifact@v7
+        if: needs.e2e-shard.result != 'success'
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+      - name: Check shard results
+        run: test "${{ needs.e2e-shard.result }}" = success
