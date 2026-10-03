@@ -1,0 +1,14 @@
+{
+  "name": "NOAA Atlas",
+  "short_name": "NOAA Atlas",
+  "description": "Which NOAA API do I use for X? A linked globe and graph of NOAA's public APIs.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0a0e14",
+  "theme_color": "#111720",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
