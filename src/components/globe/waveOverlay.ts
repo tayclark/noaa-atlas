@@ -4,7 +4,7 @@
 
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { AURORA_RASTER_COORDINATES } from './auroraLayer'
-import { renderWaveShading, sampleWaveHeight, type WaveFieldInput } from './waveField'
+import { renderWaveShading, type WaveFieldInput } from './waveField'
 import { pushCanvas } from './windOverlay'
 
 export const WAVE_SHADING_SOURCE_ID = 'wave-shading'
@@ -43,7 +43,7 @@ export function createWaveOverlay(map: MapLibreMap, beforeId?: string): WaveOver
       if (!field) {
         ctx.clearRect(0, 0, SHADING_SIZE, SHADING_SIZE)
       } else {
-        const pixels = renderWaveShading(SHADING_SIZE, SHADING_SIZE, (lat, lon) => sampleWaveHeight(field, lat, lon))
+        const pixels = renderWaveShading(SHADING_SIZE, SHADING_SIZE, field)
         ctx.putImageData(new ImageData(pixels, SHADING_SIZE, SHADING_SIZE), 0, 0)
       }
       pushCanvas(map, WAVE_SHADING_SOURCE_ID)
