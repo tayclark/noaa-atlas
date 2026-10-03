@@ -5000,7 +5000,7 @@
       },
       "theme": "satellite",
       "baseUrl": "https://coastwatch.pfeg.noaa.gov/erddap/",
-      "accessMethod": "rest",
+      "accessMethod": "ogc",
       "formats": [
         "json",
         "csv",
@@ -5043,7 +5043,7 @@
         "api"
       ],
       "kind": "service",
-      "lastVerified": "2026-09-30"
+      "lastVerified": "2026-10-03"
     },
     {
       "id": "nomads",
@@ -6189,7 +6189,7 @@
       },
       "theme": "fisheries",
       "baseUrl": "https://comet.nefsc.noaa.gov/erddap/",
-      "accessMethod": "rest",
+      "accessMethod": "ogc",
       "formats": [
         "json",
         "csv",
@@ -6466,7 +6466,7 @@
         "note": "Varies by dataset from near real-time eMOLT records to fixed historical series."
       },
       "docUrl": "https://comet.nefsc.noaa.gov/erddap/information.html",
-      "lastVerified": "2026-09-30",
+      "lastVerified": "2026-10-03",
       "sample": {
         "url": "https://comet.nefsc.noaa.gov/erddap/search/index.json?page=1&itemsPerPage=1&searchFor=emolt",
         "responseExcerpt": "{\"table\":{\"columnNames\":[\"griddap\",\"Subset\",\"tabledap\",\"Make A Graph\",\"wms\",\"files\",\"Title\",\"Summary\",...,\"Institution\",\"Dataset ID\"],\"rows\":[[\"\",\"https://comet.nefsc.noaa.gov/erddap/tabledap/eMOLT_realtime_bottom_temps_and_profiles.subset\",\"https://comet.nefsc.noaa.gov/erddap/tabledap/eMOLT_realtime_bottom_temps_and_profiles\", ...]]}}"
@@ -7131,7 +7131,7 @@
       },
       "theme": "geospatial",
       "baseUrl": "https://gis.charttools.noaa.gov/arcgis/rest/services",
-      "accessMethod": "arcgis-rest",
+      "accessMethod": "ogc",
       "formats": [
         "arcgis-rest",
         "json",
@@ -7895,7 +7895,7 @@
       },
       "theme": "catalogs",
       "baseUrl": "https://registry.opendata.aws/collab/noaa/",
-      "accessMethod": "cloud-bucket",
+      "accessMethod": "file-download",
       "formats": [
         "other"
       ],
@@ -7920,7 +7920,7 @@
         "note": "Entries are added or changed as datasets join or leave NODD; no fixed schedule is documented."
       },
       "docUrl": "https://www.noaa.gov/information-technology/open-data-dissemination",
-      "lastVerified": "2026-09-30",
+      "lastVerified": "2026-10-03",
       "sample": {
         "url": "https://registry.opendata.aws/collab/noaa/",
         "responseExcerpt": "<h3><a href=\"/noaa-nexrad/\">NEXRAD on AWS</a></h3>\n          <p><a href=\"/noaa-nexrad/\">Details &rarr;</a></p>"
