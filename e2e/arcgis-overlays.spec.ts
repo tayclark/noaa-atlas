@@ -1,8 +1,17 @@
 // ArcGIS MapServer overlays (#247): drawn only while their node is selected, against mocked export
-// tiles and legend, plus one `@live` smoke test that fetches a real tile.
+// tiles and legend, plus `@live` checks that the real services draw (#287).
 
 import { expect, test, type Page } from '@playwright/test'
-import { mockArcgisCharts, mockArcgisHabitat, mockArcgisRaster, mockArcgisVector } from './fixtures/arcgis'
+import {
+  BLANK_TILE_MAX_BYTES,
+  collectArcgisTiles,
+  largestTileBytes,
+  mockArcgisCharts,
+  mockArcgisHabitat,
+  mockArcgisRaster,
+  mockArcgisVector,
+  type LiveTile,
+} from './fixtures/arcgis'
 import { GLOBE, waitForGlobe } from './fixtures/globe'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
@@ -141,13 +150,56 @@ test('a theme hub that lights two overlays draws both, charts underneath, with t
   await expect(legend).toHaveCount(0)
 })
 
+/** Every tile the page got back was a 200 PNG. */
+function expectAllPng(tiles: readonly LiveTile[]) {
+  for (const tile of tiles) {
+    expect(tile.status).toBe(200)
+    expect(tile.contentType).toContain('image/png')
+  }
+}
+
+// A dry day nationally can leave the 24-hour precipitation empty, so this one only checks that a tile
+// arrives; the overlays below must also draw something (#287).
 test('fetches a real overlay tile @live', async ({ page }) => {
-  let status = 0
-  page.on('response', (res) => {
-    if (res.url().includes('/rfc_qpe/MapServer/export')) status = res.status()
-  })
+  const tiles = collectArcgisTiles(page, 'obs/rfc_qpe')
   await page.goto('/')
   await waitForGlobe(page)
   await selectByKeyboard(page, NODE)
-  await expect.poll(() => status, { timeout: 30_000 }).toBe(200)
+  await expect.poll(() => tiles.length, { timeout: 30_000 }).toBeGreaterThan(0)
+  expectAllPng(tiles)
+})
+
+test('draws real CPC outlook tiles and lists the real legend @live', async ({ page }) => {
+  const tiles = collectArcgisTiles(page, 'cpc_6_10_day_outlk')
+  await page.goto('/')
+  await waitForGlobe(page)
+  await selectByKeyboard(page, 'nws-gis-portal')
+  await expect.poll(() => largestTileBytes(tiles), { timeout: 20_000 }).toBeGreaterThan(BLANK_TILE_MAX_BYTES)
+  expectAllPng(tiles)
+  await expect(page.getByRole('status', { name: 'Map overlay legend' })).toContainText(/Above, \d+%/, { timeout: 20_000 })
+})
+
+test('draws real critical habitat tiles @live', async ({ page }) => {
+  // The node's coverage is worldwide, so the globe zooms out over the US, whose coasts have habitat.
+  const tiles = collectArcgisTiles(page, 'All_NMFS_Critical_Habitat')
+  await page.goto('/')
+  await waitForGlobe(page)
+  await selectByKeyboard(page, 'nmfs-arcgis-services')
+  await expect.poll(() => largestTileBytes(tiles), { timeout: 20_000 }).toBeGreaterThan(BLANK_TILE_MAX_BYTES)
+  expectAllPng(tiles)
+  // The real legend's swatches have no labels, so once its call is logged there is no box (and no error).
+  await page.getByRole('tab', { name: /Inspector/ }).click()
+  await expect(page.getByRole('button', { name: /server\/rest\/services\/All_NMFS/ })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('status', { name: 'Map overlay legend' })).toHaveCount(0)
+})
+
+// The charts export draws only blank tiles (largest 885 B); un-fixme this when #309 moves the overlay
+// to an endpoint that draws.
+test.fixme('draws real nautical chart tiles @live', async ({ page }) => {
+  const tiles = collectArcgisTiles(page, 'MarineChart_Services/NOAACharts')
+  await page.goto('/')
+  await waitForGlobe(page)
+  await selectByKeyboard(page, 'noaa-chart-services')
+  await expect.poll(() => largestTileBytes(tiles), { timeout: 20_000 }).toBeGreaterThan(BLANK_TILE_MAX_BYTES)
+  expectAllPng(tiles)
 })

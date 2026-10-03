@@ -74,3 +74,34 @@ export async function mockArcgisHabitat(page: Page) {
   await page.route(ARCGIS_HABITAT_LEGEND, (route) => route.fulfill({ json: makeArcgisHabitatLegend(), headers }))
   return requests
 }
+
+/**
+ * A blank 256x256 export tile is about 885 bytes; every tile with something drawn on it that we
+ * measured was 4 kB or more. A live overlay whose largest tile stays under this draws nothing (#287).
+ */
+export const BLANK_TILE_MAX_BYTES = 1500
+
+export interface LiveTile {
+  status: number
+  contentType: string
+  bytes: number
+}
+
+/**
+ * Records the real export tiles MapLibre fetches for one MapServer (`servicePath` is part of its URL,
+ * e.g. `All_NMFS_Critical_Habitat`). The tiles bypass the Inspector, so this listens on the page.
+ */
+export function collectArcgisTiles(page: Page, servicePath: string) {
+  const tiles: LiveTile[] = []
+  page.on('response', async (res) => {
+    if (!res.url().includes(`${servicePath}/MapServer/export`)) return
+    const bytes = await res.body().then((body) => body.length, () => 0)
+    tiles.push({ status: res.status(), contentType: res.headers()['content-type'] ?? '', bytes })
+  })
+  return tiles
+}
+
+/** The size of the largest image tile, or 0 before any has arrived. */
+export function largestTileBytes(tiles: readonly LiveTile[]) {
+  return Math.max(0, ...tiles.filter((t) => t.status === 200 && t.contentType.includes('image/png')).map((t) => t.bytes))
+}
