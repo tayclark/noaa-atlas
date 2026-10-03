@@ -7,16 +7,21 @@ import type { ServiceNode } from '../../data/graphSchema'
 import { getPoint } from '../../data/nwsClient'
 import { getPlanetaryKp } from '../../data/swpcClient'
 import { CopyButton } from '../CopyButton'
-import { SWPC_TRY_ITS, type TryItTable } from './swpcTryIt'
+import { COOPS_TRY_ITS } from './coopsTryIt'
+import { SWPC_TRY_ITS } from './swpcTryIt'
+import type { TryItTable } from './tryItTable'
 
 // Must match the `sample.url` authored in graph.json for the same node.
 const RUNNABLE_SAMPLES: Partial<Record<string, () => Promise<unknown>>> = {
   'nws-api': () => getPoint(39.7456, -97.0892),
   // OVATION isn't runnable here: its ~1 MB grid is no use as a pretty-printed body.
   'swpc-geomagnetic-indices': () => getPlanetaryKp(),
-  // CO-OPS isn't runnable either: the client returns a parsed result (latest row, `ok` wrapper), not
+  // The CO-OPS Data API isn't runnable either: the client returns a parsed result (latest row, `ok` wrapper), not
   // the raw body the sample excerpt shows, so the live output wouldn't match the sample it replaces.
 }
+
+// Nodes whose Run sample shows tables rather than a raw body.
+const TRY_ITS = { ...SWPC_TRY_ITS, ...COOPS_TRY_ITS }
 
 type RunState =
   | { status: 'idle' }
@@ -31,7 +36,7 @@ export function NodeSampleSection({ node }: { node: ServiceNode }) {
   if (!sample) return null
 
   const runSample = RUNNABLE_SAMPLES[node.id]
-  const runTables = SWPC_TRY_ITS[node.id]
+  const runTables = TRY_ITS[node.id]
   const request = { url: sample.url, requestHeaders: sample.headers ?? {} }
 
   const onRun = () => {

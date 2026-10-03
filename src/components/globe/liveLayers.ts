@@ -22,4 +22,6 @@ export const LIVE_LAYERS: Readonly<Record<string, { layer: LiveLayerKey | null; 
   'swpc-alerts-scales': { layer: null, status: 'Live in its detail panel: Run sample fetches the current scales and alerts. Nothing is drawn on the globe.' },
   'swpc-rtsw-solar-wind': { layer: null, status: 'Live in its detail panel: Run sample fetches the latest solar wind readings. Nothing is drawn on the globe.' },
   'swpc-goes-space-environment': { layer: null, status: 'Live in its detail panel: Run sample fetches the latest X-ray flux. Nothing is drawn on the globe.' },
+  'coops-metadata-api': { layer: null, status: 'Live in its detail panel: Run sample fetches the details, flood levels and datums of one station (Panama City, FL). Nothing is drawn on the globe.' },
+  'coops-derived-product-api': { layer: null, status: 'Live in its detail panel: Run sample fetches the sea level trend and high tide flood days of one station (Panama City, FL). Nothing is drawn on the globe.' },
 }

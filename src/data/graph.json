@@ -1960,13 +1960,12 @@
         "note": "Station and sensor metadata; changes when stations are installed, moved or reconfigured."
       },
       "docUrl": "https://api.tidesandcurrents.noaa.gov/mdapi/prod/",
-      "lastVerified": "2026-09-30",
+      "lastVerified": "2026-10-03",
       "sample": {
-        "url": "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/8729108.json",
-        "responseExcerpt": "{\n  \"count\": 1,\n  \"stations\": [\n    {\n      \"id\": \"8729108\",\n      \"name\": \"Panama City\",\n      \"state\": \"FL\",\n      \"lat\": 30.149723,\n      \"lng\": -85.664444,\n      \"details\": { \"self\": \".../stations/8729108/details.json\" },\n      \"datums\": { \"self\": \".../stations/8729108/datums.json\" }\n    }\n  ]\n}\n(abbreviated)"
+        "url": "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/8729108.json?expand=details,datums,floodlevels&units=metric",
+        "responseExcerpt": "{\n  \"count\": 1,\n  \"stations\": [\n    {\n      \"id\": \"8729108\",\n      \"name\": \"Panama City\",\n      \"state\": \"FL\",\n      \"details\": { \"established\": \"1973-02-11 00:00:00\", \"noaachart\": \"11391\", ... },\n      \"floodlevels\": { \"nos_minor\": 1.944, \"nos_moderate\": 2.24, \"nos_major\": 2.614, ... },\n      \"datums\": {\n        \"epoch\": \"1983-2001\",\n        \"units\": \"meters\",\n        \"datums\": [\n          { \"name\": \"STND\", \"description\": \"Station Datum\", \"value\": 0.0 },\n          { \"name\": \"MHHW\", \"description\": \"Mean Higher-High Water\", \"value\": 1.428 },\n          ...\n        ]\n      }\n    }\n  ]\n}\n(abbreviated)"
       },
-      "liveLayer": false,
-      "notLiveReason": "Not wired into the v1 map: station-based point data with no bulk layer to draw yet.",
+      "liveLayer": true,
       "tags": [
         "stations",
         "metadata",
@@ -2296,13 +2295,12 @@
         "note": "Derived from long-term records and updated as each product is reprocessed, not a live feed."
       },
       "docUrl": "https://api.tidesandcurrents.noaa.gov/dpapi/prod/",
-      "lastVerified": "2026-09-30",
+      "lastVerified": "2026-10-03",
       "sample": {
-        "url": "https://api.tidesandcurrents.noaa.gov/dpapi/prod/webapi/product/sealvltrends.json?station=8729108",
-        "responseExcerpt": "{\n  \"count\": 1,\n  \"SeaLvlTrends\": [\n    {\n      \"stationId\": \"8729108\",\n      \"stationName\": \"Panama City\",\n      \"trendUnits\": \"inches/decade\",\n      \"trend\": 1.21,\n      \"trendError\": 0.1\n    }\n  ]\n}\n(abbreviated)"
+        "url": "https://api.tidesandcurrents.noaa.gov/dpapi/prod/webapi/product/sealvltrends.json?station=8729108&units=metric",
+        "responseExcerpt": "{\n  \"count\": 1,\n  \"SeaLvlTrends\": [\n    {\n      \"stationId\": \"8729108\",\n      \"stationName\": \"Panama City\",\n      \"trendUnits\": \"mm/yr\",\n      \"trend\": 3.08,\n      \"trendError\": 0.26,\n      \"startDate\": \"03/15/1973\",\n      \"endDate\": \"12/15/2025\"\n    }\n  ]\n}\n(abbreviated)"
       },
-      "liveLayer": false,
-      "notLiveReason": "Not wired into the v1 map: station-based point data with no bulk layer to draw yet.",
+      "liveLayer": true,
       "tags": [
         "sea-level",
         "flooding",
