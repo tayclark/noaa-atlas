@@ -70,6 +70,15 @@ export function makeSolarWindRows(minutes = 3) {
   ]).flat()
 }
 
+/** rtsw_mag_1m.json rows, newest first, with an inactive spacecraft interleaved as in the real file. */
+export function makeSolarWindMagRows(minutes = 3) {
+  const time = (i: number) => `2026-10-01T17:${String(44 - i).padStart(2, '0')}:00`
+  return Array.from({ length: minutes }, (_, i) => [
+    { time_tag: time(i), active: true, source: 'SOLAR1', bt: 6.39, bz_gsm: -2 - i },
+    { time_tag: time(i), active: false, source: 'ACE', bt: 5, bz_gsm: 2 },
+  ]).flat()
+}
+
 /** xrays-6-hour.json rows: one per minute for each band. */
 export function makeXrayRows(minutes = 3) {
   const time = (i: number) => `2026-10-01T17:${String(44 - i).padStart(2, '0')}:00Z`

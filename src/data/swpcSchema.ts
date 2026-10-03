@@ -76,6 +76,23 @@ const solarWindSchema = z.array(solarWindRowSchema).transform((rows) =>
 )
 export type SwpcSolarWind = z.output<typeof solarWindSchema>
 
+// rtsw_mag_1m.json is the magnetometer twin of the wind file (about 1.6 MB, 150 kB gzipped): the same
+// rows per spacecraft per minute, with the interplanetary magnetic field in nT.
+const solarWindMagRowSchema = z.object({
+  time_tag: z.iso.datetime({ local: true }),
+  active: z.boolean(),
+  source: z.string(),
+  bt: z.number().nullable(),
+  bz_gsm: z.number().nullable(),
+})
+const solarWindMagSchema = z.array(solarWindMagRowSchema).transform((rows) =>
+  rows
+    .filter((row) => row.active && row.bt !== null)
+    .sort((a, b) => b.time_tag.localeCompare(a.time_tag))
+    .slice(0, SOLAR_WIND_ROWS),
+)
+export type SwpcSolarWindMag = z.output<typeof solarWindMagSchema>
+
 // GOES X-ray flux: one row per minute for each of two wavelength bands, which `energy` names.
 const xrayRowSchema = z.object({
   time_tag: z.iso.datetime(),
@@ -96,6 +113,10 @@ export function parseAlerts(raw: unknown): SwpcAlerts {
 
 export function parseSolarWind(raw: unknown): SwpcSolarWind {
   return solarWindSchema.parse(raw)
+}
+
+export function parseSolarWindMag(raw: unknown): SwpcSolarWindMag {
+  return solarWindMagSchema.parse(raw)
 }
 
 export function parseXrays(raw: unknown): SwpcXrays {

@@ -9,12 +9,14 @@ import {
   parseOvation,
   parseScales,
   parseSolarWind,
+  parseSolarWindMag,
   parseXrays,
   type SwpcAlerts,
   type SwpcKp1m,
   type SwpcOvation,
   type SwpcScales,
   type SwpcSolarWind,
+  type SwpcSolarWindMag,
   type SwpcXrays,
 } from './swpcSchema'
 
@@ -74,6 +76,11 @@ export function getSpaceWeatherAlerts(): Promise<SwpcAlerts> {
 /** The active L1 spacecraft's recent one-minute solar wind plasma readings (the file is about 3 MB). */
 export function getSolarWind(): Promise<SwpcSolarWind> {
   return request('/json/rtsw/rtsw_wind_1m.json', parseSolarWind)
+}
+
+/** The active L1 spacecraft's recent one-minute magnetic field readings (Bt and Bz). */
+export function getSolarWindMag(): Promise<SwpcSolarWindMag> {
+  return request('/json/rtsw/rtsw_mag_1m.json', parseSolarWindMag)
 }
 
 /** GOES primary-satellite X-ray flux for the past six hours, both bands. */

@@ -50,14 +50,11 @@ function App() {
       </main>
       <footer className="app-footer">
         {compact ? (
-          // One line on a phone, where the full text would take 76px of a 844px screen; the rest
-          // is in the About dialog.
+          // One line on a phone, where the full text would take 76px of a 844px screen; the rest,
+          // including the weather.gov link, is in the About dialog. A link here as well wrapped the
+          // line at 320px (#294).
           <p className="app-footer-compact">
             Unofficial · Not for emergencies ·{' '}
-            <a href="https://www.weather.gov" target="_blank" rel="noreferrer">
-              weather.gov
-            </a>{' '}
-            ·{' '}
             <button type="button" onClick={() => setAboutOpen(true)}>
               About
             </button>

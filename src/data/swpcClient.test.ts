@@ -7,11 +7,12 @@ import {
   getOvationAurora,
   getPlanetaryKp,
   getSolarWind,
+  getSolarWindMag,
   getSpaceWeatherAlerts,
   SwpcHttpError,
   SwpcParseError,
 } from './swpcClient'
-import { makeAlerts, makeKp1m, makeOvation, makeScales, makeSolarWindRows, makeXrayRows } from './swpcFixtures'
+import { makeAlerts, makeKp1m, makeOvation, makeScales, makeSolarWindMagRows, makeSolarWindRows, makeXrayRows } from './swpcFixtures'
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status })
@@ -108,6 +109,16 @@ describe('space weather try-it feeds (#240)', () => {
     rows[0].proton_speed = null as never
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(rows))
     expect(await getSolarWind()).toEqual([])
+  })
+
+  it('keeps only the active spacecraft rows of the magnetometer file, newest first', async () => {
+    const raw = makeSolarWindMagRows(3).reverse()
+    raw.push({ time_tag: '2026-10-01T17:45:00', active: true, source: 'SOLAR1', bt: null as never, bz_gsm: null as never })
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(raw))
+    const rows = await getSolarWindMag()
+    expect(rows.map((row) => row.time_tag)).toEqual(['2026-10-01T17:44:00', '2026-10-01T17:43:00', '2026-10-01T17:42:00'])
+    expect(rows.every((row) => row.source === 'SOLAR1')).toBe(true)
+    expect(fetch).toHaveBeenCalledWith('https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json', expect.any(Object))
   })
 
   it('fetches the GOES X-ray file', async () => {

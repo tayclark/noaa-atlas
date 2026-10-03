@@ -120,6 +120,12 @@ test('the graph keeps its layout and the finder its task while another tab shows
   await expect(picked).toBeVisible()
 })
 
+test('the footer stays one line on a 320px-wide phone', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 })
+  await page.goto('/')
+  expect((await page.getByRole('contentinfo').boundingBox())?.height ?? 0).toBeLessThanOrEqual(48)
+})
+
 test('the footer is a single tappable line, with the full disclaimer behind About', async ({ page }) => {
   await page.goto('/')
   const footer = page.getByRole('contentinfo')
