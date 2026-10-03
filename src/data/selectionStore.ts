@@ -3,13 +3,10 @@
 // context/state, matching requestLog.ts's convention — components read it via
 // `useSyncExternalStore`.
 
-import graphJson from './graph.json'
+import { graphFile, tasks } from './graphData'
 import type { ServiceNode } from './graphSchema'
-import { parseGraphFile } from './graphSchema'
 import type { LonLat } from './coverageLookup'
 import { nodesCoveringPoint } from './coverageLookup'
-import { parseTasksFile } from './taskSchema'
-import tasksJson from './tasks.json'
 
 export interface Selection {
   selectedNodeId: string | null
@@ -17,8 +14,7 @@ export interface Selection {
   selectedTaskId: string | null
 }
 
-const graphNodes: ServiceNode[] = parseGraphFile(graphJson).nodes as ServiceNode[]
-const tasks = parseTasksFile(tasksJson).tasks
+const graphNodes: ServiceNode[] = graphFile.nodes
 
 let selection: Selection = { selectedNodeId: null, selectedPoint: null, selectedTaskId: null }
 const listeners = new Set<() => void>()

@@ -1,11 +1,9 @@
-import graphJson from '../../data/graph.json'
-import { buildGraph } from '../../data/buildGraph'
-import { parseGraphFile, type GraphEdge } from '../../data/graphSchema'
+import { graph } from '../../data/graphData'
+import type { GraphEdge } from '../../data/graphSchema'
 import { getNeighbors } from '../../data/neighbors'
 import { selectNode } from '../../data/selectionStore'
 import { EDGE_TYPE_LABELS } from './graphLayout'
 
-const graph = buildGraph(parseGraphFile(graphJson))
 // Derived hierarchy edges: their label just repeats the neighbour's name, so it isn't shown.
 const STRUCTURAL = new Set<GraphEdge['type']>(['root', 'theme'])
 

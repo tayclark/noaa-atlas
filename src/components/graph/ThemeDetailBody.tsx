@@ -1,14 +1,11 @@
 // Detail panel body for a theme hub (#145): what the theme covers and which services sit under
 // it. Service rows select the service, like the neighbour buttons in NodeNeighborsSection.
 
-import graphJson from '../../data/graph.json'
-import { buildGraph } from '../../data/buildGraph'
-import { parseGraphFile, THEME_DESCRIPTIONS, type Graph, type ThemeNode } from '../../data/graphSchema'
+import { graph as defaultGraph } from '../../data/graphData'
+import { THEME_DESCRIPTIONS, type Graph, type ThemeNode } from '../../data/graphSchema'
 import { selectNode } from '../../data/selectionStore'
 import { THEME_COLORS } from '../../data/themeColors'
 import { summarizeTheme } from '../../data/themeSummary'
-
-const defaultGraph = buildGraph(parseGraphFile(graphJson))
 
 /** `graph` is only overridden by tests, to reach the empty-theme state. */
 export function ThemeDetailBody({ node, graph = defaultGraph }: { node: ThemeNode; graph?: Graph }) {

@@ -1,14 +1,12 @@
 // Detail panel body for the NOAA root (#148): what the atlas is and how its services split across
 // the themes. Theme rows select the theme hub, like the service rows in ThemeDetailBody.
 
-import graphJson from '../../data/graph.json'
-import { buildGraph, themeNodeId } from '../../data/buildGraph'
-import { parseGraphFile, THEME_LABELS, type Graph } from '../../data/graphSchema'
+import { themeNodeId } from '../../data/buildGraph'
+import { graph as defaultGraph } from '../../data/graphData'
+import { THEME_LABELS, type Graph } from '../../data/graphSchema'
 import { selectNode } from '../../data/selectionStore'
 import { THEME_COLORS } from '../../data/themeColors'
 import { summarizeRoot } from '../../data/themeSummary'
-
-const defaultGraph = buildGraph(parseGraphFile(graphJson))
 
 /** `graph` is only overridden by tests, to reach the empty-theme state. */
 export function RootDetailBody({ graph = defaultGraph }: { graph?: Graph }) {

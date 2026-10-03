@@ -2,18 +2,14 @@
 // Back/Forward. The only module that touches `location` and `history`; the rules are in
 // selectionHash.ts.
 
-import { buildGraph } from './buildGraph'
-import graphJson from './graph.json'
-import { parseGraphFile } from './graphSchema'
+import { graph, tasks } from './graphData'
 import { formatSelectionHash, historyModeFor, parseSelectionHash, type KnownIds } from './selectionHash'
 import type { Selection } from './selectionStore'
 import { clearSelection, getSelectionSnapshot, selectNode, selectPoint, selectTask, subscribeSelection } from './selectionStore'
-import { parseTasksFile } from './taskSchema'
-import tasksJson from './tasks.json'
 
 const known: KnownIds = {
-  nodeIds: new Set(buildGraph(parseGraphFile(graphJson)).nodes.map((node) => node.id)),
-  taskIds: new Set(parseTasksFile(tasksJson).tasks.map((task) => task.id)),
+  nodeIds: new Set(graph.nodes.map((node) => node.id)),
+  taskIds: new Set(tasks.map((task) => task.id)),
 }
 
 function apply(selection: Selection | null): void {

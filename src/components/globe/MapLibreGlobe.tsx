@@ -10,8 +10,8 @@ import {
   getPoint,
   getStations,
 } from '../../data/nwsClient'
-import graphJson from '../../data/graph.json'
-import { parseGraphFile, type ServiceNode } from '../../data/graphSchema'
+import { graphFile, tasks } from '../../data/graphData'
+import type { ServiceNode } from '../../data/graphSchema'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
 import { pollWhileVisible } from '../../data/pollWhileVisible'
 import { getDay1CategoricalOutlook, SPC_REFRESH_MS } from '../../data/spcClient'
@@ -107,8 +107,6 @@ import {
   pickNearestStation,
 } from './nwsPointLookup'
 import { nodesCoveringPoint } from '../../data/coverageLookup'
-import { parseTasksFile } from '../../data/taskSchema'
-import tasksJson from '../../data/tasks.json'
 import { describeSelectionForGlobe, type GlobeViewContext } from './selectionGlobeView'
 import { subscribeSelection, getSelectionSnapshot, selectPoint } from '../../data/selectionStore'
 import { getViewSnapshot, resolveView, subscribeView } from '../../data/viewStore'
@@ -179,12 +177,11 @@ const coopsRadius = (stops: [number, number][]) =>
 // Worldwide coverage tints the whole globe, so the default view is kept rather than framing the world.
 const GLOBAL_VIEW_ZOOM = 1.5
 
-// Parsed once at module scope — graph.json is small and static, so there's no need to
-// re-validate it on every click (#41).
-const graphNodes: ServiceNode[] = parseGraphFile(graphJson).nodes
+// graph.json is parsed once, in graphData.ts (#41, #270), rather than on every click.
+const graphNodes: ServiceNode[] = graphFile.nodes
 const globeViewContext: GlobeViewContext = {
   nodes: graphNodes,
-  tasks: parseTasksFile(tasksJson).tasks,
+  tasks,
   nodesAtPoint: (point) => nodesCoveringPoint(graphNodes, point),
 }
 

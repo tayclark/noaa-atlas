@@ -3,13 +3,13 @@
 // `useSyncExternalStore`, like the other panels.
 
 import { useSyncExternalStore } from 'react'
-import graphJson from '../data/graph.json'
 import { clearCompare, getCompareSnapshot, removeCompare, subscribeCompare } from '../data/compareStore'
-import { parseGraphFile, type ServiceNode } from '../data/graphSchema'
+import { graphFile } from '../data/graphData'
+import type { ServiceNode } from '../data/graphSchema'
 import { buildCompareRows } from './graph/compareRows'
 import './ComparePanel.css'
 
-const nodesById = new Map(parseGraphFile(graphJson).nodes.map((node) => [node.id, node]))
+const nodesById = new Map(graphFile.nodes.map((node) => [node.id, node]))
 
 export function ComparePanel() {
   const ids = useSyncExternalStore(subscribeCompare, getCompareSnapshot)
