@@ -29,8 +29,8 @@ import {
 } from './arcgisExportLayer'
 import { getHiloPredictions, getWaterLevel } from '../../data/coopsClient'
 import { COOPS_STATIONS } from '../../data/coopsStations'
-import { DART_STATIONS } from '../../data/dartStations'
-import { NDBC_STATIONS } from '../../data/ndbcStations'
+import { loadDartStations } from '../../data/dartStations'
+import { loadNdbcStations } from '../../data/ndbcStations'
 import { getOvationAurora, getPlanetaryKp, SWPC_REFRESH_MS } from '../../data/swpcClient'
 import type { SwpcOvation } from '../../data/swpcSchema'
 import {
@@ -299,6 +299,9 @@ export function MapLibreGlobe() {
   // selection effect the aurora layer now exists.
   const ovationRef = useRef<SwpcOvation | null>(null)
   const [auroraCells, setAuroraCells] = useState<number | null>(null)
+  // The buoy lists load the first time their layer is shown (#269): the count once drawn, or 'error'.
+  const [dartStations, setDartStations] = useState<number | 'error' | null>(null)
+  const [ndbcStations, setNdbcStations] = useState<number | 'error' | null>(null)
   const [arcgisLegends, setArcgisLegends] = useState<Partial<Record<ArcgisOverlay['key'], ArcgisLegendState>>>({})
   const [spc, setSpc] = useState<
     { status: 'loading' } | { status: 'ok'; categories: SpcCategory[] } | { status: 'empty' } | { status: 'error'; message: string }
@@ -523,7 +526,7 @@ export function MapLibreGlobe() {
       map.on('mouseleave', COOPS_LAYER_ID, () => {
         map.getCanvas().style.cursor = ''
       })
-      map.addSource(DART_SOURCE_ID, { type: 'geojson', data: dartStationsToGeoJSON(DART_STATIONS) })
+      map.addSource(DART_SOURCE_ID, { type: 'geojson', data: dartStationsToGeoJSON([]) })
       map.addLayer({
         id: DART_LAYER_ID,
         type: 'circle',
@@ -542,7 +545,7 @@ export function MapLibreGlobe() {
       map.on('mouseleave', DART_LAYER_ID, () => {
         map.getCanvas().style.cursor = ''
       })
-      map.addSource(NDBC_SOURCE_ID, { type: 'geojson', data: ndbcStationsToGeoJSON(NDBC_STATIONS) })
+      map.addSource(NDBC_SOURCE_ID, { type: 'geojson', data: ndbcStationsToGeoJSON([]) })
       map.addLayer({
         id: NDBC_LAYER_ID,
         type: 'circle',
@@ -937,13 +940,28 @@ export function MapLibreGlobe() {
   const forecastCycle = forecast.status === 'idle' ? null : forecast.cycle
   const forecastLabel = forecastLayer === 'wind' ? 'Wind' : 'Wave'
 
-  // The DART buoys (#80) are shown only while their node is selected, once the layer exists.
+  // The DART buoys (#80) are shown only while their node is selected, once the layer exists. The
+  // list loads the first time they're shown (#269).
   const dartShown = liveLayers.includes('dart-stations')
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(DART_LAYER_ID)) return
     map.setLayoutProperty(DART_LAYER_ID, 'visibility', dartShown ? 'visible' : 'none')
-  }, [dartShown, mapLoaded])
+    if (!dartShown || dartStations !== null) return
+    let cancelled = false
+    loadDartStations()
+      .then((stations) => {
+        if (cancelled) return
+        map.getSource<GeoJSONSource>(DART_SOURCE_ID)?.setData(dartStationsToGeoJSON(stations))
+        setDartStations(stations.length)
+      })
+      .catch(() => {
+        if (!cancelled) setDartStations('error')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [dartShown, dartStations, mapLoaded])
 
   // The SPC outlook (#245) is fetched only while its node is selected, and refreshed while the tab
   // is visible. A failed refresh keeps the polygons already drawn.
@@ -1006,12 +1024,27 @@ export function MapLibreGlobe() {
     }
   }, [arcgisKey, mapLoaded])
 
+  // The NDBC buoys load the first time they're shown too (#269).
   const ndbcShown = liveLayers.includes('ndbc-stations')
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(NDBC_LAYER_ID)) return
     map.setLayoutProperty(NDBC_LAYER_ID, 'visibility', ndbcShown ? 'visible' : 'none')
-  }, [ndbcShown, mapLoaded])
+    if (!ndbcShown || ndbcStations !== null) return
+    let cancelled = false
+    loadNdbcStations()
+      .then((stations) => {
+        if (cancelled) return
+        map.getSource<GeoJSONSource>(NDBC_SOURCE_ID)?.setData(ndbcStationsToGeoJSON(stations))
+        setNdbcStations(stations.length)
+      })
+      .catch(() => {
+        if (!cancelled) setNdbcStations('error')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [ndbcShown, ndbcStations, mapLoaded])
 
   return (
     <div className={`globe${view.card ? ' globe-has-card' : ''}`}>
@@ -1021,10 +1054,10 @@ export function MapLibreGlobe() {
         aria-label="Globe view of NOAA API coverage"
         data-coverage-features={view.footprint.features.length}
         data-coops-stations={mapLoaded ? COOPS_STATIONS.length : undefined}
-        data-dart-stations={mapLoaded ? (dartShown ? DART_STATIONS.length : 0) : undefined}
+        data-dart-stations={mapLoaded ? (dartShown ? (dartStations ?? 'loading') : 0) : undefined}
         data-arcgis-overlay={mapLoaded ? arcgisKey || 'hidden' : undefined}
         data-spc-outlook={mapLoaded ? (spcShown ? spc.status : 'hidden') : undefined}
-        data-ndbc-stations={mapLoaded ? (ndbcShown ? NDBC_STATIONS.length : 0) : undefined}
+        data-ndbc-stations={mapLoaded ? (ndbcShown ? (ndbcStations ?? 'loading') : 0) : undefined}
         data-nowcoast-radar={mapLoaded ? (radarShown ? 'visible' : 'hidden') : undefined}
         data-wind={mapLoaded ? (windShown ? (windField ? 'visible' : 'loading') : 'hidden') : undefined}
         data-waves={mapLoaded ? (wavesShown ? (waveField ? 'visible' : 'loading') : 'hidden') : undefined}
