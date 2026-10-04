@@ -17,6 +17,7 @@ const nodes = parseGraphFile(graphJson).nodes as ServiceNode[]
 const nwsApi = nodes.find((n) => n.id === 'nws-api') as ServiceNode
 const kpNode = nodes.find((n) => n.id === 'swpc-geomagnetic-indices') as ServiceNode
 const windNode = nodes.find((n) => n.id === 'swpc-rtsw-solar-wind') as ServiceNode
+const coopsNodes = nodes.filter((n) => n.id === 'coops-metadata-api' || n.id === 'coops-derived-product-api')
 const notLive = nodes.find((n) => !n.liveLayer) as ServiceNode
 
 const writeText = vi.fn().mockResolvedValue(undefined)
@@ -99,6 +100,15 @@ describe('NodeSampleSection', () => {
     expect(screen.getByRole('table', { name: 'Solar wind' })).toBeTruthy()
     expect(screen.getByRole('cell', { name: '430' })).toBeTruthy()
     expect(screen.queryByLabelText('Sample response')).toBeNull()
+  })
+
+  it('offers Run sample on the CO-OPS Metadata and Derived Product nodes (#241)', () => {
+    expect(coopsNodes).toHaveLength(2)
+    for (const node of coopsNodes) {
+      const { unmount } = render(<NodeSampleSection node={node} />)
+      expect(screen.getByRole('button', { name: 'Run sample' }), node.id).toBeTruthy()
+      unmount()
+    }
   })
 
   it('reports a failed try-it and keeps the static sample (#240)', async () => {

@@ -4,12 +4,7 @@
 
 import { getGoesXrays, getNoaaScales, getSolarWind, getSolarWindMag, getSpaceWeatherAlerts } from '../../data/swpcClient'
 import type { SwpcAlerts, SwpcScaleCell, SwpcScales, SwpcSolarWind, SwpcSolarWindMag, SwpcXrays } from '../../data/swpcSchema'
-
-export interface TryItTable {
-  caption: string
-  columns: string[]
-  rows: string[][]
-}
+import type { TryItTable } from './tryItTable'
 
 const ALERT_ROWS = 8
 const SERIES_ROWS = 12
