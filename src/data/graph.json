@@ -3127,7 +3127,7 @@
       "kind": "service",
       "name": "NHC Active Tropical Cyclones",
       "shortName": "NHC Active Storms",
-      "summary": "National Hurricane Center's machine-readable active-storm list (CurrentStorms.json), per-basin RSS feeds, and advisory GIS files (forecast track, cone, watches/warnings, wind radii) for Atlantic and eastern Pacific storms.",
+      "summary": "National Hurricane Center's machine-readable active-storm list (CurrentStorms.json), per-basin RSS feeds, and advisory GIS files (forecast track, cone, watches/warnings, wind radii) for Atlantic and eastern and central Pacific storms. The same advisory layers are served as queryable ArcGIS MapServer layers (with CORS) on mapservices.weather.noaa.gov, which the globe uses to draw and animate each storm's track.",
       "owner": {
         "office": "NWS",
         "program": "National Hurricane Center (NHC)"
@@ -3425,13 +3425,12 @@
         "note": "Advisories are issued about every six hours per active storm (intermediate updates more often); CurrentStorms.json is empty when no storms are active."
       },
       "docUrl": "https://www.nhc.noaa.gov/gis/",
-      "lastVerified": "2026-09-30",
+      "lastVerified": "2026-10-09",
       "sample": {
         "url": "https://www.nhc.noaa.gov/CurrentStorms.json",
         "responseExcerpt": "{\n  \"activeStorms\": [\n    {\n      \"id\": \"al062026\",\n      \"name\": \"Fay\",\n      \"classification\": \"TD\",\n      \"intensity\": \"30\",\n      \"pressure\": \"1011\",\n      \"latitude\": \"30.1N\",\n      \"longitude\": \"39.2W\",\n      \"movementDir\": 270,\n      \"movementSpeed\": 8,\n      \"lastUpdate\": \"2026-09-23T21:00:00.000Z\"\n    }\n  ]\n}\n(trimmed: each storm also lists advisory text URLs and zip/kmz GIS file URLs)"
       },
-      "liveLayer": false,
-      "notLiveReason": "Not wired into the v1 map: storm data is only present while a cyclone is active, and the GIS files are shapefile/KMZ downloads that need per-storm handling.",
+      "liveLayer": true,
       "tags": [
         "hurricane",
         "tropical-cyclone",

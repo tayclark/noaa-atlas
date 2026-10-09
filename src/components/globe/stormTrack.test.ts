@@ -13,10 +13,12 @@ import {
   formatFixPopupHtml,
   formatStormTime,
   frameTimes,
+  framingPadding,
   parseDtg,
   parseValidTime,
   stateAt,
   stepToFix,
+  shortStormName,
   stormBounds,
   trackFeatures,
   type StormTrack,
@@ -206,6 +208,15 @@ describe('labels', () => {
     expect(categoryLabel(categoryFor(105))).toBe('Cat 3')
     expect(categoryLabel(categoryFor(140))).toBe('Cat 5')
     expect(describeStormState({ t: 0, lon: 0, lat: 0, windKt: 72.6, label: 'Hurricane', forecast: false })).toBe('73 kt, Cat 1')
+    expect(describeStormState({ t: 0, lon: 0, lat: 0, windKt: 15, label: 'Disturbance', forecast: false })).toBe('15 kt, Disturbance')
+  })
+
+  it('shortens a storm to its own name for the chips', () => {
+    expect(shortStormName('Hurricane Isaias')).toBe('Isaias')
+    expect(shortStormName('Major Hurricane Isaias')).toBe('Isaias')
+    expect(shortStormName('Potential Tropical Cyclone Two')).toBe('Two')
+    expect(shortStormName('Post-Tropical Cyclone Kale')).toBe('Kale')
+    expect(shortStormName('Invest')).toBe('Invest')
   })
 
   it('times fixes in UTC against the advisory', () => {
@@ -229,5 +240,21 @@ describe('labels', () => {
     expect(describeNhcFetchOutcome(new NhcParseError('x', null))).toMatch(/unexpected/)
     expect(describeNhcFetchOutcome(new TypeError('fetch'))).toMatch(/Could not reach/)
     expect(describeNhcFetchOutcome('?')).toMatch(/Something went wrong/)
+  })
+})
+
+describe('framingPadding', () => {
+  it('clears the card above and the controls below, with a margin', () => {
+    expect(framingPadding({ width: 700, height: 850 }, 200, 300)).toEqual({ top: 224, bottom: 324, left: 60, right: 60 })
+  })
+
+  it('keeps a third of the height for the storm when the overlays would take more', () => {
+    const padding = framingPadding({ width: 360, height: 400 }, 250, 250)
+    expect(padding.top + padding.bottom).toBeLessThanOrEqual(400 - 400 / 3)
+    expect(padding.left).toBe(45)
+  })
+
+  it('keeps a margin where there is no overlay', () => {
+    expect(framingPadding({ width: 1000, height: 800 }, 0, 0)).toMatchObject({ top: 24, bottom: 24 })
   })
 })

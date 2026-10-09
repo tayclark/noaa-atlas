@@ -9,7 +9,7 @@ export interface TimeRange {
 }
 
 /** The control that owns playback. Only one plays at a time, since each would otherwise drive the shared time. */
-export type PlayerId = 'radar' | 'wind' | 'forecast'
+export type PlayerId = 'radar' | 'wind' | 'forecast' | 'storm'
 
 export interface TimeState {
   /** Epoch ms, or null for "now" (the live edge, which follows the clock). */
