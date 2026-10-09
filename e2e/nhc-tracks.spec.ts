@@ -131,6 +131,19 @@ test.describe('mocked', () => {
     await expect(page.getByRole('status', { name: 'Storm track legend' })).not.toContainText('GFS simulated radar')
   })
 
+  test('the alert polygons fade under the tracks, also on a deep link, and come back for the alerts node', async ({ page }) => {
+    await mockNhcStorms(page)
+    await page.goto(`/#node=${NODE}`)
+    await waitForGlobe(page)
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-nhc-tracks', 'ok')
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-alerts-emphasis', 'dimmed')
+
+    await selectByKeyboard(page, 'nws-api')
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-alerts-emphasis', 'highlighted')
+    await selectByKeyboard(page, 'spc-gis-data')
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-alerts-emphasis', 'normal')
+  })
+
   test('the layer queries land in the Inspector', async ({ page }) => {
     await mockNhcStorms(page)
     await page.goto('/')
