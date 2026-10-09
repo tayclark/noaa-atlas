@@ -5,7 +5,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { emptyNhcStormData } from '../src/data/nhcFixtures'
 import { GLOBE, waitForGlobe } from './fixtures/globe'
-import { mockNhcStorms, NHC_URL } from './fixtures/nhc'
+import { GOES_FRAMES, mockGoesSatellite, mockNhcStorms, NHC_URL } from './fixtures/nhc'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
@@ -27,6 +27,10 @@ test.beforeEach(async ({ page }) => {
 })
 
 test.describe('mocked', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockGoesSatellite(page)
+  })
+
   test('the tracks are requested and drawn only while the NHC node is selected', async ({ page }) => {
     let requests = 0
     await mockNhcStorms(page)
@@ -57,7 +61,7 @@ test.describe('mocked', () => {
     const control = page.getByRole('group', { name: 'Storm track time' })
     const slider = control.getByRole('slider', { name: 'Hurricane Isaias track time' })
     const label = control.locator('.radar-time-label')
-    await expect(label).toHaveText('Fri 9 Oct, 15:00 UTC · latest advisory · 105 kt, Cat 3')
+    await expect(label).toHaveText('Fri 9 Oct, 15:00 UTC · latest advisory · 105 kt, Cat 3 · satellite latest, 14:30 UTC')
 
     await slider.fill('0')
     await expect(label).toContainText('Thu 8 Oct, 06:00 UTC · 33 h before advisory · 70 kt, Cat 1')
@@ -72,6 +76,31 @@ test.describe('mocked', () => {
     await expect(page.locator(GLOBE)).toHaveAttribute('data-nhc-storm', 'EP3')
     await expect(control.getByRole('slider', { name: 'Tropical Storm Rachel track time' })).toBeVisible()
     await expect(label).toContainText('latest advisory · 45 kt, TS')
+  })
+
+  test('satellite imagery under the track follows the slider inside its archive, and is the latest outside it', async ({ page }) => {
+    await mockNhcStorms(page)
+    const tiles = await mockGoesSatellite(page)
+    await page.goto('/')
+    await waitForGlobe(page)
+    expect(tiles).toHaveLength(0)
+    await selectByKeyboard(page, NODE)
+    const control = page.getByRole('group', { name: 'Storm track time' })
+    const label = control.locator('.radar-time-label')
+    // The advisory (15:00) is after the newest frame (14:30), so the latest image is drawn.
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-goes-time', 'latest')
+    await expect(label).toContainText('satellite latest, 14:30 UTC')
+    await expect.poll(() => tiles.length).toBeGreaterThan(0)
+    expect(tiles.every((url) => url.includes('layers=goes_longwave_imagery') && !url.includes('time='))).toBe(true)
+
+    const slider = control.getByRole('slider', { name: 'Hurricane Isaias track time' })
+    await slider.fill(String(Number(await slider.inputValue()) - 1))
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-goes-time', GOES_FRAMES[1] as string)
+    await expect(label).toContainText('14:00 UTC · 1 h before advisory · 105 kt, Cat 3 · satellite 14:00 UTC')
+    await expect.poll(() => tiles.some((url) => url.includes('time=2026-10-09T14%3A00%3A00.000Z'))).toBe(true)
+
+    await selectByKeyboard(page, 'nws-api')
+    await expect(page.locator(GLOBE)).not.toHaveAttribute('data-goes-time', /.*/)
   })
 
   test('the layer queries land in the Inspector', async ({ page }) => {

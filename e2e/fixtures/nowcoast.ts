@@ -4,7 +4,7 @@
 
 import type { Page } from '@playwright/test'
 
-const TRANSPARENT_PNG = Buffer.from(
+export const TRANSPARENT_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
   'base64',
 )

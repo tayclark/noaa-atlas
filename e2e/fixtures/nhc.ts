@@ -1,9 +1,11 @@
 // NHC storm track mock for e2e (#334): the summary MapServer's three layer queries, answered from the
-// trimmed real Isaias and Rachel data the unit tests use.
+// trimmed real Isaias and Rachel data the unit tests use. Also the GOES imagery under the tracks (#338):
+// transparent tiles, and a frame list that covers the hours before Isaias's 15:00 UTC advisory.
 
 import type { Page } from '@playwright/test'
 import type { NhcStormData } from '../../src/data/nhcClient'
 import { makeNhcStormData } from '../../src/data/nhcFixtures'
+import { TRANSPARENT_PNG } from './nowcoast'
 
 export const NHC_URL = /NHC_tropical_weather_summary\/MapServer\/\d+\/query/
 
@@ -20,4 +22,25 @@ export async function mockNhcStorms(page: Page, data: NhcStormData = makeNhcStor
       body: JSON.stringify(data[part]),
     })
   })
+}
+
+export const GOES_TILES = '**/geoserver/satellite/wms**'
+
+export const GOES_FRAMES = ['2026-10-09T13:00:00.000Z', '2026-10-09T14:00:00.000Z', '2026-10-09T14:30:00.000Z']
+
+const GOES_CAPABILITIES = `<WMS_Capabilities><Capability><Layer><Layer><Name>goes_longwave_imagery</Name>
+<Dimension name="time" default="current" units="ISO8601">${GOES_FRAMES.join(',')}</Dimension>
+</Layer></Layer></Capability></WMS_Capabilities>`
+
+/** Serves the GOES frame list and transparent tiles. Returns the GetMap URLs requested. */
+export async function mockGoesSatellite(page: Page) {
+  const requests: string[] = []
+  await page.route(GOES_TILES, (route) => {
+    const url = route.request().url()
+    const headers = { 'access-control-allow-origin': '*' }
+    if (url.includes('request=GetCapabilities')) return route.fulfill({ contentType: 'text/xml', body: GOES_CAPABILITIES, headers })
+    requests.push(url)
+    return route.fulfill({ contentType: 'image/png', body: TRANSPARENT_PNG, headers })
+  })
+  return requests
 }
