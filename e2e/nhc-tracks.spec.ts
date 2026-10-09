@@ -5,6 +5,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { emptyNhcStormData } from '../src/data/nhcFixtures'
 import { GLOBE, waitForGlobe } from './fixtures/globe'
+import { mockGfs } from './fixtures/gfs'
 import { GOES_FRAMES, mockGoesSatellite, mockNhcStorms, NHC_URL } from './fixtures/nhc'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
@@ -29,6 +30,7 @@ test.beforeEach(async ({ page }) => {
 test.describe('mocked', () => {
   test.beforeEach(async ({ page }) => {
     await mockGoesSatellite(page)
+    await mockGfs(page)
   })
 
   test('the tracks are requested and drawn only while the NHC node is selected', async ({ page }) => {
@@ -101,6 +103,32 @@ test.describe('mocked', () => {
 
     await selectByKeyboard(page, 'nws-api')
     await expect(page.locator(GLOBE)).not.toHaveAttribute('data-goes-time', /.*/)
+  })
+
+  test('past the advisory the satellite gives way to GFS simulated radar, and comes back before it', async ({ page }) => {
+    await mockNhcStorms(page)
+    const gfs = await mockGfs(page)
+    await page.goto('/')
+    await waitForGlobe(page)
+    await selectByKeyboard(page, NODE)
+    const control = page.getByRole('group', { name: 'Storm track time' })
+    const slider = control.getByRole('slider', { name: 'Hurricane Isaias track time' })
+    const label = control.locator('.radar-time-label')
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-gfs-reflectivity', 'hidden')
+    // The first forecast step is fetched ahead, while the slider still shows the advisory.
+    await expect.poll(() => gfs.some((r) => r.url.includes('pgrb2.1p00') && r.range !== null)).toBe(true)
+
+    const advisory = Number(await slider.inputValue())
+    await slider.fill(String(advisory + 12))
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-gfs-reflectivity', 'ok')
+    await expect(page.locator(GLOBE)).not.toHaveAttribute('data-goes-time', /.*/)
+    await expect(label).toContainText(/forecast \+12 h · .* · GFS simulated radar, \d{2}Z run/)
+    await expect(page.getByRole('status', { name: 'Storm track legend' })).toContainText('GFS simulated radar (dBZ)')
+
+    await slider.fill(String(advisory - 1))
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-gfs-reflectivity', 'hidden')
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-goes-time', GOES_FRAMES[1] as string)
+    await expect(page.getByRole('status', { name: 'Storm track legend' })).not.toContainText('GFS simulated radar')
   })
 
   test('the layer queries land in the Inspector', async ({ page }) => {
