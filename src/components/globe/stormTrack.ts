@@ -296,7 +296,38 @@ export function stormBounds(track: StormTrack): Bounds | null {
   return [arc.west, Math.min(...lats), arc.east, Math.max(...lats)]
 }
 
+export interface FramingPadding {
+  top: number
+  bottom: number
+  left: number
+  right: number
+}
+
+const FRAMING_MARGIN = 24
+
+/**
+ * fitBounds padding that keeps a storm clear of the overlays over the globe: the selection card at
+ * the top and the play control and legend at the bottom (insets in px from each edge). Each side
+ * is capped so the storm always keeps at least a third of the height, since MapLibre can't fit
+ * bounds into padding that leaves no room.
+ */
+export function framingPadding(size: { width: number; height: number }, topInset: number, bottomInset: number): FramingPadding {
+  const room = size.height / 3
+  const top = Math.max(FRAMING_MARGIN, topInset + FRAMING_MARGIN)
+  const bottom = Math.max(FRAMING_MARGIN, bottomInset + FRAMING_MARGIN)
+  const scale = top + bottom > size.height - room ? (size.height - room) / (top + bottom) : 1
+  const side = Math.min(60, size.width / 8)
+  return { top: Math.floor(top * scale), bottom: Math.floor(bottom * scale), left: side, right: side }
+}
+
 const DATE_FORMAT: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false }
+
+const STORM_CLASS_PREFIX = /^(?:major |post-tropical |potential |subtropical |remnants of )*(?:hurricane|tropical storm|tropical depression|tropical cyclone|storm|depression|cyclone)\s+/i
+
+/** The storm's own name without its class, for the chips: "Hurricane Isaias" → "Isaias". */
+export function shortStormName(name: string): string {
+  return name.replace(STORM_CLASS_PREFIX, '') || name
+}
 
 /** "Fri 9 Oct, 15:00 UTC". UTC because that's how NHC times its fixes. */
 export function formatStormTime(t: number): string {
@@ -312,7 +343,10 @@ export function formatAdvisoryOffset(t: number, advisoryTime: number): string {
 
 /** The control's readout for the storm at time t. */
 export function describeStormState(state: StormState): string {
-  return `${Math.round(state.windKt)} kt, ${categoryLabel(categoryFor(state.windKt))}`
+  const category = categoryFor(state.windKt)
+  // Below tropical storm strength NHC's own name ("Disturbance", "Post-tropical") says more than "TD".
+  const name = category.key === 'TD' ? state.label : categoryLabel(category)
+  return `${Math.round(state.windKt)} kt, ${name}`
 }
 
 /** The click popup for one fix. */

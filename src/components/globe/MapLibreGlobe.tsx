@@ -15,6 +15,21 @@ import type { ServiceNode } from '../../data/graphSchema'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
 import { pollWhileVisible } from '../../data/pollWhileVisible'
 import { getDay1CategoricalOutlook, SPC_REFRESH_MS } from '../../data/spcClient'
+import { getActiveStorms, NHC_REFRESH_MS } from '../../data/nhcClient'
+import {
+  advisoryFrameIndex,
+  buildStormTracks,
+  categoriesInTracks,
+  categoryLabel,
+  describeNhcFetchOutcome,
+  formatFixPopupHtml,
+  frameTimes,
+  framingPadding,
+  stormBounds,
+  trackFeatures,
+  type StormTrack,
+} from './stormTrack'
+import { StormTrackControl } from './StormTrackControl'
 import { getArcgisLegend } from '../../data/arcgisClient'
 import {
   ARCGIS_OVERLAYS,
@@ -165,6 +180,29 @@ const COOPS_RADIUS_SELECTED = COOPS_RADIUS.map(([zoom, radius]): [number, number
 const SPC_SOURCE_ID = 'spc-outlook'
 const SPC_FILL_LAYER_ID = 'spc-outlook-fill'
 const SPC_LINE_LAYER_ID = 'spc-outlook-line'
+// The NHC storm tracks (#334): every active storm's cone, observed and forecast track, with a
+// marker the play control moves along the chosen storm. Fetched and drawn only while the NHC node is selected.
+const NHC_SOURCE_ID = 'nhc-tracks'
+const NHC_CONE_FILL_LAYER_ID = 'nhc-tracks-cone-fill'
+const NHC_CONE_LINE_LAYER_ID = 'nhc-tracks-cone-line'
+const NHC_PAST_LAYER_ID = 'nhc-tracks-past'
+const NHC_FORECAST_LAYER_ID = 'nhc-tracks-forecast'
+const NHC_TRAIL_LAYER_ID = 'nhc-tracks-trail'
+const NHC_FIX_LAYER_ID = 'nhc-tracks-fix'
+const NHC_MARKER_LAYER_ID = 'nhc-tracks-marker'
+const NHC_LAYER_IDS = [
+  NHC_CONE_FILL_LAYER_ID,
+  NHC_CONE_LINE_LAYER_ID,
+  NHC_PAST_LAYER_ID,
+  NHC_FORECAST_LAYER_ID,
+  NHC_TRAIL_LAYER_ID,
+  NHC_FIX_LAYER_ID,
+  NHC_MARKER_LAYER_ID,
+]
+const NO_STORMS: readonly StormTrack[] = []
+const nhcKind = (kind: string): ExpressionSpecification => ['==', ['get', 'kind'], kind]
+/** The chosen storm at full strength, the others faded. */
+const nhcSelected = (selected: number, other: number): ExpressionSpecification => ['case', ['get', 'selected'], selected, other]
 const DART_SOURCE_ID = 'dart-stations'
 const DART_LAYER_ID = 'dart-stations-circle'
 // The NDBC moored buoys: a static snapshot too, since NDBC sends no CORS headers. Drawn only while
@@ -306,6 +344,12 @@ export function MapLibreGlobe() {
   const [spc, setSpc] = useState<
     { status: 'loading' } | { status: 'ok'; categories: SpcCategory[] } | { status: 'empty' } | { status: 'error'; message: string }
   >({ status: 'loading' })
+  const [storms, setStorms] = useState<
+    { status: 'loading' } | { status: 'ok'; tracks: StormTrack[] } | { status: 'empty' } | { status: 'error'; message: string }
+  >({ status: 'loading' })
+  // The storm the track control drives, and its scrubbed time; null means the strongest storm and its latest advisory.
+  const [stormBin, setStormBin] = useState<string | null>(null)
+  const [stormTime, setStormTime] = useState<number | null>(null)
   const [auroraError, setAuroraError] = useState<string | null>(null)
   const [kp, setKp] = useState<{ status: 'loading' } | { status: 'ok'; readout: KpReadout } | { status: 'error'; message: string }>({
     status: 'loading',
@@ -508,6 +552,73 @@ export function MapLibreGlobe() {
           paint: { 'raster-opacity': overlay.opacity, 'raster-fade-duration': 0 },
         })
       }
+      // The storm tracks (#334) draw over the rasters and under the stations and alerts. Empty and
+      // hidden until the NHC node is selected.
+      map.addSource(NHC_SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      const nhcLayout = { visibility: 'none' as const }
+      map.addLayer({
+        id: NHC_CONE_FILL_LAYER_ID,
+        type: 'fill',
+        source: NHC_SOURCE_ID,
+        filter: nhcKind('cone'),
+        layout: nhcLayout,
+        paint: { 'fill-color': '#ffffff', 'fill-opacity': nhcSelected(0.22, 0.08) },
+      })
+      map.addLayer({
+        id: NHC_CONE_LINE_LAYER_ID,
+        type: 'line',
+        source: NHC_SOURCE_ID,
+        filter: nhcKind('cone'),
+        layout: nhcLayout,
+        paint: { 'line-color': '#ffffff', 'line-width': 1, 'line-opacity': nhcSelected(0.8, 0.3) },
+      })
+      map.addLayer({
+        id: NHC_PAST_LAYER_ID,
+        type: 'line',
+        source: NHC_SOURCE_ID,
+        filter: nhcKind('past'),
+        layout: { ...nhcLayout, 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-opacity': nhcSelected(0.6, 0.35) },
+      })
+      map.addLayer({
+        id: NHC_FORECAST_LAYER_ID,
+        type: 'line',
+        source: NHC_SOURCE_ID,
+        filter: nhcKind('forecast'),
+        layout: { ...nhcLayout, 'line-join': 'round' },
+        paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-dasharray': [2, 2], 'line-opacity': nhcSelected(0.6, 0.35) },
+      })
+      map.addLayer({
+        id: NHC_TRAIL_LAYER_ID,
+        type: 'line',
+        source: NHC_SOURCE_ID,
+        filter: nhcKind('trail'),
+        layout: { ...nhcLayout, 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#ffffff', 'line-width': 3 },
+      })
+      map.addLayer({
+        id: NHC_FIX_LAYER_ID,
+        type: 'circle',
+        source: NHC_SOURCE_ID,
+        filter: nhcKind('fix'),
+        layout: nhcLayout,
+        paint: {
+          'circle-color': ['get', 'color'],
+          'circle-radius': nhcSelected(4, 3),
+          'circle-opacity': nhcSelected(1, 0.5),
+          'circle-stroke-color': '#111827',
+          'circle-stroke-width': 1,
+          'circle-stroke-opacity': nhcSelected(1, 0.5),
+        },
+      })
+      map.addLayer({
+        id: NHC_MARKER_LAYER_ID,
+        type: 'circle',
+        source: NHC_SOURCE_ID,
+        filter: nhcKind('marker'),
+        layout: nhcLayout,
+        paint: { 'circle-color': ['get', 'color'], 'circle-radius': 9, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 },
+      })
       // Under the alerts, which are added later. Stations are static, so the layer needs no fetch.
       map.addSource(COOPS_SOURCE_ID, { type: 'geojson', data: stationsToGeoJSON(COOPS_STATIONS) })
       map.addLayer({
@@ -588,6 +699,16 @@ export function MapLibreGlobe() {
           e.point,
         )
         if (station) return openStationPopup(map, station)
+
+        const fixes = map.getLayer(NHC_FIX_LAYER_ID) ? map.queryRenderedFeatures(hitBox(e.point, padding), { layers: [NHC_FIX_LAYER_ID] }) : []
+        const fix = nearestCandidate(
+          fixes.flatMap((feature) => (feature.geometry.type === 'Point' ? [{ feature, ...map.project(feature.geometry.coordinates as [number, number]) }] : [])),
+          e.point,
+        )
+        if (fix?.geometry.type === 'Point') {
+          showPopup(map, fix.geometry.coordinates as [number, number], formatFixPopupHtml(fix.properties))
+          return
+        }
 
         const alert = map.getLayer(ALERTS_FILL_LAYER_ID) ? map.queryRenderedFeatures(e.point, { layers: [ALERTS_FILL_LAYER_ID] })[0] : undefined
         if (alert?.properties) {
@@ -999,6 +1120,89 @@ export function MapLibreGlobe() {
     }
   }, [spcShown, mapLoaded])
 
+  // The NHC storm tracks (#334), like the SPC outlook: fetched only while the node is selected and
+  // refreshed while the tab is visible. A failed refresh keeps the tracks already drawn.
+  const nhcShown = liveLayers.includes('nhc-tracks')
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded || !map.getLayer(NHC_FIX_LAYER_ID)) return
+    for (const id of NHC_LAYER_IDS) map.setLayoutProperty(id, 'visibility', nhcShown ? 'visible' : 'none')
+    if (!nhcShown) return
+    let cancelled = false
+    let loaded = false
+    const load = () => {
+      getActiveStorms()
+        .then((data) => {
+          if (cancelled) return
+          loaded = true
+          const tracks = buildStormTracks(data)
+          setStorms(tracks.length === 0 ? { status: 'empty' } : { status: 'ok', tracks })
+        })
+        .catch((err: unknown) => {
+          if (!cancelled && !loaded) setStorms({ status: 'error', message: describeNhcFetchOutcome(err) })
+        })
+    }
+    load()
+    const stop = pollWhileVisible(load, NHC_REFRESH_MS)
+    return () => {
+      cancelled = true
+      stop()
+    }
+  }, [nhcShown, mapLoaded])
+
+  const stormTracks = storms.status === 'ok' ? storms.tracks : NO_STORMS
+  const storm = stormTracks.find((track) => track.bin === stormBin) ?? stormTracks[0] ?? null
+  const stormFrames = useMemo(() => (storm ? frameTimes(storm) : []), [storm])
+  const stormAdvisoryIndex = storm ? advisoryFrameIndex(stormFrames, storm) : 0
+  const stormFound = stormTime === null ? -1 : stormFrames.findIndex((t) => t >= stormTime)
+  const stormIndex = stormTime === null ? stormAdvisoryIndex : stormFound === -1 ? stormFrames.length - 1 : stormFound
+  const chooseStormFrame = useCallback((i: number) => setStormTime(stormFrames[i] ?? null), [stormFrames])
+  const chooseStorm = useCallback((bin: string) => {
+    setStormBin(bin)
+    setStormTime(null)
+  }, [])
+
+  // Redraws the tracks, with the chosen storm's trail and marker at the scrubbed time.
+  const stormFrameTime = stormFrames[stormIndex] ?? null
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded || !nhcShown) return
+    map.getSource<GeoJSONSource>(NHC_SOURCE_ID)?.setData(trackFeatures(stormTracks, storm?.bin ?? null, stormFrameTime))
+  }, [stormTracks, storm, stormFrameTime, nhcShown, mapLoaded])
+
+  // Frames the chosen storm when its tracks first arrive and whenever another storm is chosen.
+  const framedStormRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!nhcShown) {
+      framedStormRef.current = null
+      return
+    }
+    const map = mapRef.current
+    if (!map || !mapLoaded || !active || !storm || framedStormRef.current === storm.bin) return
+    framedStormRef.current = storm.bin
+    const bounds = stormBounds(storm)
+    if (!bounds) return
+    const [west, south, east, north] = bounds
+    // Clear of the selection card above and the play control and legend below.
+    const globeBox = map.getContainer().getBoundingClientRect()
+    const root = map.getContainer().parentElement
+    const cardBox = root?.querySelector('.node-selection-status')?.getBoundingClientRect()
+    const bottomBox = root?.querySelector('.globe-bottom')?.getBoundingClientRect()
+    const padding = framingPadding(
+      globeBox,
+      cardBox ? cardBox.bottom - globeBox.top : 0,
+      bottomBox && bottomBox.height > 0 ? globeBox.bottom - bottomBox.top : 0,
+    )
+    const reduceMotion = prefersReducedMotion()
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding, maxZoom: 5, essential: !reduceMotion, animate: !reduceMotion },
+    )
+  }, [storm, nhcShown, mapLoaded, active])
+
   // The ArcGIS overlays (#247) are drawn while a selection lights them, every one of them when a
   // hub or task lights several (#288). Their legends are the requests the client logs; a failed
   // legend leaves its overlay drawn. The key is a string so the effect doesn't re-run per render.
@@ -1062,6 +1266,8 @@ export function MapLibreGlobe() {
         data-dart-stations={mapLoaded ? (dartShown ? (dartStations ?? 'loading') : 0) : undefined}
         data-arcgis-overlay={mapLoaded ? arcgisKey || 'hidden' : undefined}
         data-spc-outlook={mapLoaded ? (spcShown ? spc.status : 'hidden') : undefined}
+        data-nhc-tracks={mapLoaded ? (nhcShown ? storms.status : 'hidden') : undefined}
+        data-nhc-storm={nhcShown && storm ? storm.bin : undefined}
         data-ndbc-stations={mapLoaded ? (ndbcShown ? (ndbcStations ?? 'loading') : 0) : undefined}
         data-nowcoast-radar={mapLoaded ? (radarShown ? 'visible' : 'hidden') : undefined}
         data-wind={mapLoaded ? (windShown ? (windField ? 'visible' : 'loading') : 'hidden') : undefined}
@@ -1154,6 +1360,37 @@ export function MapLibreGlobe() {
             <button type="button" className="radar-time-step wind-status-action" onClick={() => setForecastLayer(forecastLayer === 'wind' ? 'waves' : 'wind')}>
               Show {forecastLayer === 'wind' ? 'waves' : 'wind'} instead
             </button>
+          </div>
+        )}
+        {nhcShown && storm && stormFrames.length > 1 && (
+          <StormTrackControl
+            tracks={stormTracks}
+            track={storm}
+            onTrackChange={chooseStorm}
+            frames={stormFrames}
+            index={stormIndex}
+            advisoryIndex={stormAdvisoryIndex}
+            onChange={chooseStormFrame}
+            paused={!active}
+          />
+        )}
+        {nhcShown && storms.status === 'ok' && (
+          <div className="zone-only-alerts spc-legend storm-legend" role="status" aria-label="Storm track legend">
+            <strong>Storm intensity</strong>
+            <ul>
+              {categoriesInTracks(storms.tracks).map((category) => (
+                <li key={category.key} title={category.name}>
+                  <span className="spc-legend-swatch storm-legend-swatch" style={{ background: category.color }} aria-hidden="true" />
+                  <span aria-hidden="true">{categoryLabel(category)}</span>
+                  <span className="visually-hidden">{category.name}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {nhcShown && (storms.status === 'empty' || storms.status === 'error') && (
+          <div className="zone-only-alerts" role="status" aria-label="Storm track status">
+            {storms.status === 'empty' ? 'No active tropical cyclones in the Atlantic or eastern and central Pacific right now.' : storms.message}
           </div>
         )}
         {spcShown && spc.status === 'ok' && (
