@@ -8,6 +8,7 @@ import { getPoint } from '../../data/nwsClient'
 import { getPlanetaryKp } from '../../data/swpcClient'
 import { CopyButton } from '../CopyButton'
 import { COOPS_TRY_ITS } from './coopsTryIt'
+import { NCEI_TRY_ITS } from './nceiTryIt'
 import { SWPC_TRY_ITS } from './swpcTryIt'
 import type { TryItTable } from './tryItTable'
 
@@ -21,7 +22,7 @@ const RUNNABLE_SAMPLES: Partial<Record<string, () => Promise<unknown>>> = {
 }
 
 // Nodes whose Run sample shows tables rather than a raw body.
-const TRY_ITS = { ...SWPC_TRY_ITS, ...COOPS_TRY_ITS }
+const TRY_ITS = { ...SWPC_TRY_ITS, ...COOPS_TRY_ITS, ...NCEI_TRY_ITS }
 
 type RunState =
   | { status: 'idle' }

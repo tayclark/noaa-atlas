@@ -25,4 +25,6 @@ export const LIVE_LAYERS: Readonly<Record<string, { layer: LiveLayerKey | null; 
   'swpc-goes-space-environment': { layer: null, status: 'Live in its detail panel: Run sample fetches the latest X-ray flux. Nothing is drawn on the globe.' },
   'coops-metadata-api': { layer: null, status: 'Live in its detail panel: Run sample fetches the details, flood levels and datums of one station (Panama City, FL). Nothing is drawn on the globe.' },
   'coops-derived-product-api': { layer: null, status: 'Live in its detail panel: Run sample fetches the sea level trend and high tide flood days of one station (Panama City, FL). Nothing is drawn on the globe.' },
+  'ncei-access-data-service': { layer: null, status: 'Live in its detail panel: Run sample fetches the last two weeks of daily temperature and precipitation at one station (Atlanta, GA). Nothing is drawn on the globe.' },
+  'ncei-goes-r-space-weather': { layer: null, status: 'Live in its detail panel: Run sample lists the latest GOES-19 X-ray flux files in the archive. Nothing is drawn on the globe.' },
 }
