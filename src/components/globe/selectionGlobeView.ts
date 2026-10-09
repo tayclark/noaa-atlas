@@ -123,6 +123,11 @@ export function describeSelectionForGlobe(selection: Selection, context: GlobeVi
   return { ...view, card: view.card && { ...view.card, lines: [...view.card.lines, status] } }
 }
 
+/** Just the live layers a selection drives, for UI off the globe (the phone's Globe tab, #349). A point drives none. */
+export function selectionLiveLayers(selection: Selection, context: Pick<GlobeViewContext, 'nodes' | 'tasks'>): readonly LiveLayerKey[] {
+  return describeSelectionForGlobe(selection, { ...context, nodesAtPoint: () => [] }).liveLayers
+}
+
 function liveLayersOf(services: readonly ServiceNode[]): LiveLayerKey[] {
   const layers = services.flatMap((n) => (n.liveLayer ? [LIVE_LAYERS[n.id]?.layer ?? null] : [])).filter((layer) => layer !== null)
   return [...new Set(layers)]

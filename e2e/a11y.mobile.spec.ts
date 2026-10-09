@@ -16,7 +16,9 @@ async function openApp(page: Page) {
   await mockAlerts(page, emptyAlertsFixture())
   await mockSwpc(page)
   await page.goto('/')
-  await expect(page.getByRole('tab', { name: 'Tasks', selected: true })).toBeVisible()
+  // A phone lands on Graph (#349); these checks start from the finder.
+  await expect(page.getByRole('tab', { name: 'Graph', selected: true })).toBeVisible()
+  await page.getByRole('tab', { name: 'Tasks' }).tap()
 }
 
 async function seriousViolations(page: Page) {

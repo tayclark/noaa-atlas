@@ -103,6 +103,7 @@ test('a selected node opens a panel down the right, and the graph frames it besi
 
 test('the globe card shrinks to its title, and the overlays leave most of the globe', async ({ page }) => {
   await page.goto('/')
+  await page.getByRole('tab', { name: 'Tasks' }).tap()
   await page.locator('.finder-task-item').first().tap()
   await page.getByRole('tab', { name: /Globe/ }).tap()
   const card = page.getByRole('status', { name: 'Selection status' })
