@@ -109,7 +109,7 @@ import { NOWCOAST_CAPABILITIES_URL, frameForTime, parseRadarFrames } from './rad
 import { ForecastTimeline } from './ForecastTimeline'
 import { getTimeSnapshot, setTime, stopPlayer, subscribeTime } from '../../data/timeStore'
 import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePopup'
-import { hitBox, hitPadding, nearestCandidate } from './hitPick'
+import { hitBox, hitPadding, isOnGlobe, nearestCandidate } from './hitPick'
 import { describeGeolocationError, GEOLOCATE_MAX_ZOOM, GEOLOCATE_POSITION_OPTIONS } from './geolocation'
 import { LINKED_POINT_ZOOM, needsLinkedLookup } from './linkedPoint'
 import { registerDismisser } from '../escapeDismiss'
@@ -142,7 +142,7 @@ import {
 } from './nwsPointLookup'
 import { nodesCoveringPoint } from '../../data/coverageLookup'
 import { describeSelectionForGlobe, type GlobeViewContext } from './selectionGlobeView'
-import { subscribeSelection, getSelectionSnapshot, selectPoint } from '../../data/selectionStore'
+import { clearSelection, subscribeSelection, getSelectionSnapshot, selectPoint } from '../../data/selectionStore'
 import { getViewSnapshot, resolveView, subscribeView } from '../../data/viewStore'
 import { useNarrowLayout } from '../useNarrowLayout'
 
@@ -745,13 +745,20 @@ export function MapLibreGlobe() {
       // popup opens: a station if one is near (a fingertip can't aim at a 6px dot, so the query is a
       // padded box and the nearest dot wins), else an alert polygon under the point, else an SPC
       // outlook area, else a forecast and coverage lookup there. Alerts and outlook areas also
-      // select the point. Layers that aren't drawn yet are skipped.
+      // select the point. Layers that aren't drawn yet are skipped. A click in the space around
+      // the globe selects nothing: it closes the popup and clears the selection.
       let lastClickAt = -Infinity
       map.on('click', (e: MapMouseEvent) => {
         const at = e.originalEvent.timeStamp
         const isEcho = at - lastClickAt < DOUBLE_CLICK_MS
         lastClickAt = at
         if (isEcho) return
+
+        if (!isOnGlobe(e.point, map.project(e.lngLat))) {
+          openPopup?.remove()
+          clearSelection()
+          return
+        }
 
         const stationLayers = STATION_LAYER_IDS.filter((id) => map.getLayer(id))
         const padding = hitPadding(window.matchMedia?.('(pointer: coarse)').matches ?? false)

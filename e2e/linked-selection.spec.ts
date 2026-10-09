@@ -79,6 +79,32 @@ test('globe -> graph: clicking a point highlights the covering node(s) in the gr
   )
 })
 
+test('clicking the space around the globe clears the selection instead of picking the nearest edge', async ({ page }) => {
+  await mockAlerts(page, emptyAlertsFixture())
+  await mockPointLookup(page)
+  const alertsResponsePromise = page.waitForResponse((res) => res.url().includes('/alerts/active'))
+  await page.goto('/')
+  const globe = page.locator(GLOBE)
+  await alertsResponsePromise
+
+  await globe.click()
+  const highlighted = page.locator('.graph-node-highlighted')
+  await expect(highlighted).not.toHaveCount(0)
+  await expect(page.locator('.maplibregl-popup')).toHaveCount(1)
+
+  // Zoomed out, the globe is a small disc and the canvas corners are empty space.
+  const box = (await globe.boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  for (let i = 0; i < 5; i++) await page.mouse.wheel(0, 400)
+  // Retried until the zoom settles; clicks are spaced past the handler's double-click window.
+  await expect(async () => {
+    await page.mouse.click(box.x + 15, box.y + 15)
+    await expect(highlighted).toHaveCount(0, { timeout: 500 })
+  }).toPass({ intervals: [500] })
+  await expect(page.locator('.maplibregl-popup')).toHaveCount(0)
+  await expect(page).not.toHaveURL(/point=/)
+})
+
 test('a coverage that crosses the antimeridian reads as the smaller arc (#80)', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await page.goto('/')
