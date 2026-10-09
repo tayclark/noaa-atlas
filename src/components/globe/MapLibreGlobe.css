@@ -466,6 +466,35 @@
   pointer-events: none;
 }
 
+/* The hurricane impact prompt (#344): offers the full storm view for a looked-up point in harm's way. */
+.storm-prompt {
+  /* Over the point's popup (z-index 4), which opens at the same moment and could otherwise cover it. */
+  position: relative;
+  z-index: 5;
+  border-color: var(--color-accent);
+  gap: var(--space-2);
+}
+
+.storm-prompt p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.storm-prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.storm-prompt-actions .radar-time-step {
+  font-size: var(--font-size-sm);
+}
+
+.storm-prompt-show {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
 /* The storm legend is one row of short labels (TD, TS, Cat 1...), so it doesn't hide the storm. */
 .storm-legend ul {
   display: flex;

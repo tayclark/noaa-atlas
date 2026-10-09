@@ -240,11 +240,13 @@ function line(kind: string, bin: string, selected: boolean, fixes: readonly Stor
 /**
  * Everything the layer draws: each storm's cone, observed track (solid) and forecast track (dashed),
  * its fixes coloured by category, and for the chosen storm a bold trail up to time t and a marker at t.
+ * A null `selectedBin` draws every storm alike.
  */
 export function trackFeatures(tracks: readonly StormTrack[], selectedBin: string | null, t: number | null): StormFeatureCollection {
   const features: StormFeatureCollection['features'] = []
   for (const track of tracks) {
-    const selected = track.bin === selectedBin
+    // With no storm chosen (the tracks without the full view) every storm is drawn at full strength.
+    const selected = selectedBin === null || track.bin === selectedBin
     if (track.cone) features.push({ type: 'Feature', properties: { kind: 'cone', bin: track.bin, selected }, geometry: track.cone })
     const observed = track.fixes.filter((fix) => !fix.forecast)
     const ahead = track.fixes.filter((fix) => fix.forecast)
