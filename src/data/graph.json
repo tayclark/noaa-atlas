@@ -2791,13 +2791,12 @@
         "note": "Dataset dependent; active US GHCN-Daily stations update from real-time feeds and are replaced by archive-quality data later."
       },
       "docUrl": "https://www.ncei.noaa.gov/support/access-data-service-api-user-documentation",
-      "lastVerified": "2026-09-30",
+      "lastVerified": "2026-10-09",
       "sample": {
-        "url": "https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations=USW00013874&startDate=2024-01-01&endDate=2024-01-03&format=json&dataTypes=TMAX,TMIN,PRCP",
-        "responseExcerpt": "[\n{\"DATE\":\"2024-01-01\",\"STATION\":\"USW00013874\",\"TMAX\":\"  100\",\"TMIN\":\"   11\",\"PRCP\":\"    0\"}\n,{\"DATE\":\"2024-01-02\",\"STATION\":\"USW00013874\",\"TMAX\":\"  122\",\"TMIN\":\"  -10\",\"PRCP\":\"    0\"}\n,{\"DATE\":\"2024-01-03\",\"STATION\":\"USW00013874\",\"TMAX\":\"   83\",\"TMIN\":\"   -5\",\"PRCP\":\"    8\"}\n]"
+        "url": "https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations=USW00013874&startDate=2026-10-01&endDate=2026-10-03&dataTypes=TMAX,TMIN,PRCP&units=metric&includeStationName=true&format=json",
+        "responseExcerpt": "[\n{\"DATE\":\"2026-10-01\",\"STATION\":\"USW00013874\",\"TMAX\":\"30.0\",\"TMIN\":\"18.3\",\"PRCP\":\"0.0\",\"NAME\":\"ATLANTA HARTSFIELD JACKSON INTERNATIONAL AIRPORT, GA US\"}\n,{\"DATE\":\"2026-10-02\",\"STATION\":\"USW00013874\",\"TMAX\":\"28.9\",\"TMIN\":\"21.1\",\"PRCP\":\"0.0\",\"NAME\":\"ATLANTA HARTSFIELD JACKSON INTERNATIONAL AIRPORT, GA US\"}\n,{\"DATE\":\"2026-10-03\",\"STATION\":\"USW00013874\",\"TMAX\":\"30.0\",\"TMIN\":\"21.1\",\"PRCP\":\"5.1\",\"NAME\":\"ATLANTA HARTSFIELD JACKSON INTERNATIONAL AIRPORT, GA US\"}\n]"
       },
-      "liveLayer": false,
-      "notLiveReason": "Not wired into the v1 map: station time series and subsets, not a ready-made map layer.",
+      "liveLayer": true,
       "tags": [
         "climate",
         "historical",
@@ -8237,7 +8236,7 @@
       ],
       "auth": {
         "type": "none",
-        "note": "Public directory listings and file downloads; no account needed. access-control-allow-origin: * (checked 2026-09-24)."
+        "note": "Public directory listings and file downloads; no account needed. access-control-allow-origin: * (checked 2026-10-09)."
       },
       "coverage": {
         "type": "Polygon",
@@ -8256,13 +8255,12 @@
         "note": "Daily science-quality files arrive about a day after the data date."
       },
       "docUrl": "https://www.ncei.noaa.gov/products/satellite/goes-r",
-      "lastVerified": "2026-09-30",
+      "lastVerified": "2026-10-09",
       "sample": {
-        "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/xrsf-l2-avg1m_science/2026/09/",
-        "responseExcerpt": "(HTML directory listing)\nsci_xrsf-l2-avg1m_g19_d20260922_v2-2-1.nc  2026-09-23 04:20  282K\nsci_xrsf-l2-avg1m_g19_d20260923_v2-2-1.nc  2026-09-24 04:22  285K\n(trimmed: one file per day)"
+        "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/xrsf-l2-avg1m_science/2026/10/",
+        "responseExcerpt": "(HTML directory listing)\nsci_xrsf-l2-avg1m_g19_d20261001_v2-2-1.nc  2026-10-08 04:34  284K\nsci_xrsf-l2-avg1m_g19_d20261002_v2-2-1.nc  2026-10-09 04:31  283K\n(trimmed: one file per day)"
       },
-      "liveLayer": false,
-      "notLiveReason": "Not a map layer: archived NetCDF time series from geostationary orbit, downloaded as files rather than queried.",
+      "liveLayer": true,
       "tags": [
         "goes",
         "archive",
