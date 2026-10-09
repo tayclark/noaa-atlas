@@ -151,12 +151,28 @@ test('a theme hub that lights two overlays draws both, charts underneath, with t
   await expect(legend).toHaveCount(0)
 })
 
-/** Every tile the page got back was a 200 PNG. */
+/** Every tile the server answered was a 200 PNG. Blocked tiles are `expectTilesArrive`'s concern. */
 function expectAllPng(tiles: readonly LiveTile[]) {
-  for (const tile of tiles) {
-    expect(tile.status).toBe(200)
-    expect(tile.contentType).toContain('image/png')
+  for (const tile of tiles.filter((t) => !t.failure)) {
+    expect(tile.status, tile.url).toBe(200)
+    expect(tile.contentType, tile.url).toContain('image/png')
   }
+}
+
+/** Enough tiles failed outright, with none answered, to call the service down rather than unlucky. */
+const OUTAGE_FAILED_TILES = 8
+
+/**
+ * A tile was answered, or the service is down. A stray blocked tile is routine: the rfc_qpe export sends
+ * the odd 500 without its CORS header. When every tile is blocked (as on 2026-10-09, #332), this fails at
+ * once and names one, instead of the spec waiting out its timeout.
+ */
+async function expectTilesArrive(tiles: readonly LiveTile[], timeout = 20_000) {
+  const answered = () => tiles.filter((t) => !t.failure).length
+  await expect.poll(() => answered() > 0 || tiles.length >= OUTAGE_FAILED_TILES, { timeout }).toBe(true)
+  const blocked = tiles.find((t) => t.failure)
+  expect(answered(), `every tile failed, e.g. ${blocked?.url} with ${blocked?.failure} (blocked by CORS?)`).toBeGreaterThan(0)
+  expectAllPng(tiles)
 }
 
 // A dry day nationally can leave the 24-hour precipitation empty, so this one only checks that a tile
@@ -166,8 +182,7 @@ test('fetches a real overlay tile @live', async ({ page }) => {
   await page.goto('/')
   await waitForGlobe(page)
   await selectByKeyboard(page, NODE)
-  await expect.poll(() => tiles.length, { timeout: 30_000 }).toBeGreaterThan(0)
-  expectAllPng(tiles)
+  await expectTilesArrive(tiles, 30_000)
 })
 
 test('draws real CPC outlook tiles and lists the real legend @live', async ({ page }) => {
@@ -175,6 +190,7 @@ test('draws real CPC outlook tiles and lists the real legend @live', async ({ pa
   await page.goto('/')
   await waitForGlobe(page)
   await selectByKeyboard(page, 'nws-gis-portal')
+  await expectTilesArrive(tiles)
   await expect.poll(() => largestTileBytes(tiles), { timeout: 20_000 }).toBeGreaterThan(BLANK_TILE_MAX_BYTES)
   expectAllPng(tiles)
   await expect(page.getByRole('status', { name: 'Map overlay legend' })).toContainText(/Above, \d+%/, { timeout: 20_000 })
@@ -186,6 +202,7 @@ test('draws real critical habitat tiles @live', async ({ page }) => {
   await page.goto('/')
   await waitForGlobe(page)
   await selectByKeyboard(page, 'nmfs-arcgis-services')
+  await expectTilesArrive(tiles)
   await expect.poll(() => largestTileBytes(tiles), { timeout: 20_000 }).toBeGreaterThan(BLANK_TILE_MAX_BYTES)
   expectAllPng(tiles)
   // The real legend's swatches have no labels, so once its call is logged there is no box (and no error).
@@ -202,6 +219,7 @@ test('draws real nautical chart tiles @live', async ({ page }) => {
   await waitForGlobe(page)
   await selectByKeyboard(page, 'noaa-chart-services')
   await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'arcgis-charts')
+  await expectTilesArrive(tiles)
   const box = await page.locator(`${GLOBE} canvas`).boundingBox()
   if (!box) throw new Error('no globe canvas')
   await page.mouse.move(box.x + box.width * 0.79, box.y + box.height * 0.69)
