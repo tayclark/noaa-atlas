@@ -121,6 +121,7 @@ import {
 import {
   ALERTS_REFRESH_MS,
   ALERTS_RETRY_MS,
+  alertEmphasis,
   alertSeverityColorExpression,
   describeAlertForPopup,
   describeAlertsFetchOutcome,
@@ -150,10 +151,6 @@ const ZONE_ONLY_ALERTS_CAP = 5
 const ALERTS_SOURCE_ID = 'nws-alerts'
 const ALERTS_FILL_LAYER_ID = 'nws-alerts-fill'
 const ALERTS_LINE_LAYER_ID = 'nws-alerts-line'
-const ALERTS_FILL_OPACITY = 0.35
-const ALERTS_FILL_OPACITY_SELECTED = 0.6
-const ALERTS_LINE_WIDTH = 1.5
-const ALERTS_LINE_WIDTH_SELECTED = 3
 
 // The selection's coverage footprint (#149), drawn under the alerts in each service's theme colour.
 const COVERAGE_SOURCE_ID = 'selected-coverage'
@@ -385,6 +382,8 @@ export function MapLibreGlobe() {
   const radarTime = useMemo(() => frameForTime(radarFrames, sharedTime), [radarFrames, sharedTime])
   const radarUrlRef = useRef(NOWCOAST_RADAR_TILE_URL)
   const windRef = useRef<WindOverlay | null>(null)
+  // The alert polygons' current emphasis (#342), read when the alerts layer is first added.
+  const alertEmphasisRef = useRef(alertEmphasis([]))
   const waveRef = useRef<WaveOverlay | null>(null)
   const reflectivityRef = useRef<CanvasShadingOverlay<ScalarFieldInput> | null>(null)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
@@ -867,7 +866,7 @@ export function MapLibreGlobe() {
             source: ALERTS_SOURCE_ID,
             paint: {
               'fill-color': alertSeverityColorExpression(),
-              'fill-opacity': ALERTS_FILL_OPACITY,
+              'fill-opacity': alertEmphasisRef.current.fillOpacity,
             },
           })
           map.addLayer({
@@ -876,7 +875,7 @@ export function MapLibreGlobe() {
             source: ALERTS_SOURCE_ID,
             paint: {
               'line-color': alertSeverityColorExpression(),
-              'line-width': ALERTS_LINE_WIDTH,
+              'line-width': alertEmphasisRef.current.lineWidth,
             },
           })
 
@@ -918,24 +917,18 @@ export function MapLibreGlobe() {
   // Reacts to the selection (#44, #149): draws its coverage footprint, flies to it, and
   // emphasises the live layers its services drive (#54). Gated on mapLoaded since the source,
   // fitBounds and setPaintProperty all require a loaded style.
-  const alertsHighlighted = liveLayers.includes('nws-alerts')
+  const emphasis = useMemo(() => alertEmphasis(liveLayers), [liveLayers])
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded) return
 
     map.getSource<GeoJSONSource>(COVERAGE_SOURCE_ID)?.setData(view.footprint)
 
+    // Alerts that load after this keep the same emphasis: the layer reads the ref when it is added.
+    alertEmphasisRef.current = emphasis
     if (map.getLayer(ALERTS_FILL_LAYER_ID)) {
-      map.setPaintProperty(
-        ALERTS_FILL_LAYER_ID,
-        'fill-opacity',
-        alertsHighlighted ? ALERTS_FILL_OPACITY_SELECTED : ALERTS_FILL_OPACITY,
-      )
-      map.setPaintProperty(
-        ALERTS_LINE_LAYER_ID,
-        'line-width',
-        alertsHighlighted ? ALERTS_LINE_WIDTH_SELECTED : ALERTS_LINE_WIDTH,
-      )
+      map.setPaintProperty(ALERTS_FILL_LAYER_ID, 'fill-opacity', emphasis.fillOpacity)
+      map.setPaintProperty(ALERTS_LINE_LAYER_ID, 'line-width', emphasis.lineWidth)
     }
 
     // A hidden globe measures as 400x300 (MapLibre's fallback), so a camera move now would frame the
@@ -963,7 +956,7 @@ export function MapLibreGlobe() {
         { padding: 60, maxZoom: 6, essential: !reduceMotion, animate: !reduceMotion },
       )
     }
-  }, [view, mapLoaded, alertsHighlighted, active])
+  }, [view, mapLoaded, emphasis, active])
 
   // A point selected by a link or by Back (#266) frames itself and opens its lookup, as a click
   // there would. Once per point, so a popup the reader closed doesn't come back on a tab switch.
@@ -1369,6 +1362,7 @@ export function MapLibreGlobe() {
         data-dart-stations={mapLoaded ? (dartShown ? (dartStations ?? 'loading') : 0) : undefined}
         data-arcgis-overlay={mapLoaded ? arcgisKey || 'hidden' : undefined}
         data-spc-outlook={mapLoaded ? (spcShown ? spc.status : 'hidden') : undefined}
+        data-alerts-emphasis={emphasis.level}
         data-nhc-tracks={mapLoaded ? (nhcShown ? storms.status : 'hidden') : undefined}
         data-nhc-storm={nhcShown && storm ? storm.bin : undefined}
         data-goes-time={nhcShown && !stormInForecast ? (goesFrame ?? 'latest') : undefined}

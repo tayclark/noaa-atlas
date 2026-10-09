@@ -3,6 +3,7 @@ import { NwsHttpError, NwsParseError } from '../../data/nwsClient'
 import { parseAlertCollection } from '../../data/nwsSchema'
 import { makeAlertCollection, makeAlertFeature } from '../../data/nwsFixtures'
 import {
+  alertEmphasis,
   ALERTS_REFRESH_MS,
   ALERTS_RETRY_MS,
   ALERT_SEVERITY_COLORS,
@@ -156,5 +157,18 @@ describe('zoneOnlyAlertsTitle', () => {
 describe('alert refresh timing', () => {
   it('retries a failed first load sooner than it refreshes', () => {
     expect(ALERTS_RETRY_MS).toBeLessThan(ALERTS_REFRESH_MS)
+  })
+})
+
+describe('alertEmphasis', () => {
+  it('emphasises the alerts for their own node, fades them under the hurricane tracks, else draws them as usual', () => {
+    expect(alertEmphasis(['nws-alerts'])).toMatchObject({ level: 'highlighted', lineWidth: 3 })
+    expect(alertEmphasis(['nhc-tracks'])).toMatchObject({ level: 'dimmed', lineWidth: 1.5 })
+    expect(alertEmphasis(['nhc-tracks']).fillOpacity).toBeLessThan(alertEmphasis([]).fillOpacity)
+    expect(alertEmphasis([]).level).toBe('normal')
+  })
+
+  it('lets the alerts win when a task or hub lights both', () => {
+    expect(alertEmphasis(['nhc-tracks', 'nws-alerts']).level).toBe('highlighted')
   })
 })

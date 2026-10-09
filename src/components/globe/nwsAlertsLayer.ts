@@ -5,6 +5,7 @@
 import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec'
 import { NwsHttpError, NwsParseError } from '../../data/nwsClient'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
+import type { LiveLayerKey } from './liveLayers'
 import { escapeHtml } from './popupHtml'
 
 // The alerts are refreshed this often while the globe is looked at, and a failed first load is
@@ -113,4 +114,21 @@ export function describeAlertsFetchOutcome(err: unknown): string {
   }
   if (err instanceof NwsParseError) return 'NWS returned an unexpected alerts response.'
   return 'Something went wrong loading alerts.'
+}
+
+export interface AlertEmphasis {
+  level: 'highlighted' | 'dimmed' | 'normal'
+  fillOpacity: number
+  lineWidth: number
+}
+
+/**
+ * How strongly the alert polygons are drawn for the live layers on screen: emphasised when their own
+ * node is selected (#54), and faded to little more than their outlines under the hurricane tracks
+ * (#342), where the warnings still matter but their fill would hide the satellite and radar imagery.
+ */
+export function alertEmphasis(liveLayers: readonly LiveLayerKey[]): AlertEmphasis {
+  if (liveLayers.includes('nws-alerts')) return { level: 'highlighted', fillOpacity: 0.6, lineWidth: 3 }
+  if (liveLayers.includes('nhc-tracks')) return { level: 'dimmed', fillOpacity: 0.08, lineWidth: 1.5 }
+  return { level: 'normal', fillOpacity: 0.35, lineWidth: 1.5 }
 }
