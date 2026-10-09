@@ -11,7 +11,12 @@ const TIME_DIMENSION = /<Dimension\b[^>]*\bname="time"[^>]*>([^<]*)<\/Dimension>
 
 /** The frame timestamps (ISO, oldest first) of the CONUS mosaic, or [] if the document has none. */
 export function parseRadarFrames(capabilitiesXml: string): string[] {
-  const start = capabilitiesXml.indexOf(`<Name>${FRAME_LAYER}</Name>`)
+  return parseWmsTimeFrames(capabilitiesXml, FRAME_LAYER)
+}
+
+/** The `time` dimension (ISO, oldest first) of one layer in a WMS GetCapabilities document, or []. */
+export function parseWmsTimeFrames(capabilitiesXml: string, layer: string): string[] {
+  const start = capabilitiesXml.indexOf(`<Name>${layer}</Name>`)
   if (start === -1) return []
   // Stop at the next layer's name so a layer without a dimension can't borrow its neighbour's.
   const next = capabilitiesXml.indexOf('<Name>', start + 1)

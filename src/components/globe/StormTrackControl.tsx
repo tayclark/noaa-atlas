@@ -18,6 +18,8 @@ type Props = {
   /** The frame at the latest advisory, marked on the slider as "now". */
   advisoryIndex: number
   onChange: (index: number) => void
+  /** Which satellite image is under the track, e.g. "satellite 14:05 UTC", or null when there is none. */
+  imagery?: string | null
   /** Held while the globe is out of sight (#78). */
   paused?: boolean
 }
@@ -25,7 +27,7 @@ type Props = {
 // The storm track's play control (#334): scrub a storm from its first fix through its forecast, step
 // fix to fix, or play the whole track. As with the radar, playback never starts on its own, so a
 // reduced-motion user only animates by asking for it. Chips pick the storm when there are several.
-export function StormTrackControl({ tracks, track, onTrackChange, frames, index, advisoryIndex, onChange, paused = false }: Props) {
+export function StormTrackControl({ tracks, track, onTrackChange, frames, index, advisoryIndex, onChange, imagery = null, paused = false }: Props) {
   const [playing, setPlaying] = usePlayer('storm')
   const last = frames.length - 1
   const running = playing && !paused
@@ -103,6 +105,7 @@ export function StormTrackControl({ tracks, track, onTrackChange, frames, index,
       </button>
       <span className="radar-time-label">
         {time} · {offset} · {reading}
+        {imagery && <span className="storm-track-imagery"> · {imagery}</span>}
       </span>
     </div>
   )

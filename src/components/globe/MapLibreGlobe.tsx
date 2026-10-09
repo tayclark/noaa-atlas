@@ -30,6 +30,18 @@ import {
   type StormTrack,
 } from './stormTrack'
 import { StormTrackControl } from './StormTrackControl'
+import {
+  describeGoesFrame,
+  GOES_ATTRIBUTION,
+  GOES_CAPABILITIES_URL,
+  GOES_FRAMES_REFRESH_MS,
+  GOES_OPACITY,
+  GOES_TILE_SIZE,
+  GOES_TILE_URL,
+  goesFrameForTime,
+  goesTileUrl,
+  parseGoesFrames,
+} from './goesSatelliteLayer'
 import { getArcgisLegend } from '../../data/arcgisClient'
 import {
   ARCGIS_OVERLAYS,
@@ -183,6 +195,10 @@ const SPC_LINE_LAYER_ID = 'spc-outlook-line'
 // The NHC storm tracks (#334): every active storm's cone, observed and forecast track, with a
 // marker the play control moves along the chosen storm. Fetched and drawn only while the NHC node is selected.
 const NHC_SOURCE_ID = 'nhc-tracks'
+// GOES infrared imagery under the tracks (#338), so a storm looks as it does on a satellite loop.
+const GOES_SOURCE_ID = 'goes-satellite'
+const GOES_LAYER_ID = 'goes-satellite-raster'
+const NHC_TRAIL_CASING_LAYER_ID = 'nhc-tracks-trail-casing'
 const NHC_CONE_FILL_LAYER_ID = 'nhc-tracks-cone-fill'
 const NHC_CONE_LINE_LAYER_ID = 'nhc-tracks-cone-line'
 const NHC_PAST_LAYER_ID = 'nhc-tracks-past'
@@ -191,10 +207,12 @@ const NHC_TRAIL_LAYER_ID = 'nhc-tracks-trail'
 const NHC_FIX_LAYER_ID = 'nhc-tracks-fix'
 const NHC_MARKER_LAYER_ID = 'nhc-tracks-marker'
 const NHC_LAYER_IDS = [
+  GOES_LAYER_ID,
   NHC_CONE_FILL_LAYER_ID,
   NHC_CONE_LINE_LAYER_ID,
   NHC_PAST_LAYER_ID,
   NHC_FORECAST_LAYER_ID,
+  NHC_TRAIL_CASING_LAYER_ID,
   NHC_TRAIL_LAYER_ID,
   NHC_FIX_LAYER_ID,
   NHC_MARKER_LAYER_ID,
@@ -554,6 +572,14 @@ export function MapLibreGlobe() {
       }
       // The storm tracks (#334) draw over the rasters and under the stations and alerts. Empty and
       // hidden until the NHC node is selected.
+      map.addSource(GOES_SOURCE_ID, { type: 'raster', tiles: [GOES_TILE_URL], tileSize: GOES_TILE_SIZE, attribution: GOES_ATTRIBUTION })
+      map.addLayer({
+        id: GOES_LAYER_ID,
+        type: 'raster',
+        source: GOES_SOURCE_ID,
+        layout: { visibility: 'none' },
+        paint: { 'raster-opacity': GOES_OPACITY, 'raster-fade-duration': 0 },
+      })
       map.addSource(NHC_SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       const nhcLayout = { visibility: 'none' as const }
       map.addLayer({
@@ -588,6 +614,15 @@ export function MapLibreGlobe() {
         layout: { ...nhcLayout, 'line-join': 'round' },
         paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-dasharray': [2, 2], 'line-opacity': nhcSelected(0.6, 0.35) },
       })
+      // A dark casing keeps the white trail readable over white cloud tops.
+      map.addLayer({
+        id: NHC_TRAIL_CASING_LAYER_ID,
+        type: 'line',
+        source: NHC_SOURCE_ID,
+        filter: nhcKind('trail'),
+        layout: { ...nhcLayout, 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#111827', 'line-width': 6, 'line-opacity': 0.8 },
+      })
       map.addLayer({
         id: NHC_TRAIL_LAYER_ID,
         type: 'line',
@@ -617,7 +652,8 @@ export function MapLibreGlobe() {
         source: NHC_SOURCE_ID,
         filter: nhcKind('marker'),
         layout: nhcLayout,
-        paint: { 'circle-color': ['get', 'color'], 'circle-radius': 9, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 },
+        // A ring, not a dot, so the eye on the satellite image shows through it.
+        paint: { 'circle-opacity': 0, 'circle-radius': 11, 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': 3 },
       })
       // Under the alerts, which are added later. Stations are static, so the layer needs no fetch.
       map.addSource(COOPS_SOURCE_ID, { type: 'geojson', data: stationsToGeoJSON(COOPS_STATIONS) })
@@ -1170,6 +1206,43 @@ export function MapLibreGlobe() {
     map.getSource<GeoJSONSource>(NHC_SOURCE_ID)?.setData(trackFeatures(stormTracks, storm?.bin ?? null, stormFrameTime))
   }, [stormTracks, storm, stormFrameTime, nhcShown, mapLoaded])
 
+  // The GOES frame list (#338) is read while the tracks are shown and refreshed as frames arrive. A
+  // failed read leaves the latest image, which needs no list. The image follows the storm slider
+  // inside the archive and is the latest one outside it; debounced like the radar.
+  const [goesFrames, setGoesFrames] = useState<string[]>([])
+  const loadGoesFrames = useCallback((signal?: AbortSignal) => {
+    fetch(GOES_CAPABILITIES_URL, signal ? { signal } : undefined)
+      .then((res) => (res.ok ? res.text() : Promise.reject(new Error(String(res.status)))))
+      .then((xml) => setGoesFrames(parseGoesFrames(xml)))
+      .catch(() => {})
+  }, [])
+  useEffect(() => {
+    if (!nhcShown) return
+    const controller = new AbortController()
+    loadGoesFrames(controller.signal)
+    return () => {
+      controller.abort()
+      setGoesFrames([])
+    }
+  }, [nhcShown, loadGoesFrames])
+  useEffect(() => {
+    if (!nhcShown || !active) return
+    return pollWhileVisible(() => loadGoesFrames(), GOES_FRAMES_REFRESH_MS)
+  }, [nhcShown, active, loadGoesFrames])
+  const goesFrame = goesFrameForTime(goesFrames, stormFrameTime)
+  const goesUrlRef = useRef(GOES_TILE_URL)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded || !nhcShown) return
+    const url = goesTileUrl(goesFrame)
+    if (url === goesUrlRef.current) return
+    const timer = setTimeout(() => {
+      ;(map.getSource(GOES_SOURCE_ID) as RasterTileSource | undefined)?.setTiles([url])
+      goesUrlRef.current = url
+    }, RADAR_FRAME_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [goesFrame, nhcShown, mapLoaded])
+
   // Frames the chosen storm when its tracks first arrive and whenever another storm is chosen.
   const framedStormRef = useRef<string | null>(null)
   useEffect(() => {
@@ -1268,6 +1341,7 @@ export function MapLibreGlobe() {
         data-spc-outlook={mapLoaded ? (spcShown ? spc.status : 'hidden') : undefined}
         data-nhc-tracks={mapLoaded ? (nhcShown ? storms.status : 'hidden') : undefined}
         data-nhc-storm={nhcShown && storm ? storm.bin : undefined}
+        data-goes-time={nhcShown ? (goesFrame ?? 'latest') : undefined}
         data-ndbc-stations={mapLoaded ? (ndbcShown ? (ndbcStations ?? 'loading') : 0) : undefined}
         data-nowcoast-radar={mapLoaded ? (radarShown ? 'visible' : 'hidden') : undefined}
         data-wind={mapLoaded ? (windShown ? (windField ? 'visible' : 'loading') : 'hidden') : undefined}
@@ -1371,6 +1445,7 @@ export function MapLibreGlobe() {
             index={stormIndex}
             advisoryIndex={stormAdvisoryIndex}
             onChange={chooseStormFrame}
+            imagery={describeGoesFrame(goesFrames, goesFrame)}
             paused={!active}
           />
         )}
