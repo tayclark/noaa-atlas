@@ -20,7 +20,7 @@ Stack: React 19, TypeScript, Vite, MapLibre GL, d3-force / d3-zoom / d3-drag (SV
 - `npm run ncei-datasets`: rewrites `src/data/nceiDatasets.json` from the NCEI search v1 catalog (about 100 datasets, one page). `npm run onestop-datasets` and `npm run aws-open-data-datasets` do the same for `onestopDatasets.json` and `awsOpenDataDatasets.json`.
 - `npm run coverage-geometry -- --preset <us-coastal-waters|contiguous-us|alaska|hawaii|worldwide> --out file.json`: writes schema-valid coverage geometry.
 
-CI (`.github/workflows/ci.yml`) runs on every PR and on pushes to `main`. The `ci` job runs typecheck → lint → `test:coverage` → build. `test:e2e:mocked` runs in Chromium across three `e2e shard N/3` jobs (`--shard`, blob reporter), and the `e2e` summary job fails unless every shard passed, merging the blobs into a `playwright-report` artifact on failure. Both `ci` and `e2e` must pass. Deploy (`deploy.yml`) runs from `workflow_run` after a green CI on `main`. The `@live` specs run only in `live-e2e.yml` (daily cron plus `workflow_dispatch`), which no merge depends on; GitHub disables a scheduled workflow after 60 days without repo activity.
+CI (`.github/workflows/ci.yml`) runs on every PR and on pushes to `main`. The `ci` job runs typecheck → lint → `test:coverage` → build. `test:e2e:mocked` runs in Chromium across three `e2e shard N/3` jobs (`--shard`, blob reporter), and the `e2e` summary job fails unless every shard passed, merging the blobs into a `playwright-report` artifact on failure. Both `ci` and `e2e` must pass. Deploy (`deploy.yml`) runs from `workflow_run` after a green CI on `main`. The `@live` specs run only in `live-e2e.yml` (manual `workflow_dispatch` only: `gh workflow run live-e2e.yml`), which no merge depends on.
 
 ## Architecture
 
