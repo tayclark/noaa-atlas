@@ -89,21 +89,33 @@ export async function mockArcgisHabitat(page: Page) {
 export const BLANK_TILE_MAX_BYTES = 1500
 
 export interface LiveTile {
+  url: string
+  /** 0 when the request failed outright, e.g. blocked by CORS. */
   status: number
   contentType: string
   bytes: number
+  /** The network error of a failed request, such as `net::ERR_FAILED`. */
+  failure?: string
 }
 
 /**
  * Records the real export tiles MapLibre fetches for one MapServer (`servicePath` is part of its URL,
  * e.g. `All_NMFS_Critical_Habitat`). The tiles bypass the Inspector, so this listens on the page.
+ * Failed requests are recorded too: a tile blocked by CORS never fires `response` (#332). MapLibre
+ * cancels tiles it no longer needs on every zoom or pan, so `net::ERR_ABORTED` is not a failure.
  */
 export function collectArcgisTiles(page: Page, servicePath: string) {
   const tiles: LiveTile[] = []
+  const isTile = (url: string) => url.includes(`${servicePath}/MapServer/export`)
   page.on('response', async (res) => {
-    if (!res.url().includes(`${servicePath}/MapServer/export`)) return
+    if (!isTile(res.url())) return
     const bytes = await res.body().then((body) => body.length, () => 0)
-    tiles.push({ status: res.status(), contentType: res.headers()['content-type'] ?? '', bytes })
+    tiles.push({ url: res.url(), status: res.status(), contentType: res.headers()['content-type'] ?? '', bytes })
+  })
+  page.on('requestfailed', (req) => {
+    const failure = req.failure()?.errorText ?? 'unknown error'
+    if (!isTile(req.url()) || failure === 'net::ERR_ABORTED') return
+    tiles.push({ url: req.url(), status: 0, contentType: '', bytes: 0, failure })
   })
   return tiles
 }
