@@ -4,6 +4,7 @@
 // firing, not forecast content.
 
 import type { Page } from '@playwright/test'
+import { NHC_URL } from './nhc'
 
 const WFO = 'TOP'
 const GRID_X = 31
@@ -30,6 +31,11 @@ export async function mockPointLookup(page: Page) {
   // The point forecast timeline (#228) asks for the grid on every point; specs that don't look at
   // it get an answer that fails fast instead of reaching the real service.
   await page.route(`**/gridpoints/${WFO}/${GRID_X},${GRID_Y}`, (route) => route.fulfill({ status: 503, json: {} }))
+  // A selected point also fetches the NHC storm layers for the hurricane impact prompt (#344); without a
+  // storm mock of their own (registered later, so it wins), specs see a quiet season.
+  await page.route(NHC_URL, (route) =>
+    route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: { type: 'FeatureCollection', features: [] } }),
+  )
   await page.route('**/gridpoints/**/forecast', (route) =>
     route.fulfill({
       json: {

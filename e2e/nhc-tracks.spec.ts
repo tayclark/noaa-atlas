@@ -1,13 +1,14 @@
-// NHC storm tracks (#334): fetched and drawn only while the NHC node is selected, with a play control
-// that runs the chosen storm from its first fix through its forecast, storm chips, and an Inspector
-// entry per layer query. Plus one `@live` check against the real MapServer.
+// NHC storm tracks (#334): the NHC node draws them like any live layer, and a looked-up point in a
+// storm's cone or under a tropical warning offers the full view (#344): a play control that runs the
+// storm from its first fix through its forecast, satellite and simulated radar under it, storm chips,
+// and an Inspector entry per layer query. Plus one `@live` check against the real MapServer.
 
 import { expect, test, type Page } from '@playwright/test'
 import { emptyNhcStormData } from '../src/data/nhcFixtures'
 import { GLOBE, waitForGlobe } from './fixtures/globe'
 import { mockGfs } from './fixtures/gfs'
 import { GOES_FRAMES, mockGoesSatellite, mockNhcStorms, NHC_URL } from './fixtures/nhc'
-import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
+import { emptyAlertsFixture, mappableAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
 
@@ -15,6 +16,17 @@ import { mockSwpc } from './fixtures/swpc'
 test.use({ reducedMotion: 'reduce' })
 
 const NODE = 'nhc-active-storms'
+// Inside the fixture's Isaias cone, on the Gulf coast.
+const IN_CONE = '-87,30'
+
+/** Looks up a place in Isaias's cone and accepts the prompt, which opens the full storm view. */
+async function openStormView(page: Page) {
+  await page.goto(`/#point=${IN_CONE}`)
+  await waitForGlobe(page)
+  const prompt = page.getByRole('region', { name: 'Storm may affect this location' })
+  await prompt.getByRole('button', { name: 'Show storm track' }).click()
+  await expect(page.locator(GLOBE)).toHaveAttribute('data-nhc-view', 'full')
+}
 
 async function selectByKeyboard(page: Page, nodeId: string) {
   await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
@@ -33,33 +45,69 @@ test.describe('mocked', () => {
     await mockGfs(page)
   })
 
-  test('the tracks are requested and drawn only while the NHC node is selected', async ({ page }) => {
+  test('the node alone draws the tracks like any live layer: no player, imagery or storm framing', async ({ page }) => {
     let requests = 0
     await mockNhcStorms(page)
     await page.route(NHC_URL, (route) => {
       requests += 1
       return route.fallback()
     })
+    const goes = await mockGoesSatellite(page)
+    const gfs = await mockGfs(page)
     await page.goto('/')
     await expect(page.locator(GLOBE)).toHaveAttribute('data-nhc-tracks', 'hidden')
     expect(requests).toBe(0)
 
     await selectByKeyboard(page, NODE)
     await expect(page.locator(GLOBE)).toHaveAttribute('data-nhc-tracks', 'ok')
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-nhc-view', 'static')
     expect(requests).toBe(3)
-    await expect(page.locator(GLOBE)).toHaveAttribute('data-nhc-storm', 'AT4')
     await expect(page.getByRole('status', { name: 'Storm track legend' })).toContainText('Cat 3')
+    await expect(page.getByRole('group', { name: 'Storm track time' })).toHaveCount(0)
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-alerts-emphasis', 'normal')
+    expect(goes).toHaveLength(0)
+    expect(gfs).toHaveLength(0)
 
     await selectByKeyboard(page, 'nws-api')
     await expect(page.locator(GLOBE)).toHaveAttribute('data-nhc-tracks', 'hidden')
-    await expect(page.getByRole('group', { name: 'Storm track time' })).toHaveCount(0)
+  })
+
+  test('a place in a storm cone is offered the full view, which can be put off for that place', async ({ page }) => {
+    await mockNhcStorms(page)
+    await page.goto(`/#point=${IN_CONE}`)
+    await waitForGlobe(page)
+    const prompt = page.getByRole('region', { name: 'Storm may affect this location' })
+    await expect(prompt).toContainText('Hurricane Isaias may affect this location')
+    await expect(prompt).toContainText("inside the storm's 5-day forecast cone")
+    await prompt.getByRole('button', { name: 'Not now' }).click()
+    await expect(prompt).toHaveCount(0)
+
+    await page.goto('/#point=-95.68,39.05')
+    await page.reload()
+    await waitForGlobe(page)
+    await expect(page.getByLabel('Selection status')).toContainText('Selected point')
+    await expect(page.getByRole('region', { name: 'Storm may affect this location' })).toHaveCount(0)
+  })
+
+  test('a place under a hurricane warning outside every cone is offered the nearest storm', async ({ page }) => {
+    await mockNhcStorms(page)
+    const alerts = mappableAlertsFixture()
+    const [alert] = alerts.features
+    const ring = [[-81, 25], [-79, 25], [-79, 27], [-81, 27], [-81, 25]] as const
+    await mockAlerts(page, { ...alerts, features: [{ ...alert!, properties: { ...alert!.properties, event: 'Hurricane Warning' }, geometry: { type: 'Polygon', coordinates: [ring] } }] })
+    await page.goto('/#point=-80,26')
+    await waitForGlobe(page)
+    const prompt = page.getByRole('region', { name: 'Storm may affect this location' })
+    await expect(prompt).toContainText('Hurricane Isaias may affect this location')
+    await expect(prompt).toContainText('A Hurricane Warning is in effect here.')
+    await prompt.getByRole('button', { name: 'Show storm track' }).click()
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-nhc-view', 'full')
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-nhc-storm', 'AT4')
   })
 
   test('play runs the storm from its first fix, a scrub pauses it, and a chip switches storms', async ({ page }) => {
     await mockNhcStorms(page)
-    await page.goto('/')
-    await waitForGlobe(page)
-    await selectByKeyboard(page, NODE)
+    await openStormView(page)
     const control = page.getByRole('group', { name: 'Storm track time' })
     const slider = control.getByRole('slider', { name: 'Hurricane Isaias track time' })
     const label = control.locator('.radar-time-label')
@@ -83,10 +131,7 @@ test.describe('mocked', () => {
   test('satellite imagery under the track follows the slider inside its archive, and is the latest outside it', async ({ page }) => {
     await mockNhcStorms(page)
     const tiles = await mockGoesSatellite(page)
-    await page.goto('/')
-    await waitForGlobe(page)
-    expect(tiles).toHaveLength(0)
-    await selectByKeyboard(page, NODE)
+    await openStormView(page)
     const control = page.getByRole('group', { name: 'Storm track time' })
     const label = control.locator('.radar-time-label')
     // The advisory (15:00) is after the newest frame (14:30), so the latest image is drawn.
@@ -108,9 +153,7 @@ test.describe('mocked', () => {
   test('past the advisory the satellite gives way to GFS simulated radar, and comes back before it', async ({ page }) => {
     await mockNhcStorms(page)
     const gfs = await mockGfs(page)
-    await page.goto('/')
-    await waitForGlobe(page)
-    await selectByKeyboard(page, NODE)
+    await openStormView(page)
     const control = page.getByRole('group', { name: 'Storm track time' })
     const slider = control.getByRole('slider', { name: 'Hurricane Isaias track time' })
     const label = control.locator('.radar-time-label')
@@ -131,16 +174,15 @@ test.describe('mocked', () => {
     await expect(page.getByRole('status', { name: 'Storm track legend' })).not.toContainText('GFS simulated radar')
   })
 
-  test('the alert polygons fade under the tracks, also on a deep link, and come back for the alerts node', async ({ page }) => {
+  test('the alert polygons fade in the full view only, and come back for the alerts node', async ({ page }) => {
     await mockNhcStorms(page)
-    await page.goto(`/#node=${NODE}`)
-    await waitForGlobe(page)
-    await expect(page.locator(GLOBE)).toHaveAttribute('data-nhc-tracks', 'ok')
+    await openStormView(page)
     await expect(page.locator(GLOBE)).toHaveAttribute('data-alerts-emphasis', 'dimmed')
 
     await selectByKeyboard(page, 'nws-api')
     await expect(page.locator(GLOBE)).toHaveAttribute('data-alerts-emphasis', 'highlighted')
-    await selectByKeyboard(page, 'spc-gis-data')
+    await selectByKeyboard(page, NODE)
+    await expect(page.locator(GLOBE)).toHaveAttribute('data-nhc-view', 'static')
     await expect(page.locator(GLOBE)).toHaveAttribute('data-alerts-emphasis', 'normal')
   })
 
