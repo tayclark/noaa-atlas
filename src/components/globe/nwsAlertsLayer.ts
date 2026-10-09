@@ -124,11 +124,11 @@ export interface AlertEmphasis {
 
 /**
  * How strongly the alert polygons are drawn for the live layers on screen: emphasised when their own
- * node is selected (#54), and faded to little more than their outlines under the hurricane tracks
- * (#342), where the warnings still matter but their fill would hide the satellite and radar imagery.
+ * node is selected (#54), and faded to little more than their outlines in the full hurricane view
+ * (#342, #344), where the warnings still matter but their fill would hide the satellite and radar imagery.
  */
-export function alertEmphasis(liveLayers: readonly LiveLayerKey[]): AlertEmphasis {
+export function alertEmphasis(liveLayers: readonly LiveLayerKey[], stormImagery: boolean): AlertEmphasis {
   if (liveLayers.includes('nws-alerts')) return { level: 'highlighted', fillOpacity: 0.6, lineWidth: 3 }
-  if (liveLayers.includes('nhc-tracks')) return { level: 'dimmed', fillOpacity: 0.08, lineWidth: 1.5 }
+  if (stormImagery) return { level: 'dimmed', fillOpacity: 0.08, lineWidth: 1.5 }
   return { level: 'normal', fillOpacity: 0.35, lineWidth: 1.5 }
 }

@@ -11,6 +11,7 @@ import {
   getStations,
 } from '../../data/nwsClient'
 import { graphFile, tasks } from '../../data/graphData'
+import { selectNode } from '../../data/selectionStore'
 import type { ServiceNode } from '../../data/graphSchema'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
 import { pollWhileVisible } from '../../data/pollWhileVisible'
@@ -99,6 +100,7 @@ import { createCanvasShadingOverlay, type CanvasShadingOverlay } from './canvasS
 import { describeReflectivity, REFLECTIVITY_BANDS, reflectivityBlend, reflectivityStep, renderReflectivity } from './reflectivityField'
 import type { ScalarFieldInput } from './fieldShading'
 import { useReflectivityForecast } from './useReflectivityForecast'
+import { describeStormImpact, stormImpactAt, type ImpactAlert } from './stormImpact'
 import { createWindOverlay, type WindOverlay } from './windOverlay'
 import { useWaveForecast } from './useWaveForecast'
 import { useWindForecast } from './useWindForecast'
@@ -371,6 +373,10 @@ export function MapLibreGlobe() {
   // The storm the track control drives, and its scrubbed time; null means the strongest storm and its latest advisory.
   const [stormBin, setStormBin] = useState<string | null>(null)
   const [stormTime, setStormTime] = useState<number | null>(null)
+  // The mapped alert polygons, for the hurricane impact check (#344).
+  const [alertPolygons, setAlertPolygons] = useState<ImpactAlert[]>([])
+  // The impact prompt the reader closed, by point and storm, so it stays closed for that place.
+  const [dismissedImpact, setDismissedImpact] = useState<string | null>(null)
   const [auroraError, setAuroraError] = useState<string | null>(null)
   const [kp, setKp] = useState<{ status: 'loading' } | { status: 'ok'; readout: KpReadout } | { status: 'error'; message: string }>({
     status: 'loading',
@@ -383,7 +389,7 @@ export function MapLibreGlobe() {
   const radarUrlRef = useRef(NOWCOAST_RADAR_TILE_URL)
   const windRef = useRef<WindOverlay | null>(null)
   // The alert polygons' current emphasis (#342), read when the alerts layer is first added.
-  const alertEmphasisRef = useRef(alertEmphasis([]))
+  const alertEmphasisRef = useRef(alertEmphasis([], false))
   const waveRef = useRef<WaveOverlay | null>(null)
   const reflectivityRef = useRef<CanvasShadingOverlay<ScalarFieldInput> | null>(null)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
@@ -394,6 +400,13 @@ export function MapLibreGlobe() {
   const [heldLayers, setHeldLayers] = useState(view.liveLayers)
   if (!selection.selectedPoint && heldLayers !== view.liveLayers) setHeldLayers(view.liveLayers)
   const liveLayers = selection.selectedPoint ? heldLayers : view.liveLayers
+  // The NHC node alone draws its tracks like any live layer. The full storm view (player, imagery,
+  // dimmed alerts, camera on the storm) opens only from the impact prompt for a looked-up point (#344),
+  // and closes with the layer.
+  const nhcShown = liveLayers.includes('nhc-tracks')
+  const [stormFocus, setStormFocus] = useState<string | null>(null)
+  if (!nhcShown && stormFocus !== null) setStormFocus(null)
+  const stormFull = nhcShown && stormFocus !== null
   // On a phone the globe is a tab that stays mounted while another shows (#78). Hidden, it does no
   // work for nobody: its loops and polling pause, and the camera waits for it to be seen again. A
   // wide layout shows it always.
@@ -850,6 +863,7 @@ export function MapLibreGlobe() {
         .then((alerts) => {
           const { mappable, zoneOnly } = splitAlertsByGeometry(alerts)
           setZoneOnlyAlerts(zoneOnly)
+          setAlertPolygons(mappable.features.map((f) => ({ event: f.properties.event, geometry: f.geometry })))
           setAlertsStatus(mappable.features.length === 0 && zoneOnly.length === 0 ? 'empty' : 'ok')
 
           const existing = map.getSource<GeoJSONSource>(ALERTS_SOURCE_ID)
@@ -917,7 +931,7 @@ export function MapLibreGlobe() {
   // Reacts to the selection (#44, #149): draws its coverage footprint, flies to it, and
   // emphasises the live layers its services drive (#54). Gated on mapLoaded since the source,
   // fitBounds and setPaintProperty all require a loaded style.
-  const emphasis = useMemo(() => alertEmphasis(liveLayers), [liveLayers])
+  const emphasis = useMemo(() => alertEmphasis(liveLayers, stormFull), [liveLayers, stormFull])
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded) return
@@ -1163,14 +1177,17 @@ export function MapLibreGlobe() {
     }
   }, [spcShown, mapLoaded])
 
-  // The NHC storm tracks (#334), like the SPC outlook: fetched only while the node is selected and
-  // refreshed while the tab is visible. A failed refresh keeps the tracks already drawn.
-  const nhcShown = liveLayers.includes('nhc-tracks')
+  // The NHC storm tracks (#334), like the SPC outlook: fetched only while the node is selected, or
+  // while a point is selected so the impact prompt can check it (#344), and refreshed while the tab is
+  // visible. A failed refresh keeps the tracks already drawn.
+  const stormsWanted = nhcShown || selection.selectedPoint !== null
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(NHC_FIX_LAYER_ID)) return
     for (const id of NHC_LAYER_IDS) map.setLayoutProperty(id, 'visibility', nhcShown ? 'visible' : 'none')
-    if (!nhcShown) return
+  }, [nhcShown, mapLoaded])
+  useEffect(() => {
+    if (!stormsWanted) return
     let cancelled = false
     let loaded = false
     const load = () => {
@@ -1191,7 +1208,7 @@ export function MapLibreGlobe() {
       cancelled = true
       stop()
     }
-  }, [nhcShown, mapLoaded])
+  }, [stormsWanted])
 
   const stormTracks = storms.status === 'ok' ? storms.tracks : NO_STORMS
   const storm = stormTracks.find((track) => track.bin === stormBin) ?? stormTracks[0] ?? null
@@ -1205,13 +1222,32 @@ export function MapLibreGlobe() {
     setStormTime(null)
   }, [])
 
+  // The impact prompt (#344): a looked-up point inside a storm's cone or under a tropical watch or
+  // warning offers the full storm view, unless it is already open on that storm or was closed here.
+  const point = selection.selectedPoint
+  const impact = useMemo(() => (point ? stormImpactAt(point, stormTracks, alertPolygons) : null), [point, stormTracks, alertPolygons])
+  const impactKey = impact && point ? `${point.join(',')}:${impact.bin}` : null
+  const impactPrompt = impact && !(stormFull && stormFocus === impact.bin) && dismissedImpact !== impactKey ? describeStormImpact(impact) : null
+  const openStormView = useCallback(() => {
+    if (!impact) return
+    // The reader moves from the place to the storm, so the place's popup would only cover the player.
+    openPopup?.remove()
+    setStormFocus(impact.bin)
+    setStormBin(impact.bin)
+    setStormTime(null)
+    selectNode('nhc-active-storms')
+  }, [impact])
+
   // Redraws the tracks, with the chosen storm's trail and marker at the scrubbed time.
   const stormFrameTime = stormFrames[stormIndex] ?? null
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !nhcShown) return
-    map.getSource<GeoJSONSource>(NHC_SOURCE_ID)?.setData(trackFeatures(stormTracks, storm?.bin ?? null, stormFrameTime))
-  }, [stormTracks, storm, stormFrameTime, nhcShown, mapLoaded])
+    // Without the full view every storm is drawn alike, with no marker.
+    map.getSource<GeoJSONSource>(NHC_SOURCE_ID)?.setData(
+      stormFull ? trackFeatures(stormTracks, storm?.bin ?? null, stormFrameTime) : trackFeatures(stormTracks, null, null),
+    )
+  }, [stormTracks, storm, stormFrameTime, nhcShown, stormFull, mapLoaded])
 
   // The GOES frame list (#338) is read while the tracks are shown and refreshed as frames arrive. A
   // failed read leaves the latest image, which needs no list. The image follows the storm slider
@@ -1224,31 +1260,31 @@ export function MapLibreGlobe() {
       .catch(() => {})
   }, [])
   useEffect(() => {
-    if (!nhcShown) return
+    if (!stormFull) return
     const controller = new AbortController()
     loadGoesFrames(controller.signal)
     return () => {
       controller.abort()
       setGoesFrames([])
     }
-  }, [nhcShown, loadGoesFrames])
+  }, [stormFull, loadGoesFrames])
   useEffect(() => {
-    if (!nhcShown || !active) return
+    if (!stormFull || !active) return
     return pollWhileVisible(() => loadGoesFrames(), GOES_FRAMES_REFRESH_MS)
-  }, [nhcShown, active, loadGoesFrames])
+  }, [stormFull, active, loadGoesFrames])
   const goesFrame = goesFrameForTime(goesFrames, stormFrameTime)
   // Past the advisory there is no satellite image of the storm yet, so the GFS simulated radar takes
   // its place. The first forecast step is loaded while the slider is still before the advisory.
-  const stormInForecast = nhcShown && storm !== null && stormFrameTime !== null && stormFrameTime > storm.advisoryTime
+  const stormInForecast = stormFull && storm !== null && stormFrameTime !== null && stormFrameTime > storm.advisoryTime
   const reflectivityTime = storm ? Math.max(stormFrameTime ?? storm.advisoryTime, storm.advisoryTime) : null
-  const reflectivity = useReflectivityForecast(nhcShown && storm !== null, reflectivityTime === null ? null : reflectivityStep(reflectivityTime))
+  const reflectivity = useReflectivityForecast(stormFull && storm !== null, reflectivityTime === null ? null : reflectivityStep(reflectivityTime))
   const reflectivityPair = reflectivity.status === 'idle' ? null : reflectivity.field
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(GOES_LAYER_ID)) return
-    map.setLayoutProperty(GOES_LAYER_ID, 'visibility', nhcShown && !stormInForecast ? 'visible' : 'none')
+    map.setLayoutProperty(GOES_LAYER_ID, 'visibility', stormFull && !stormInForecast ? 'visible' : 'none')
     reflectivityRef.current?.setVisible(stormInForecast)
-  }, [nhcShown, stormInForecast, mapLoaded])
+  }, [stormFull, stormInForecast, mapLoaded])
   useEffect(() => {
     if (!mapLoaded || !stormInForecast || reflectivityTime === null) return
     reflectivityRef.current?.setField(reflectivityPair && { a: reflectivityPair.a, b: reflectivityPair.b, t: reflectivityBlend(reflectivityTime) })
@@ -1256,7 +1292,7 @@ export function MapLibreGlobe() {
   const goesUrlRef = useRef(GOES_TILE_URL)
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded || !nhcShown) return
+    if (!map || !mapLoaded || !stormFull) return
     const url = goesTileUrl(goesFrame)
     if (url === goesUrlRef.current) return
     const timer = setTimeout(() => {
@@ -1264,12 +1300,12 @@ export function MapLibreGlobe() {
       goesUrlRef.current = url
     }, RADAR_FRAME_DEBOUNCE_MS)
     return () => clearTimeout(timer)
-  }, [goesFrame, nhcShown, mapLoaded])
+  }, [goesFrame, stormFull, mapLoaded])
 
-  // Frames the chosen storm when its tracks first arrive and whenever another storm is chosen.
+  // In the full view, frames the chosen storm when its tracks first arrive and whenever another storm is chosen.
   const framedStormRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!nhcShown) {
+    if (!stormFull) {
       framedStormRef.current = null
       return
     }
@@ -1297,7 +1333,7 @@ export function MapLibreGlobe() {
       ],
       { padding, maxZoom: 5, essential: !reduceMotion, animate: !reduceMotion },
     )
-  }, [storm, nhcShown, mapLoaded, active])
+  }, [storm, stormFull, mapLoaded, active])
 
   // The ArcGIS overlays (#247) are drawn while a selection lights them, every one of them when a
   // hub or task lights several (#288). Their legends are the requests the client logs; a failed
@@ -1364,9 +1400,10 @@ export function MapLibreGlobe() {
         data-spc-outlook={mapLoaded ? (spcShown ? spc.status : 'hidden') : undefined}
         data-alerts-emphasis={emphasis.level}
         data-nhc-tracks={mapLoaded ? (nhcShown ? storms.status : 'hidden') : undefined}
-        data-nhc-storm={nhcShown && storm ? storm.bin : undefined}
-        data-goes-time={nhcShown && !stormInForecast ? (goesFrame ?? 'latest') : undefined}
-        data-gfs-reflectivity={nhcShown ? (stormInForecast && reflectivity.status !== 'idle' ? reflectivity.status : 'hidden') : undefined}
+        data-nhc-view={nhcShown ? (stormFull ? 'full' : 'static') : undefined}
+        data-nhc-storm={stormFull && storm ? storm.bin : undefined}
+        data-goes-time={stormFull && !stormInForecast ? (goesFrame ?? 'latest') : undefined}
+        data-gfs-reflectivity={stormFull ? (stormInForecast && reflectivity.status !== 'idle' ? reflectivity.status : 'hidden') : undefined}
         data-ndbc-stations={mapLoaded ? (ndbcShown ? (ndbcStations ?? 'loading') : 0) : undefined}
         data-nowcoast-radar={mapLoaded ? (radarShown ? 'visible' : 'hidden') : undefined}
         data-wind={mapLoaded ? (windShown ? (windField ? 'visible' : 'loading') : 'hidden') : undefined}
@@ -1461,7 +1498,21 @@ export function MapLibreGlobe() {
             </button>
           </div>
         )}
-        {nhcShown && storm && stormFrames.length > 1 && (
+        {impactPrompt && impactKey && (
+          <div className="zone-only-alerts storm-prompt" role="region" aria-label="Storm may affect this location">
+            <strong>{impactPrompt.title}</strong>
+            <p>{impactPrompt.reason}</p>
+            <div className="storm-prompt-actions">
+              <button type="button" className="radar-time-step storm-prompt-show" onClick={openStormView}>
+                Show storm track
+              </button>
+              <button type="button" className="radar-time-step" onClick={() => setDismissedImpact(impactKey)}>
+                Not now
+              </button>
+            </div>
+          </div>
+        )}
+        {stormFull && storm && stormFrames.length > 1 && (
           <StormTrackControl
             tracks={stormTracks}
             track={storm}

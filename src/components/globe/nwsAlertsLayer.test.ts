@@ -161,14 +161,16 @@ describe('alert refresh timing', () => {
 })
 
 describe('alertEmphasis', () => {
-  it('emphasises the alerts for their own node, fades them under the hurricane tracks, else draws them as usual', () => {
-    expect(alertEmphasis(['nws-alerts'])).toMatchObject({ level: 'highlighted', lineWidth: 3 })
-    expect(alertEmphasis(['nhc-tracks'])).toMatchObject({ level: 'dimmed', lineWidth: 1.5 })
-    expect(alertEmphasis(['nhc-tracks']).fillOpacity).toBeLessThan(alertEmphasis([]).fillOpacity)
-    expect(alertEmphasis([]).level).toBe('normal')
+  it('emphasises the alerts for their own node, fades them under the storm imagery, else draws them as usual', () => {
+    expect(alertEmphasis(['nws-alerts'], false)).toMatchObject({ level: 'highlighted', lineWidth: 3 })
+    expect(alertEmphasis(['nhc-tracks'], true)).toMatchObject({ level: 'dimmed', lineWidth: 1.5 })
+    expect(alertEmphasis(['nhc-tracks'], true).fillOpacity).toBeLessThan(alertEmphasis([], false).fillOpacity)
+    // The tracks alone, without the imagery of the full storm view, leave the alerts as they are.
+    expect(alertEmphasis(['nhc-tracks'], false).level).toBe('normal')
+    expect(alertEmphasis([], false).level).toBe('normal')
   })
 
   it('lets the alerts win when a task or hub lights both', () => {
-    expect(alertEmphasis(['nhc-tracks', 'nws-alerts']).level).toBe('highlighted')
+    expect(alertEmphasis(['nhc-tracks', 'nws-alerts'], true).level).toBe('highlighted')
   })
 })

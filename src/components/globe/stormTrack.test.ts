@@ -184,6 +184,12 @@ describe('trackFeatures', () => {
     expect(forecast?.geometry.coordinates[0]).toEqual([-87.6, 27.0])
   })
 
+  it('draws every storm alike, without a marker, when none is chosen', () => {
+    const { features } = trackFeatures(buildStormTracks(makeNhcStormData()), null, null)
+    expect(features.every((f) => f.properties.selected === true)).toBe(true)
+    expect(features.some((f) => f.properties.kind === 'marker' || f.properties.kind === 'trail')).toBe(false)
+  })
+
   it('leaves out the marker when there is no time yet', () => {
     const { features } = trackFeatures(buildStormTracks(makeNhcStormData()), 'AT4', null)
     expect(features.some((f) => f.properties.kind === 'marker')).toBe(false)
