@@ -95,6 +95,10 @@ import {
 } from './nowcoastRadarLayer'
 import { RadarTimeControl } from './RadarTimeControl'
 import { createWaveOverlay, type WaveOverlay } from './waveOverlay'
+import { createCanvasShadingOverlay, type CanvasShadingOverlay } from './canvasShadingOverlay'
+import { describeReflectivity, REFLECTIVITY_BANDS, reflectivityBlend, reflectivityStep, renderReflectivity } from './reflectivityField'
+import type { ScalarFieldInput } from './fieldShading'
+import { useReflectivityForecast } from './useReflectivityForecast'
 import { createWindOverlay, type WindOverlay } from './windOverlay'
 import { useWaveForecast } from './useWaveForecast'
 import { useWindForecast } from './useWindForecast'
@@ -206,8 +210,10 @@ const NHC_FORECAST_LAYER_ID = 'nhc-tracks-forecast'
 const NHC_TRAIL_LAYER_ID = 'nhc-tracks-trail'
 const NHC_FIX_LAYER_ID = 'nhc-tracks-fix'
 const NHC_MARKER_LAYER_ID = 'nhc-tracks-marker'
+// GFS simulated radar along the forecast part of the storm slider (#340), where no satellite image exists yet.
+const REFC_SOURCE_ID = 'gfs-reflectivity'
+const REFC_LAYER_ID = 'gfs-reflectivity-raster'
 const NHC_LAYER_IDS = [
-  GOES_LAYER_ID,
   NHC_CONE_FILL_LAYER_ID,
   NHC_CONE_LINE_LAYER_ID,
   NHC_PAST_LAYER_ID,
@@ -380,6 +386,7 @@ export function MapLibreGlobe() {
   const radarUrlRef = useRef(NOWCOAST_RADAR_TILE_URL)
   const windRef = useRef<WindOverlay | null>(null)
   const waveRef = useRef<WaveOverlay | null>(null)
+  const reflectivityRef = useRef<CanvasShadingOverlay<ScalarFieldInput> | null>(null)
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const view = useMemo(() => describeSelectionForGlobe(selection, globeViewContext), [selection])
   // A tap on the globe selects a point, which replaces the service whose radar or buoys were on
@@ -579,6 +586,13 @@ export function MapLibreGlobe() {
         source: GOES_SOURCE_ID,
         layout: { visibility: 'none' },
         paint: { 'raster-opacity': GOES_OPACITY, 'raster-fade-duration': 0 },
+      })
+      reflectivityRef.current = createCanvasShadingOverlay(map, {
+        sourceId: REFC_SOURCE_ID,
+        layerId: REFC_LAYER_ID,
+        size: 1024,
+        opacity: 0.9,
+        render: renderReflectivity,
       })
       map.addSource(NHC_SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       const nhcLayout = { visibility: 'none' as const }
@@ -1230,6 +1244,22 @@ export function MapLibreGlobe() {
     return pollWhileVisible(() => loadGoesFrames(), GOES_FRAMES_REFRESH_MS)
   }, [nhcShown, active, loadGoesFrames])
   const goesFrame = goesFrameForTime(goesFrames, stormFrameTime)
+  // Past the advisory there is no satellite image of the storm yet, so the GFS simulated radar takes
+  // its place. The first forecast step is loaded while the slider is still before the advisory.
+  const stormInForecast = nhcShown && storm !== null && stormFrameTime !== null && stormFrameTime > storm.advisoryTime
+  const reflectivityTime = storm ? Math.max(stormFrameTime ?? storm.advisoryTime, storm.advisoryTime) : null
+  const reflectivity = useReflectivityForecast(nhcShown && storm !== null, reflectivityTime === null ? null : reflectivityStep(reflectivityTime))
+  const reflectivityPair = reflectivity.status === 'idle' ? null : reflectivity.field
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded || !map.getLayer(GOES_LAYER_ID)) return
+    map.setLayoutProperty(GOES_LAYER_ID, 'visibility', nhcShown && !stormInForecast ? 'visible' : 'none')
+    reflectivityRef.current?.setVisible(stormInForecast)
+  }, [nhcShown, stormInForecast, mapLoaded])
+  useEffect(() => {
+    if (!mapLoaded || !stormInForecast || reflectivityTime === null) return
+    reflectivityRef.current?.setField(reflectivityPair && { a: reflectivityPair.a, b: reflectivityPair.b, t: reflectivityBlend(reflectivityTime) })
+  }, [reflectivityPair, reflectivityTime, stormInForecast, mapLoaded])
   const goesUrlRef = useRef(GOES_TILE_URL)
   useEffect(() => {
     const map = mapRef.current
@@ -1341,7 +1371,8 @@ export function MapLibreGlobe() {
         data-spc-outlook={mapLoaded ? (spcShown ? spc.status : 'hidden') : undefined}
         data-nhc-tracks={mapLoaded ? (nhcShown ? storms.status : 'hidden') : undefined}
         data-nhc-storm={nhcShown && storm ? storm.bin : undefined}
-        data-goes-time={nhcShown ? (goesFrame ?? 'latest') : undefined}
+        data-goes-time={nhcShown && !stormInForecast ? (goesFrame ?? 'latest') : undefined}
+        data-gfs-reflectivity={nhcShown ? (stormInForecast && reflectivity.status !== 'idle' ? reflectivity.status : 'hidden') : undefined}
         data-ndbc-stations={mapLoaded ? (ndbcShown ? (ndbcStations ?? 'loading') : 0) : undefined}
         data-nowcoast-radar={mapLoaded ? (radarShown ? 'visible' : 'hidden') : undefined}
         data-wind={mapLoaded ? (windShown ? (windField ? 'visible' : 'loading') : 'hidden') : undefined}
@@ -1445,7 +1476,11 @@ export function MapLibreGlobe() {
             index={stormIndex}
             advisoryIndex={stormAdvisoryIndex}
             onChange={chooseStormFrame}
-            imagery={describeGoesFrame(goesFrames, goesFrame)}
+            imagery={
+              stormInForecast && reflectivity.status !== 'idle'
+                ? describeReflectivity(reflectivity.status, reflectivity.cycle)
+                : describeGoesFrame(goesFrames, goesFrame)
+            }
             paused={!active}
           />
         )}
@@ -1461,6 +1496,19 @@ export function MapLibreGlobe() {
                 </li>
               ))}
             </ul>
+            {stormInForecast && (
+              <>
+                <strong>GFS simulated radar (dBZ)</strong>
+                <ul>
+                  {REFLECTIVITY_BANDS.filter((_, i) => i % 2 === 0).map((band) => (
+                    <li key={band.dbz}>
+                      <span className="spc-legend-swatch" style={{ background: band.color }} aria-hidden="true" />
+                      {band.dbz}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         )}
         {nhcShown && (storms.status === 'empty' || storms.status === 'error') && (

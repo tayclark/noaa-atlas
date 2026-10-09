@@ -3,7 +3,7 @@ import idx from './fixtures/gfs-1p00-f012.idx?raw'
 import grib from './fixtures/gfs-ugrd10m-f012.grib2.b64?raw'
 import waveIdx from './fixtures/gfswave-0p25-f024.idx?raw'
 import waveGrib from './fixtures/gfswave-htsgw-f024.grib2.b64?raw'
-import { clearGfsCache, cycleAtOrBefore, cycleCandidates, forecastHourFor, getLatestCycle, getWaveField, getWindField, GfsHttpError } from './gfsClient'
+import { clearGfsCache, cycleAtOrBefore, cycleCandidates, forecastHourFor, getLatestCycle, getReflectivityField, getWaveField, getWindField, GfsHttpError } from './gfsClient'
 import { getRequestLogSnapshot } from './requestLog'
 
 const bytes = Uint8Array.from(atob(grib.trim()), (c) => c.charCodeAt(0))
@@ -81,6 +81,24 @@ describe('gfs client', () => {
     expect(await getWindField(cycle, 12)).toBe(field)
     expect(fetchMock).toHaveBeenCalledTimes(3)
     expect(getRequestLogSnapshot()[0]).toMatchObject({ status: 'success', httpStatus: 200 })
+  })
+
+  it('fetches only the composite reflectivity message for the simulated radar, and caches it', async () => {
+    serve()
+    const cycle = T('2026-10-01T00:00:00Z')
+    const field = await getReflectivityField(cycle, 12)
+    expect([field.ni, field.nj]).toEqual([360, 181])
+    expect(fetchMock.mock.calls[1][1].headers.Range).toBe('bytes=290933-364723')
+    expect(await getReflectivityField(cycle, 12)).toBe(field)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('reports an index without reflectivity, and does not cache the failure', async () => {
+    fetchMock.mockImplementation(async () => new Response('1:0:d=2026100100:PRMSL:mean sea level:12 hour fcst:\n'))
+    const cycle = T('2026-10-01T00:00:00Z')
+    await expect(getReflectivityField(cycle, 3)).rejects.toThrow('GFS index has no REFC')
+    serve()
+    await expect(getReflectivityField(cycle, 3)).resolves.toBeDefined()
   })
 
   it('does not cache a failed load', async () => {

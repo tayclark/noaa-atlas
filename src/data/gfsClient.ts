@@ -108,6 +108,7 @@ export function clearGfsCache(): void {
   cycleCache.clear()
   fieldCache.clear()
   waveCache.clear()
+  reflectivityCache.clear()
 }
 
 /** The newest GFS cycle whose first file is already published (the wave files can lag the atmos ones). */
@@ -149,6 +150,27 @@ export function getWindField(cycle: number, hour: number): Promise<WindField> {
   fieldCache.set(path, pending)
   pending.catch(() => fieldCache.delete(path))
   while (fieldCache.size > FIELD_CACHE_SIZE) fieldCache.delete(fieldCache.keys().next().value as string)
+  return pending
+}
+
+const reflectivityCache = new Map<string, Promise<GribField>>()
+
+/** Composite reflectivity (dBZ, the model's simulated radar) for `hour` hours after `cycle` (#340). Cached for the session. */
+export function getReflectivityField(cycle: number, hour: number): Promise<GribField> {
+  const path = fieldPath(cycle, hour)
+  const cached = reflectivityCache.get(path)
+  if (cached) return cached
+  const pending = (async () => {
+    const idx = await (await logged(`${path}.idx`, {}, async () => ({ bytes: 'index' }))).text()
+    const entry = findGribField(parseGribIdx(idx), 'REFC', 'entire atmosphere')
+    if (!entry) throw new Error('GFS index has no REFC')
+    const headers = { Range: rangeHeader(entry) }
+    const res = await logged(path, headers, async (r) => ({ name: 'REFC', bytes: (await r.arrayBuffer()).byteLength }))
+    return decodeGribField(await res.arrayBuffer())
+  })()
+  reflectivityCache.set(path, pending)
+  pending.catch(() => reflectivityCache.delete(path))
+  while (reflectivityCache.size > FIELD_CACHE_SIZE) reflectivityCache.delete(reflectivityCache.keys().next().value as string)
   return pending
 }
 
