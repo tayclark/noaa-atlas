@@ -12,6 +12,7 @@
 // buoy lists left the globe chunk too; Total JS went 588.0 to 589.4 kB on the chunks' own overhead.
 // Total JS 592 to 605 kB: the wave field decodes in a worker (#291), which bundles its own copy of
 // grib2.ts and the JPEG 2000 decoder beside the main-thread copy kept as a fallback, 589.5 to 601.3 kB.
+// Total JS 605 to 612 kB: maplibre-gl 6.11.2 to 6.12.0 (Dependabot #326), 603.9 to 606.5 kB.
 
 import { readdirSync, readFileSync } from 'node:fs'
 import { extname, join, relative } from 'node:path'
@@ -25,7 +26,7 @@ const CSS = ['.css']
 export const BUDGETS = [
   { name: 'Initial JavaScript', scope: 'initial', ext: JS, maxGzipBytes: 203 * KB },
   { name: 'Initial CSS', scope: 'initial', ext: CSS, maxGzipBytes: 6.4 * KB },
-  { name: 'Total JavaScript', scope: 'total', ext: JS, maxGzipBytes: 605 * KB },
+  { name: 'Total JavaScript', scope: 'total', ext: JS, maxGzipBytes: 612 * KB },
   { name: 'Total CSS', scope: 'total', ext: CSS, maxGzipBytes: 19 * KB },
 ]
 
