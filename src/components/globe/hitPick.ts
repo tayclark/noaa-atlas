@@ -37,3 +37,15 @@ export function nearestCandidate<T>(candidates: readonly ScreenCandidate<T>[], a
   }
   return best?.feature ?? null
 }
+
+/** How far (px) the click's globe point may project from the click and still count as on the globe. */
+export const GLOBE_EDGE_TOLERANCE = 2
+
+/**
+ * Whether a click landed on the globe. MapLibre's globe turns a click in the space around the disc
+ * into the nearest point on its edge, which then projects back somewhere else; a click on the
+ * globe projects back to itself.
+ */
+export function isOnGlobe(click: ScreenPoint, reprojected: ScreenPoint): boolean {
+  return Math.hypot(reprojected.x - click.x, reprojected.y - click.y) <= GLOBE_EDGE_TOLERANCE
+}

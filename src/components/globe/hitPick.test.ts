@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hitBox, hitPadding, MOUSE_HIT_PADDING, nearestCandidate, TOUCH_HIT_PADDING } from './hitPick'
+import { GLOBE_EDGE_TOLERANCE, hitBox, hitPadding, isOnGlobe, MOUSE_HIT_PADDING, nearestCandidate, TOUCH_HIT_PADDING } from './hitPick'
 
 describe('hitPadding', () => {
   it('reaches further for a finger than for a mouse', () => {
@@ -37,5 +37,17 @@ describe('nearestCandidate', () => {
 
   it('finds nothing among no candidates', () => {
     expect(nearestCandidate([], { x: 0, y: 0 })).toBeNull()
+  })
+})
+
+describe('isOnGlobe', () => {
+  it('counts a click whose globe point projects back onto it', () => {
+    expect(isOnGlobe({ x: 300, y: 200 }, { x: 300.4, y: 199.7 })).toBe(true)
+    expect(isOnGlobe({ x: 300, y: 200 }, { x: 300 + GLOBE_EDGE_TOLERANCE, y: 200 })).toBe(true)
+  })
+
+  it('rejects a click in space, which MapLibre snaps to the globe edge', () => {
+    expect(isOnGlobe({ x: 15, y: 15 }, { x: 140, y: 120 })).toBe(false)
+    expect(isOnGlobe({ x: 300, y: 200 }, { x: 300, y: 203 })).toBe(false)
   })
 })
