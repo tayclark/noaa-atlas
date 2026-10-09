@@ -108,6 +108,13 @@ describe('StormTrackControl', () => {
     expect(screen.getByRole('button', { name: /Play/ })).toBeTruthy()
   })
 
+  it('names the satellite image under the track when there is one', () => {
+    const { rerender } = renderControl({ imagery: 'satellite latest, 20:25 UTC' })
+    expect(screen.getByText(/satellite latest, 20:25 UTC/)).toBeTruthy()
+    rerender(<StormTrackControl tracks={TRACKS} track={ISAIAS} onTrackChange={() => {}} frames={FRAMES} index={ADVISORY} advisoryIndex={ADVISORY} onChange={() => {}} />)
+    expect(screen.queryByText(/satellite/)).toBeNull()
+  })
+
   it('leaves the chips out for a single storm', () => {
     renderControl({ tracks: [ISAIAS] })
     expect(screen.queryByRole('group', { name: 'Storm' })).toBeNull()
