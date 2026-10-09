@@ -5,14 +5,14 @@ import { findGribField, parseGribIdx, rangeHeader } from './gribIdx'
 describe('parseGribIdx', () => {
   it('reads name, level, forecast and byte offsets', () => {
     const entries = parseGribIdx(idx)
-    expect(entries).toHaveLength(7)
+    expect(entries).toHaveLength(9)
     expect(entries[0]).toMatchObject({ name: 'PRMSL', level: 'mean sea level', forecast: '12 hour fcst', start: 0, end: 75374 })
   })
 
   it('leaves the last entry open-ended and ignores junk lines', () => {
     const entries = parseGribIdx(`${idx}\nnot an index line\n`)
     expect(entries.at(-1)?.end).toBeNull()
-    expect(entries).toHaveLength(7)
+    expect(entries).toHaveLength(9)
   })
 })
 
