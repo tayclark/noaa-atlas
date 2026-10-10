@@ -62,4 +62,18 @@ describe('getActiveStorms', () => {
     vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse({ type: 'FeatureCollection', features: [{ type: 'Feature' }] })))
     await expect(getActiveStorms()).rejects.toBeInstanceOf(NhcParseError)
   })
+
+  it('fails as a whole when one layer fails, and refetches every layer next time', async () => {
+    const data = makeNhcStormData()
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/7/query')) return Promise.resolve(new Response(null, { status: 503 }))
+      return Promise.resolve(jsonResponse(url.includes('/10/query') ? data.past : data.forecast))
+    })
+    await expect(getActiveStorms()).rejects.toBeInstanceOf(NhcHttpError)
+    vi.mocked(fetch).mockClear()
+    serve()
+    expect((await getActiveStorms()).cones.features).toHaveLength(data.cones.features.length)
+    expect(fetch).toHaveBeenCalledTimes(3)
+  })
 })

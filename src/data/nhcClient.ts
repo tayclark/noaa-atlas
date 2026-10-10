@@ -33,7 +33,7 @@ export class NhcParseError extends Error {
   }
 }
 
-const { request, clearCache } = createLiveClient({
+const { request, invalidate, clearCache } = createLiveClient({
   baseUrl: 'https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather_summary/MapServer',
   headers: {},
   httpError: (res) => new NhcHttpError(res.status),
@@ -57,12 +57,22 @@ export interface NhcStormData {
   cones: NhcCones
 }
 
-/** Every active storm's past fixes, forecast fixes and forecast cone. All empty when no storm is active. */
+/**
+ * Every active storm's past fixes, forecast fixes and forecast cone. All empty when no storm is
+ * active. The three layers are one picture, so when any of them fails the ones that loaded are
+ * dropped from the cache too: the next refresh fetches all three again rather than pairing a fresh
+ * layer with ones from an older advisory.
+ */
 export async function getActiveStorms(): Promise<NhcStormData> {
-  const [past, forecast, cones] = await Promise.all([
-    request(query(NHC_LAYERS.pastPoints), parseNhcPastPoints),
-    request(query(NHC_LAYERS.forecastPoints), parseNhcForecastPoints),
-    request(query(NHC_LAYERS.cone), parseNhcCones),
+  const paths = [query(NHC_LAYERS.pastPoints), query(NHC_LAYERS.forecastPoints), query(NHC_LAYERS.cone)]
+  const [past, forecast, cones] = await Promise.allSettled([
+    request(paths[0], parseNhcPastPoints),
+    request(paths[1], parseNhcForecastPoints),
+    request(paths[2], parseNhcCones),
   ])
-  return { past, forecast, cones }
+  if (past.status === 'fulfilled' && forecast.status === 'fulfilled' && cones.status === 'fulfilled') {
+    return { past: past.value, forecast: forecast.value, cones: cones.value }
+  }
+  for (const path of paths) invalidate(path)
+  throw [past, forecast, cones].find((r) => r.status === 'rejected')?.reason
 }
