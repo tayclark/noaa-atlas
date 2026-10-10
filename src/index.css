@@ -18,6 +18,9 @@
 
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  /* The small print of the graph's detail card and legend: field names, section headings, samples. */
+  --font-size-3xs: 0.65rem;
+  --font-size-2xs: 0.7rem;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-md: 1rem;
