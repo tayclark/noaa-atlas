@@ -4,6 +4,8 @@
 // band use. The initial zoom equals the layer's minimum zoom, so the station is drawn on load.
 
 import type { Page } from '@playwright/test'
+import { makeHtfAnnual, makeSeaLevelTrend, makeStationMetadata } from '../../src/data/coopsFixtures'
+import { corsJson } from './cors'
 
 export const STATION = { id: '8729108', name: 'Test Harbor', lat: 39.8, lng: -98.5, state: 'KS' }
 
@@ -55,4 +57,17 @@ export async function mockCoops(page: Page, { waterLevelError }: { waterLevelErr
     }
     return route.fulfill({ json: predictionsFixture() })
   })
+}
+
+/** The CO-OPS try-its (#241): Panama City's metadata, sea level trend and high tide flood days. */
+export async function mockCoopsTryIts(page: Page) {
+  await page.route(/^https:\/\/api\.tidesandcurrents\.noaa\.gov\/mdapi\/prod\/webapi\/stations\/8729108\.json/, (route) =>
+    route.fulfill(corsJson(makeStationMetadata())),
+  )
+  await page.route(/^https:\/\/api\.tidesandcurrents\.noaa\.gov\/dpapi\/prod\/webapi\/product\/sealvltrends\.json/, (route) =>
+    route.fulfill(corsJson(makeSeaLevelTrend())),
+  )
+  await page.route(/^https:\/\/api\.tidesandcurrents\.noaa\.gov\/dpapi\/prod\/webapi\/htf\/htf_annual\.json/, (route) =>
+    route.fulfill(corsJson(makeHtfAnnual())),
+  )
 }

@@ -3,6 +3,8 @@
 // so clicking the canvas centre lands in it, the same trick the mocked alert polygon uses.
 
 import type { Page } from '@playwright/test'
+import { makeAlerts, makeScales, makeSolarWindMagRows, makeSolarWindRows, makeXrayRows } from '../../src/data/swpcFixtures'
+import { corsJson } from './cors'
 
 export const AURORA_BAND_VALUE = 60
 const BAND_LONS = { from: 250, to: 285 } // -110..-75 in OVATION's 0..359 convention
@@ -61,4 +63,13 @@ export async function mockSwpcRefresh(page: Page, { refreshFails = false }: { re
     if (refreshFails) return route.fulfill({ status: 503, body: '' })
     return route.fulfill({ json: [{ time_tag: '2026-09-25T00:32:00', kp_index: 5, estimated_kp: 5.33, kp: '5P' }] })
   })
+}
+
+/** The SWPC try-its (#240): the scales and alerts, the solar wind and the GOES X-ray feeds. */
+export async function mockSwpcTryIts(page: Page) {
+  await page.route(/services\.swpc\.noaa\.gov\/products\/noaa-scales\.json/, (route) => route.fulfill(corsJson(makeScales())))
+  await page.route(/services\.swpc\.noaa\.gov\/products\/alerts\.json/, (route) => route.fulfill(corsJson(makeAlerts())))
+  await page.route(/services\.swpc\.noaa\.gov\/json\/rtsw\/rtsw_wind_1m\.json/, (route) => route.fulfill(corsJson(makeSolarWindRows(12))))
+  await page.route(/services\.swpc\.noaa\.gov\/json\/rtsw\/rtsw_mag_1m\.json/, (route) => route.fulfill(corsJson(makeSolarWindMagRows(12))))
+  await page.route(/services\.swpc\.noaa\.gov\/json\/goes\/primary\/xrays-6-hour\.json/, (route) => route.fulfill(corsJson(makeXrayRows(12))))
 }

@@ -2,6 +2,7 @@
 // the canvas centre lands inside it.
 
 import type { Page } from '@playwright/test'
+import { corsJson } from './cors'
 
 export const SPC_URL = /spc\.noaa\.gov\/products\/outlook\/day1otlk_cat/
 
@@ -29,6 +30,6 @@ export function spcOutlookFixture() {
 
 export async function mockSpcOutlook(page: Page, body: unknown = spcOutlookFixture()) {
   await page.route(SPC_URL, (route) =>
-    route.fulfill({ contentType: 'application/geo+json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) }),
+    route.fulfill(corsJson(body, { contentType: 'application/geo+json' })),
   )
 }
