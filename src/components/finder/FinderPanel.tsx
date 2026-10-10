@@ -7,18 +7,17 @@
 // pane: the task list, then a page for the picked task, with Back to the list.
 
 import { useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react'
-import { graphFile, tasks } from '../../data/graphData'
-import type { ServiceNode } from '../../data/graphSchema'
+import { tasks } from '../../data/graphData'
 import { addCompare } from '../../data/compareStore'
 import { clearSelection, getSelectionSnapshot, selectNode, selectTask, subscribeSelection } from '../../data/selectionStore'
 import type { Task } from '../../data/taskSchema'
 import { showView } from '../../data/viewStore'
+import { findGraphNode } from '../graph/graphNodes'
 import { rovingTabStop, rovingTarget } from '../graph/rovingFocus'
 import { useNarrowLayout } from '../useNarrowLayout'
 import './FinderPanel.css'
 
 const taskOrder = tasks.map((task) => task.id)
-const nodesById = new Map<string, ServiceNode>(graphFile.nodes.map((node) => [node.id, node]))
 
 export function FinderPanel() {
   const compact = useNarrowLayout()
@@ -171,8 +170,8 @@ function TaskSteps({ task }: { task: Task }) {
   return (
     <ol className="finder-node-list" aria-label="Recommended nodes">
       {task.nodes.map(({ nodeId, why }, i) => {
-        const node = nodesById.get(nodeId)
-        if (!node) return null
+        const node = findGraphNode(nodeId)
+        if (node?.kind !== 'service') return null
         return (
           <li key={nodeId} className="finder-node-item">
             <button type="button" className="finder-node-button" onClick={() => selectNode(nodeId)}>

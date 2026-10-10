@@ -4,18 +4,16 @@
 
 import { useSyncExternalStore } from 'react'
 import { clearCompare, getCompareSnapshot, removeCompare, subscribeCompare } from '../data/compareStore'
-import { graphFile } from '../data/graphData'
 import type { ServiceNode } from '../data/graphSchema'
 import { buildCompareRows } from './graph/compareRows'
+import { findGraphNode } from './graph/graphNodes'
 import './ComparePanel.css'
-
-const nodesById = new Map(graphFile.nodes.map((node) => [node.id, node]))
 
 export function ComparePanel() {
   const ids = useSyncExternalStore(subscribeCompare, getCompareSnapshot)
   const nodes = ids.flatMap((id) => {
-    const node = nodesById.get(id)
-    return node?.kind === 'service' ? [node as ServiceNode] : []
+    const node = findGraphNode(id)
+    return node?.kind === 'service' ? [node] : []
   })
 
   if (nodes.length < 2) {
