@@ -5,8 +5,8 @@ import { themeNodeId } from '../../data/buildGraph'
 import { graph as defaultGraph } from '../../data/graphData'
 import { THEME_LABELS, type Graph } from '../../data/graphSchema'
 import { selectNode } from '../../data/selectionStore'
-import { THEME_COLORS } from '../../data/themeColors'
 import { summarizeRoot } from '../../data/themeSummary'
+import { ThemeSwatch } from './ThemeSwatch'
 
 /** `graph` is only overridden by tests, to reach the empty-theme state. */
 export function RootDetailBody({ graph = defaultGraph }: { graph?: Graph }) {
@@ -25,7 +25,7 @@ export function RootDetailBody({ graph = defaultGraph }: { graph?: Graph }) {
         <ul>
           {themes.map(({ theme, services: count }) => (
             <li key={theme}>
-              <span className="node-detail-theme-swatch" style={{ background: THEME_COLORS[theme] }} aria-hidden="true" />
+              <ThemeSwatch theme={theme} />
               <button type="button" onClick={() => selectNode(themeNodeId(theme))}>
                 {THEME_LABELS[theme]}
               </button>
