@@ -75,6 +75,9 @@ export default defineConfig({
         'src/components/globe/windOverlay.ts',
         'src/components/graph/GraphView.tsx',
         'src/data/jpx/**',
+        // Test data and helpers, not code under test.
+        'src/data/*Fixtures.ts',
+        'src/test/**',
         'src/**/*.test.{ts,tsx}',
         'src/**/*.d.ts',
       ],
