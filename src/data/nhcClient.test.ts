@@ -2,12 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearNhcCache, getActiveStorms, NhcHttpError, NhcParseError } from './nhcClient'
 import { emptyNhcStormData, makeNhcStormData } from './nhcFixtures'
 import { clearRequestLog, getRequestLogSnapshot } from './requestLog'
+import { jsonResponse } from '../test/http'
 
 const BASE = 'https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather_summary/MapServer'
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status })
-}
 
 /** Answers each layer query with its part of the given data. */
 function serve(data = makeNhcStormData()) {

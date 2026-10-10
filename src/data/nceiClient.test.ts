@@ -3,10 +3,7 @@ import { clearNceiCache, getDailySummaries, getGoesXrsListing, NceiHttpError, Nc
 import { makeAccessDataError, makeDailySummaries, makeGoesListingHtml } from './nceiFixtures'
 import { parseDirectoryListing } from './nceiSchema'
 import { clearRequestLog, getRequestLogSnapshot } from './requestLog'
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status })
-}
+import { jsonResponse } from '../test/http'
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn())

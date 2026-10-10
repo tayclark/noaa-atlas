@@ -2,12 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ArcgisHttpError, ArcgisParseError, clearArcgisCache, getArcgisLegend } from './arcgisClient'
 import { makeArcgisLegend } from './arcgisFixtures'
 import { clearRequestLog, getRequestLogSnapshot } from './requestLog'
+import { jsonResponse } from '../test/http'
 
 const SERVICE = 'https://mapservices.weather.noaa.gov/raster/rest/services/obs/rfc_qpe/MapServer'
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status })
-}
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn())
