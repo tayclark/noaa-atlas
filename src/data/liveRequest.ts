@@ -76,9 +76,29 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError, deco
       throw httpError(res)
     }
 
-    // Read as text so the log knows the body's size (#265).
-    const text = await res.text()
-    const raw: unknown = decode(text)
+    // Read as text so the log knows the body's size (#265). A body that breaks off mid-read is a
+    // network failure; one that isn't JSON (an HTML error page sent as a 200) is a parse error.
+    let text: string
+    try {
+      text = await res.text()
+    } catch (err) {
+      logRequest(url, path, startedAt, startedAtPerf, 'network-error', {
+        httpStatus: res.status,
+        errorMessage: err instanceof Error ? err.message : 'Response body could not be read',
+      })
+      throw err
+    }
+    let raw: unknown
+    try {
+      raw = decode(text)
+    } catch (err) {
+      logRequest(url, path, startedAt, startedAtPerf, 'parse-error', {
+        httpStatus: res.status,
+        responseSize: text.length,
+        errorMessage: err instanceof Error ? err.message : 'Response could not be decoded',
+      })
+      throw parseError(path, err)
+    }
     let value: T
     try {
       value = parse(raw)
