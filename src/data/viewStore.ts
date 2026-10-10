@@ -32,11 +32,12 @@ const COMPACT_VIEWS: ViewId[] = ['tasks', 'graph', 'globe', 'compare', 'inspecto
 const WIDE_VIEWS: ViewId[] = ['explore', 'compare', 'inspector']
 
 /**
- * The tab a requested view lands on. Compact layouts split Explore into Tasks and Graph, and a wide
- * one folds them (and the globe, which is always beside the panel there) back into Explore.
+ * The tab a requested view lands on. Compact layouts split Explore into Tasks and Graph, landing on
+ * the graph (#349), and a wide one folds them (and the globe, which is always beside the panel
+ * there) back into Explore.
  */
 export function resolveView(view: ViewId, compact: boolean): ViewId {
-  if (compact) return view === 'explore' ? 'tasks' : view
+  if (compact) return view === 'explore' ? 'graph' : view
   return WIDE_VIEWS.includes(view) ? view : 'explore'
 }
 

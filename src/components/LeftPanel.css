@@ -111,6 +111,30 @@
   margin: 0;
 }
 
+/* The selection draws a live layer on the globe (#349): the Globe icon hops a few times, then rests
+   with its dot. Motion only for those who haven't asked for less. */
+@media (prefers-reduced-motion: no-preference) {
+  .app[data-layout='compact'] .left-panel-tab-alert .left-panel-tab-icon {
+    animation: left-panel-tab-bounce 0.9s ease-in-out 3;
+  }
+}
+
+@keyframes left-panel-tab-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-5px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  65% {
+    transform: translateY(-2px);
+  }
+}
+
 .app[data-layout='compact'] .left-panel-tab-count {
   min-width: 18px;
   padding: 0 4px;

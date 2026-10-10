@@ -23,6 +23,7 @@ test('the views are five bottom tabs, each at full size and with no split', asyn
   await mockAlerts(page, zoneOnlyAlertsFixture(3))
   await mockSwpc(page)
   await page.goto('/')
+  await page.getByRole('tab', { name: 'Tasks' }).tap()
 
   await expect(page.getByRole('tab')).toHaveText(['Tasks', 'Graph', 'Globe', 'Compare', /Inspector/])
   await expect(page.locator('.split-pane-divider')).toHaveCount(0)
@@ -49,6 +50,7 @@ test('the globe is a full-width tab that loads on first visit, with its overlays
     if (/maplibre-gl|MapLibreGlobe/.test(req.url())) globeCode.push(req.url())
   })
   await page.goto('/')
+  await page.getByRole('tab', { name: 'Tasks' }).tap()
 
   // Nothing of the map is fetched or built until the tab is opened: the globe chunk and MapLibre
   // load on demand (#264).
@@ -75,6 +77,7 @@ test('a selection made on Tasks marks the Graph and Globe tabs, which then show 
   await mockAlerts(page, zoneOnlyAlertsFixture(1))
   await mockSwpc(page)
   await page.goto('/')
+  await page.getByRole('tab', { name: 'Tasks' }).tap()
 
   const graphTab = page.getByRole('tab', { name: /Graph/ })
   const globeTab = page.getByRole('tab', { name: /Globe/ })
@@ -97,6 +100,7 @@ test('the graph keeps its layout and the finder its task while another tab shows
   await mockAlerts(page, zoneOnlyAlertsFixture(1))
   await mockSwpc(page)
   await page.goto('/')
+  await page.getByRole('tab', { name: 'Tasks' }).tap()
 
   const task = await page.locator('.finder-task-item').first().innerText()
   await page.locator('.finder-task-item').first().tap()

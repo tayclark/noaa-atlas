@@ -79,10 +79,10 @@ describe('App', () => {
       mockNarrowLayout(true)
     })
 
-    it('marks the compact layout and opens on Tasks, with no split and no globe loaded yet', () => {
+    it('marks the compact layout and opens on Graph, with no split and no globe loaded yet', () => {
       const { container } = render(<App />)
       expect(container.querySelector('.app')?.getAttribute('data-layout')).toBe('compact')
-      expect(screen.getByRole('tab', { name: 'Tasks', selected: true })).toBeTruthy()
+      expect(screen.getByRole('tab', { name: 'Graph', selected: true })).toBeTruthy()
       expect(screen.queryByRole('separator')).toBeNull()
       expect(screen.queryByRole('group', { name: 'Globe view of NOAA API coverage' })).toBeNull()
       expect(screen.queryByRole('status', { name: 'Map status' })).toBeNull()

@@ -33,7 +33,7 @@ describe('viewStore', () => {
   })
 
   it('resolves a requested view against the layout', () => {
-    expect(resolveView('explore', true)).toBe('tasks')
+    expect(resolveView('explore', true)).toBe('graph')
     expect(resolveView('graph', true)).toBe('graph')
     expect(resolveView('globe', true)).toBe('globe')
     expect(resolveView('tasks', false)).toBe('explore')

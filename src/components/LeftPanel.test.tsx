@@ -124,20 +124,22 @@ describe('LeftPanel', () => {
       mockNarrowLayout(true)
     })
 
-    it('splits Explore into Tasks and Graph and adds a Globe tab', () => {
+    it('splits Explore into Tasks and Graph, adds a Globe tab and lands on Graph (#349)', () => {
       render(<LeftPanel globe={globe} />)
       expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Tasks', 'Graph', 'Globe', 'Compare', 'Inspector'])
-      expect(screen.getByRole('tab', { name: 'Tasks', selected: true })).toBeTruthy()
+      expect(screen.getByRole('tab', { name: 'Graph', selected: true })).toBeTruthy()
+      expect(screen.getByRole('region', { name: 'Graph' })).toBeTruthy()
+      fireEvent.click(screen.getByRole('tab', { name: 'Tasks' }))
       expect(screen.getByText("Get today's local forecast")).toBeTruthy()
     })
 
-    it('mounts the graph and the globe when first opened, then keeps them while another tab shows', () => {
+    it('mounts the finder and the globe when first opened, then keeps them while another tab shows', () => {
       render(<LeftPanel globe={globe} />)
-      expect(screen.queryByRole('region', { name: 'Graph', hidden: true })).toBeNull()
+      expect(screen.queryByText("Get today's local forecast")).toBeNull()
       expect(screen.queryByTestId('globe')).toBeNull()
 
-      fireEvent.click(screen.getByRole('tab', { name: 'Graph' }))
-      expect(screen.getByRole('region', { name: 'Graph' })).toBeTruthy()
+      fireEvent.click(screen.getByRole('tab', { name: 'Tasks' }))
+      expect(screen.getByText("Get today's local forecast")).toBeTruthy()
       expect(screen.queryByTestId('globe')).toBeNull()
 
       fireEvent.click(screen.getByRole('tab', { name: 'Globe' }))
@@ -152,9 +154,10 @@ describe('LeftPanel', () => {
 
     it('marks Graph and Globe when the selection changes elsewhere, until each is opened', () => {
       render(<LeftPanel globe={globe} />)
-      expect(screen.queryByLabelText('updated')).toBeNull()
+      fireEvent.click(screen.getByRole('tab', { name: 'Tasks' }))
+      expect(screen.queryByLabelText(/^updated/)).toBeNull()
 
-      act(() => selectNode('nws-api'))
+      act(() => selectNode('ncei-access-data-service'))
       expect(screen.getAllByLabelText('updated')).toHaveLength(2)
 
       fireEvent.click(screen.getByRole('tab', { name: /Graph/ }))
@@ -166,9 +169,33 @@ describe('LeftPanel', () => {
       // the graph hasn't seen it.
       act(() => selectNode('ndbc-realtime'))
       fireEvent.click(screen.getByRole('tab', { name: /Tasks/ }))
-      expect(screen.getAllByLabelText('updated')).toHaveLength(1)
+      expect(screen.getAllByLabelText(/^updated/)).toHaveLength(1)
       fireEvent.click(screen.getByRole('tab', { name: /Graph/ }))
-      expect(screen.queryByLabelText('updated')).toBeNull()
+      expect(screen.queryByLabelText(/^updated/)).toBeNull()
+    })
+
+    it('bounces the Globe tab for a selection that draws a live layer there, and replays it for the next (#349)', () => {
+      render(<LeftPanel globe={globe} />)
+      const globeTab = () => screen.getByRole('tab', { name: /Globe/ })
+
+      // A reference node only moves the footprint: the plain dot.
+      act(() => selectNode('ncei-access-data-service'))
+      expect(globeTab().classList.contains('left-panel-tab-alert')).toBe(false)
+      expect(screen.getByLabelText('updated')).toBeTruthy()
+
+      act(() => selectNode('nowcoast-map-services'))
+      expect(globeTab().classList.contains('left-panel-tab-alert')).toBe(true)
+      expect(screen.getByLabelText('updated, with a live layer')).toBeTruthy()
+      const icon = globeTab().querySelector('svg')
+
+      // Another live selection remounts the icon so the bounce plays again.
+      act(() => selectNode('nws-api'))
+      expect(globeTab().querySelector('svg')).not.toBe(icon)
+
+      fireEvent.click(globeTab())
+      fireEvent.click(screen.getByRole('tab', { name: /Graph/ }))
+      expect(globeTab().classList.contains('left-panel-tab-alert')).toBe(false)
+      expect(screen.queryByLabelText(/^updated/)).toBeNull()
     })
 
     it('moves through all five tabs with Home and End', () => {
@@ -199,6 +226,7 @@ describe('LeftPanel', () => {
 
     it('opens the sheet for a step picked on Tasks, but only peeks on Graph', () => {
       render(<LeftPanel globe={globe} />)
+      fireEvent.click(screen.getByRole('tab', { name: 'Tasks' }))
       act(() => selectNode('nws-api'))
       expect(screen.getByRole('button', { name: 'Collapse details' })).toBeTruthy()
 

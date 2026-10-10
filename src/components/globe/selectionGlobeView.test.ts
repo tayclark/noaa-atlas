@@ -7,7 +7,7 @@ import type { Selection } from '../../data/selectionStore'
 import { parseTasksFile } from '../../data/taskSchema'
 import tasksJson from '../../data/tasks.json'
 import { THEME_COLORS } from '../../data/themeColors'
-import { describeSelectionForGlobe, type GlobeViewContext } from './selectionGlobeView'
+import { describeSelectionForGlobe, selectionLiveLayers, type GlobeViewContext } from './selectionGlobeView'
 
 const nodes = parseGraphFile(graphJson).nodes as ServiceNode[]
 const tasks = parseTasksFile(tasksJson).tasks
@@ -126,5 +126,17 @@ describe('describeSelectionForGlobe', () => {
       expect(view.card?.lines).toHaveLength(2)
       expect(view.flyTarget).not.toBeNull()
     }
+  })
+})
+
+describe('selectionLiveLayers (#349)', () => {
+  it('names the layers a live node or a task draws, and none for a reference node, a point or nothing', () => {
+    expect(selectionLiveLayers({ ...none, selectedNodeId: 'nowcoast-map-services' }, context)).toEqual(['nowcoast-radar'])
+    expect(selectionLiveLayers({ ...none, selectedNodeId: 'ncei-access-data-service' }, context)).toEqual([])
+    expect(selectionLiveLayers({ ...none, selectedNodeId: 'swpc-alerts-scales' }, context)).toEqual([])
+    expect(selectionLiveLayers({ ...none, selectedPoint: [-97, 39] }, context)).toEqual([])
+    expect(selectionLiveLayers(none, context)).toEqual([])
+    const liveTask = tasks.find((t) => t.nodes.some((n) => n.nodeId === 'nws-api'))
+    expect(selectionLiveLayers({ ...none, selectedTaskId: liveTask?.id ?? null }, context)).toContain('nws-alerts')
   })
 })

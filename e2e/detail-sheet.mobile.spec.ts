@@ -130,6 +130,7 @@ test('a step picked on the Tasks tab opens the detail, and Back returns to the l
   await mockAlerts(page, zoneOnlyAlertsFixture(1))
   await mockSwpc(page)
   await page.goto('/')
+  await page.getByRole('tab', { name: 'Tasks' }).tap()
 
   const task = await page.locator('.finder-task-item').first().innerText()
   await page.locator('.finder-task-item').first().tap()
@@ -154,6 +155,7 @@ test('Show on graph from a task page frames the whole path', async ({ page }) =>
   await mockAlerts(page, zoneOnlyAlertsFixture(1))
   await mockSwpc(page)
   await page.goto('/')
+  await page.getByRole('tab', { name: 'Tasks' }).tap()
   await page.locator('.finder-task-item').nth(1).tap()
   await page.locator('.finder-node-button').first().tap()
   // The step opened the detail over the page; fold it to reach the page's own buttons.

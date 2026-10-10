@@ -3,21 +3,24 @@
 // picking a task highlights its path in the graph without switching tabs), Compare (#76) and the
 // request Inspector (#40). Compact (a phone, #78): the finder and the graph are tabs of their own,
 // each at full height, the globe is passed in as a tab too, and the tab bar moves to the bottom of
-// the screen. Explore is the default tab (the app's primary entry point per #25's framing).
+// the screen. Explore is the default tab (the app's primary entry point per #25's framing); on a
+// phone that lands on Graph (#349).
 //
 // The views that hold state (finder, graph, globe) mount the first time they are shown and then
 // stay mounted, hidden, so switching tabs keeps the graph's pan and zoom, the finder's picked task
 // and the map with its tiles. Compare and Inspector just read stores, so they mount while shown.
 
-import { useState, useSyncExternalStore } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { getCompareSnapshot, subscribeCompare } from '../data/compareStore'
+import { graphFile, tasks as allTasks } from '../data/graphData'
 import { getRequestLogSnapshot, subscribeRequestLog } from '../data/requestLog'
 import { getSelectionSnapshot, subscribeSelection, type Selection } from '../data/selectionStore'
 import { getViewSnapshot, resolveView, showView, subscribeView, tabsFor, type ViewId } from '../data/viewStore'
 import { ComparePanel } from './ComparePanel'
 import { DetailSheet } from './DetailSheet'
 import { FinderPanel } from './finder/FinderPanel'
+import { selectionLiveLayers } from './globe/selectionGlobeView'
 import { GraphView } from './graph/GraphView'
 import { findGraphNode } from './graph/graphNodes'
 import { InspectorPanel } from './inspector/InspectorPanel'
@@ -110,6 +113,11 @@ export function LeftPanel({ globe, onAbout }: LeftPanelProps) {
   const [seen, setSeen] = useState<Partial<Record<ViewId, Selection>>>({ graph: selection, globe: selection })
   if (SELECTION_VIEWS.includes(activeTab) && seen[activeTab] !== selection) setSeen({ ...seen, [activeTab]: selection })
   const hasNews = (view: ViewId) => compact && SELECTION_VIEWS.includes(view) && activeTab !== view && seen[view] !== selection
+  // An unseen selection that draws a live layer on the globe (radar, alerts, storm tracks...) gets
+  // more than the dot: the Globe tab's icon bounces, so the map is worth a look (#349).
+  const drawsOnGlobe = useMemo(() => selectionLiveLayers(selection, { nodes: graphFile.nodes, tasks: allTasks }).length > 0, [selection])
+  const globeAlert = hasNews('globe') && drawsOnGlobe
+  const selectionKey = `${selection.selectedNodeId}|${selection.selectedTaskId}`
 
   // The selected node's detail is a bottom sheet on the views it belongs to (#78). Elsewhere the
   // Globe has its own status card, and Compare and Inspector have nothing to say about a node.
@@ -184,10 +192,11 @@ export function LeftPanel({ globe, onAbout }: LeftPanelProps) {
             aria-controls={`left-panel-${view}`}
             tabIndex={activeTab === view ? 0 : -1}
             onKeyDown={(event) => onTabKeyDown(event, index)}
-            className={`left-panel-tab ${activeTab === view ? 'left-panel-tab-active' : ''}`}
+            className={`left-panel-tab ${activeTab === view ? 'left-panel-tab-active' : ''} ${view === 'globe' && globeAlert ? 'left-panel-tab-alert' : ''}`}
             onClick={() => showView(view)}
           >
-            {compact && <TabIcon view={view} />}
+            {/* Keyed on the selection so each new one replays the bounce. */}
+            {compact && <TabIcon key={view === 'globe' && globeAlert ? selectionKey : 'rest'} view={view} />}
             {LABELS[view]}
             {view === 'inspector' && requestCount > 0 && (
               <span className="left-panel-tab-count" aria-label={`${requestCount} ${requestCount === 1 ? 'request' : 'requests'}`}>
@@ -199,7 +208,11 @@ export function LeftPanel({ globe, onAbout }: LeftPanelProps) {
                 {compareCount}
               </span>
             )}
-            {hasNews(view) && <span className="left-panel-tab-dot" role="img" aria-label="updated" />}
+            {view === 'globe' && globeAlert ? (
+              <span className="left-panel-tab-dot" role="img" aria-label="updated, with a live layer" />
+            ) : (
+              hasNews(view) && <span className="left-panel-tab-dot" role="img" aria-label="updated" />
+            )}
           </button>
         ))}
       </div>
