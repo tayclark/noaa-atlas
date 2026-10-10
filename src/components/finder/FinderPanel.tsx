@@ -14,10 +14,12 @@ import type { Task } from '../../data/taskSchema'
 import { showView } from '../../data/viewStore'
 import { findGraphNode } from '../graph/graphNodes'
 import { rovingTabStop, rovingTarget } from '../graph/rovingFocus'
+import { regionProps } from '../regionProps'
 import { useNarrowLayout } from '../useNarrowLayout'
 import './FinderPanel.css'
 
 const taskOrder = tasks.map((task) => task.id)
+const INTRO_LABEL = 'How to read NOAA Atlas'
 
 export function FinderPanel() {
   const compact = useNarrowLayout()
@@ -83,19 +85,13 @@ export function FinderPanel() {
       <div
         className="finder-body"
         ref={bodyRef}
-        {...(selectedTask ? {} : { tabIndex: 0, role: 'region', 'aria-label': 'How to read NOAA Atlas' })}
+        {...(selectedTask ? {} : regionProps(INTRO_LABEL, { scrolls: true }))}
       >
         {!selectedTask && <FinderIntro />}
         {selectedTask && (
           <>
             <TaskSteps task={selectedTask} />
-            <button
-              type="button"
-              className="finder-compare"
-              onClick={() => addCompare(selectedTask.nodes.map((n) => n.nodeId))}
-            >
-              Compare these
-            </button>
+            <CompareThese task={selectedTask} className="finder-compare" />
           </>
         )}
       </div>
@@ -211,46 +207,40 @@ function TaskPage({ task, onBack }: { task: Task; onBack: () => void }) {
         <button type="button" onClick={() => showOn('globe')}>
           Show on globe
         </button>
-        <button type="button" onClick={() => addCompare(task.nodes.map((n) => n.nodeId))}>
-          Compare these
-        </button>
+        <CompareThese task={task} />
       </div>
     </div>
   )
 }
 
-/** What the app is and how to read it, shown until a task is picked (#148). */
-function FinderIntro({ compact = false }: { compact?: boolean }) {
-  if (compact) {
-    return (
-      <div className="finder-intro" role="region" aria-label="How to read NOAA Atlas">
-        <p className="finder-intro-lead">Pick a task to see which NOAA APIs to use.</p>
-        <ul>
-          <li>
-            The <strong>Graph</strong> tab maps NOAA&apos;s public APIs: NOAA at the centre, then themes, then services.
-          </li>
-          <li>
-            The <strong>Globe</strong> tab shows where a selected service has data, plus live weather alerts, the aurora forecast and the
-            Kp index.
-          </li>
-          <li>Tap anything, and the other tabs follow.</li>
-        </ul>
-      </div>
-    )
-  }
+/** Puts a task's recommended services in the Compare tab (#76). */
+function CompareThese({ task, className }: { task: Task; className?: string }) {
   return (
-    <div className="finder-intro">
-      <p className="finder-intro-lead">Pick a task above to see which NOAA APIs to use.</p>
+    <button type="button" className={className} onClick={() => addCompare(task.nodes.map((n) => n.nodeId))}>
+      Compare these
+    </button>
+  )
+}
+
+/**
+ * What the app is and how to read it, shown until a task is picked (#148). On a phone the graph and
+ * the globe are tabs, so the text names them as such, and the intro is a region of its own; a wide
+ * screen's finder body is the region around it.
+ */
+function FinderIntro({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className="finder-intro" {...(compact ? regionProps(INTRO_LABEL, { scrolls: false }) : {})}>
+      <p className="finder-intro-lead">Pick a task {compact ? '' : 'above '}to see which NOAA APIs to use.</p>
       <ul>
         <li>
-          The <strong>graph</strong> below maps NOAA&apos;s public APIs: NOAA at the centre, then themes, then
-          services.
+          The <strong>{compact ? 'Graph' : 'graph'}</strong> {compact ? 'tab' : 'below'} maps NOAA&apos;s public APIs: NOAA at the
+          centre, then themes, then services.
         </li>
         <li>
-          The <strong>globe</strong> shows where a selected service has data, plus live weather alerts, the aurora
-          forecast and the Kp index.
+          The <strong>{compact ? 'Globe' : 'globe'}</strong> {compact ? 'tab ' : ''}shows where a selected service has data, plus live
+          weather alerts, the aurora forecast and the Kp index.
         </li>
-        <li>Click anything, on either side, and the other side follows.</li>
+        <li>{compact ? 'Tap anything, and the other tabs follow.' : 'Click anything, on either side, and the other side follows.'}</li>
       </ul>
     </div>
   )
