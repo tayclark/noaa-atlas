@@ -4,7 +4,7 @@
 // band use. The initial zoom equals the layer's minimum zoom, so the station is drawn on load.
 
 import type { Page } from '@playwright/test'
-import { makeHtfAnnual, makeSeaLevelTrend, makeStationMetadata } from '../../src/data/coopsFixtures'
+import { makeHtfAnnual, makePredictions, makeSeaLevelTrend, makeStationMetadata, makeWaterLevel } from '../../src/data/coopsFixtures'
 import { corsJson } from './cors'
 
 export const STATION = { id: '8729108', name: 'Test Harbor', lat: 39.8, lng: -98.5, state: 'KS' }
@@ -16,23 +16,15 @@ export async function mockCoopsStations(page: Page) {
   )
 }
 
+/** The unit tests' reading, from the mocked station. */
 export function waterLevelFixture() {
-  return {
-    metadata: { id: STATION.id, name: STATION.name, lat: '39.8', lon: '-98.5' },
-    data: [{ t: '2026-09-30 13:48', v: '0.403', s: '0.006', f: '1,0,0,0', q: 'p' }],
-  }
+  return { ...makeWaterLevel(), metadata: { id: STATION.id, name: STATION.name, lat: '39.8', lon: '-98.5' } }
 }
 
-export function predictionsFixture() {
-  return {
-    predictions: [
-      { t: '2026-09-30 04:34', v: '0.598', type: 'H' },
-      { t: '2026-09-30 15:46', v: '0.073', type: 'L' },
-    ],
-  }
-}
-
-/** The hourly curve behind the point timeline (#228): a day of tide around the clock. */
+/**
+ * The hourly curve behind the point timeline (#228): a day of tide around the clock. Unlike the unit
+ * tests' three fixed hours, it is anchored to now, so the timeline's window takes it in.
+ */
 export function hourlyPredictionsFixture() {
   const hour = 3_600_000
   const start = Math.floor(Date.now() / hour) * hour - 24 * hour
@@ -55,7 +47,7 @@ export async function mockCoops(page: Page, { waterLevelError }: { waterLevelErr
     if (new URL(route.request().url()).searchParams.get('interval') === 'h') {
       return route.fulfill({ json: hourlyPredictionsFixture() })
     }
-    return route.fulfill({ json: predictionsFixture() })
+    return route.fulfill({ json: makePredictions() })
   })
 }
 

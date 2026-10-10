@@ -3,6 +3,7 @@
 
 import type { Page } from '@playwright/test'
 import { US_CENTER } from '../../src/components/globe/globeConfig'
+import { makeAlertCollection } from '../../src/data/nwsFixtures'
 
 /** A box straddling US_CENTER, large enough that clicking the globe canvas's on-screen center lands inside it. */
 const [centerLng, centerLat] = US_CENTER
@@ -51,12 +52,9 @@ export function zoneOnlyAlertsFixture(count: number) {
 }
 
 export function emptyAlertsFixture() {
-  return { type: 'FeatureCollection' as const, features: [] }
+  return makeAlertCollection([])
 }
 
-export async function mockAlerts(
-  page: Page,
-  fixture: ReturnType<typeof mappableAlertsFixture> | ReturnType<typeof zoneOnlyAlertsFixture> | ReturnType<typeof emptyAlertsFixture>,
-) {
+export async function mockAlerts(page: Page, fixture: Record<string, unknown>) {
   await page.route('**/alerts/active', (route) => route.fulfill({ json: fixture }))
 }

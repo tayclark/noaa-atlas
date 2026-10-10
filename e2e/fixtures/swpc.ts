@@ -3,7 +3,15 @@
 // so clicking the canvas centre lands in it, the same trick the mocked alert polygon uses.
 
 import type { Page } from '@playwright/test'
-import { makeAlerts, makeScales, makeSolarWindMagRows, makeSolarWindRows, makeXrayRows } from '../../src/data/swpcFixtures'
+import {
+  makeAlerts,
+  makeKp1m,
+  makeOvation,
+  makeScales,
+  makeSolarWindMagRows,
+  makeSolarWindRows,
+  makeXrayRows,
+} from '../../src/data/swpcFixtures'
 import { corsJson } from './cors'
 
 export const AURORA_BAND_VALUE = 60
@@ -18,23 +26,18 @@ export function ovationFixture() {
   for (let lon = BAND_LONS.from; lon <= BAND_LONS.to; lon++) {
     for (let lat = BAND_LATS.from; lat <= BAND_LATS.to; lat++) coordinates.push([lon, lat, AURORA_BAND_VALUE])
   }
-  return {
-    'Observation Time': '2026-09-25T00:20:00Z',
-    'Forecast Time': '2026-09-25T01:22:00Z',
-    'Data Format': '[Longitude, Latitude, Aurora]',
-    coordinates,
-    type: 'MultiPoint',
-  }
+  return makeOvation(coordinates)
 }
 
 /** How many cells the globe should count as drawn: every non-zero one. */
 export const AURORA_FIXTURE_CELLS = (BAND_LONS.to - BAND_LONS.from + 1) * (BAND_LATS.to - BAND_LATS.from + 1)
 
+/** A storm-level Kp (6.67, G3), where the unit tests' default is quiet. */
 export function kpFixture() {
-  return [
-    { time_tag: '2026-09-25T00:26:00', kp_index: 6, estimated_kp: 6.33, kp: '6P' },
-    { time_tag: '2026-09-25T00:27:00', kp_index: 7, estimated_kp: 6.67, kp: '7M' },
-  ]
+  return makeKp1m([
+    { time_tag: '2026-09-25T00:26:00', kp_index: 6, estimated_kp: 6.33 },
+    { time_tag: '2026-09-25T00:27:00', kp_index: 7, estimated_kp: 6.67 },
+  ])
 }
 
 export async function mockSwpc(page: Page, { ovationStatus = 200 }: { ovationStatus?: number } = {}) {
@@ -61,7 +64,7 @@ export async function mockSwpcRefresh(page: Page, { refreshFails = false }: { re
     kpCalls++
     if (kpCalls === 1) return route.fulfill({ json: kpFixture() })
     if (refreshFails) return route.fulfill({ status: 503, body: '' })
-    return route.fulfill({ json: [{ time_tag: '2026-09-25T00:32:00', kp_index: 5, estimated_kp: 5.33, kp: '5P' }] })
+    return route.fulfill({ json: makeKp1m([{ time_tag: '2026-09-25T00:32:00', kp_index: 5, estimated_kp: 5.33 }]) })
   })
 }
 
