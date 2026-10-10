@@ -3,6 +3,7 @@
 // server answers a browser origin with access-control-allow-origin, which NHC's own
 // CurrentStorms.json does not. Each layer is queried whole, as GeoJSON.
 
+import { makeClientErrors, type ClientHttpError, type ClientParseError } from './clientErrors'
 import { createLiveClient } from './liveRequest'
 import {
   parseNhcCones,
@@ -13,31 +14,17 @@ import {
   type NhcPastPoints,
 } from './nhcSchema'
 
-export class NhcHttpError extends Error {
-  readonly status: number
-
-  constructor(status: number) {
-    super(`NHC request failed (${status}).`)
-    this.name = 'NhcHttpError'
-    this.status = status
-  }
-}
-
-export class NhcParseError extends Error {
-  readonly cause: unknown
-
-  constructor(message: string, cause: unknown) {
-    super(message)
-    this.name = 'NhcParseError'
-    this.cause = cause
-  }
-}
+export const nhcErrors = makeClientErrors('NHC', 'Nhc')
+export const NhcHttpError = nhcErrors.HttpError
+export type NhcHttpError = ClientHttpError
+export const NhcParseError = nhcErrors.ParseError
+export type NhcParseError = ClientParseError
 
 const { request, invalidate, clearCache } = createLiveClient({
   baseUrl: 'https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather_summary/MapServer',
   headers: {},
-  httpError: (res) => new NhcHttpError(res.status),
-  parseError: (path, cause) => new NhcParseError(`NHC response for ${path} did not match the expected shape`, cause),
+  httpError: nhcErrors.httpError,
+  parseError: nhcErrors.parseError,
 })
 
 /** The summary service's layer ids. */

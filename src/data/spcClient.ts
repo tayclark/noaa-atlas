@@ -2,34 +2,21 @@
 // graph.json). They're static files regenerated a few times a day and served with
 // access-control-allow-origin: *, so no special headers are needed.
 
+import { makeClientErrors, type ClientHttpError, type ClientParseError } from './clientErrors'
 import { createLiveClient } from './liveRequest'
 import { parseSpcOutlook, type SpcOutlook } from './spcSchema'
 
-export class SpcHttpError extends Error {
-  readonly status: number
-
-  constructor(status: number) {
-    super(`SPC request failed (${status}).`)
-    this.name = 'SpcHttpError'
-    this.status = status
-  }
-}
-
-export class SpcParseError extends Error {
-  readonly cause: unknown
-
-  constructor(message: string, cause: unknown) {
-    super(message)
-    this.name = 'SpcParseError'
-    this.cause = cause
-  }
-}
+export const spcErrors = makeClientErrors('SPC', 'Spc')
+export const SpcHttpError = spcErrors.HttpError
+export type SpcHttpError = ClientHttpError
+export const SpcParseError = spcErrors.ParseError
+export type SpcParseError = ClientParseError
 
 const { request, clearCache } = createLiveClient({
   baseUrl: 'https://www.spc.noaa.gov',
   headers: {},
-  httpError: (res) => new SpcHttpError(res.status),
-  parseError: (path, cause) => new SpcParseError(`SPC response for ${path} did not match the expected shape`, cause),
+  httpError: spcErrors.httpError,
+  parseError: spcErrors.parseError,
 })
 
 /** How often the globe re-fetches the outlook while it is shown; SPC reissues it a few times a day. */

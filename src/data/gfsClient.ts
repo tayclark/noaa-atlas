@@ -8,6 +8,7 @@
 import { decodeGribField, type GribField } from './grib2'
 import { decodeWaveField } from './gribDecodeClient'
 import { findGribField, parseGribIdx, rangeHeader, type GribIdxEntry } from './gribIdx'
+import { makeClientErrors, type ClientHttpError } from './clientErrors'
 import { createLiveClient } from './liveRequest'
 
 const BASE_URL = 'https://noaa-gfs-bdp-pds.s3.amazonaws.com'
@@ -19,15 +20,9 @@ export const MAX_FORECAST_HOUR = 120
 const CYCLE_TTL_MS = 10 * 60_000
 const FIELD_CACHE_SIZE = 8
 
-export class GfsHttpError extends Error {
-  readonly status: number
-
-  constructor(status: number) {
-    super(`GFS request failed (${status}).`)
-    this.name = 'GfsHttpError'
-    this.status = status
-  }
-}
+const gfsErrors = makeClientErrors('GFS', 'Gfs')
+export const GfsHttpError = gfsErrors.HttpError
+export type GfsHttpError = ClientHttpError
 
 export interface WindField {
   /** Eastward and northward 10 m wind components, m/s, on the same grid. */
@@ -71,9 +66,9 @@ function fieldPath(cycle: number, hour: number, product: GfsProduct = 'atmos'): 
 const client = createLiveClient({
   baseUrl: BASE_URL,
   headers: {},
-  httpError: (res) => new GfsHttpError(res.status),
-  // Never thrown: the GFS files are read raw, and their decode errors are the decoder's own.
-  parseError: (path, cause) => new Error(`GFS response for ${path} could not be read`, { cause }),
+  httpError: gfsErrors.httpError,
+  // Never thrown: the files are read raw, and decode errors are the decoder's own.
+  parseError: gfsErrors.parseError,
 })
 
 /** One GRIB message, by its byte range in the `.idx`. */

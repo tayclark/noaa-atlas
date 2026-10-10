@@ -3,6 +3,7 @@
 // no special headers are needed. They're separate live clients because each has its own base URL,
 // and the GOES-R archive answers with an HTML directory listing rather than JSON.
 
+import { makeClientErrors, type ClientHttpError, type ClientParseError } from './clientErrors'
 import { createLiveClient } from './liveRequest'
 import {
   parseDailySummaries,
@@ -12,30 +13,16 @@ import {
   type NceiDailySummary,
 } from './nceiSchema'
 
-export class NceiHttpError extends Error {
-  readonly status: number
-
-  constructor(status: number) {
-    super(`NCEI request failed (${status}).`)
-    this.name = 'NceiHttpError'
-    this.status = status
-  }
-}
-
-export class NceiParseError extends Error {
-  readonly cause: unknown
-
-  constructor(message: string, cause: unknown) {
-    super(message)
-    this.name = 'NceiParseError'
-    this.cause = cause
-  }
-}
+const nceiErrors = makeClientErrors('NCEI', 'Ncei')
+export const NceiHttpError = nceiErrors.HttpError
+export type NceiHttpError = ClientHttpError
+export const NceiParseError = nceiErrors.ParseError
+export type NceiParseError = ClientParseError
 
 const options = {
   headers: {},
-  httpError: (res: Response) => new NceiHttpError(res.status),
-  parseError: (path: string, cause: unknown) => new NceiParseError(`NCEI response for ${path} did not match the expected shape`, cause),
+  httpError: nceiErrors.httpError,
+  parseError: nceiErrors.parseError,
 }
 
 const accessData = createLiveClient({ baseUrl: 'https://www.ncei.noaa.gov', ...options })
