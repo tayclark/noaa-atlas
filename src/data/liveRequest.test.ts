@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createLiveClient } from './liveRequest'
+import { CACHE_MAX_ENTRIES, createLiveClient } from './liveRequest'
 import { clearRequestLog, getRequestLogSnapshot } from './requestLog'
 import { jsonResponse } from '../test/http'
 
@@ -107,6 +107,27 @@ describe('createLiveClient', () => {
     vi.setSystemTime(Date.now() + 60_001)
     await client.request('/a', parseOk)
     expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('drops expired entries when it stores a new one', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })))
+    await client.request('/a', parseOk)
+    await client.request('/b', parseOk)
+    vi.setSystemTime(Date.now() + 60_001)
+    await client.request('/c', parseOk)
+    expect(client.cacheSize()).toBe(1)
+  })
+
+  it('keeps at most CACHE_MAX_ENTRIES responses, dropping the oldest', async () => {
+    vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })))
+    for (let i = 0; i <= CACHE_MAX_ENTRIES; i++) await client.request(`/${i}`, parseOk)
+    expect(client.cacheSize()).toBe(CACHE_MAX_ENTRIES)
+    vi.mocked(fetch).mockClear()
+    await client.request(`/${CACHE_MAX_ENTRIES}`, parseOk)
+    expect(fetch).not.toHaveBeenCalled()
+    await client.request('/0', parseOk)
+    expect(fetch).toHaveBeenCalledTimes(1)
   })
 
   it('does not cache a failure', async () => {

@@ -5,6 +5,8 @@
 import { pushLogEntry, type RequestLogStatus } from './requestLog'
 
 const CACHE_TTL_MS = 60_000
+/** The most responses one client keeps; past it the oldest go first. */
+export const CACHE_MAX_ENTRIES = 100
 
 export interface LiveClientOptions {
   baseUrl: string
@@ -21,6 +23,8 @@ export interface LiveClient {
   request: <T>(path: string, parse: (raw: unknown) => T) => Promise<T>
   /** Clears this client's in-memory response cache. Intended for test isolation between cases. */
   clearCache: () => void
+  /** How many responses the cache holds. For tests. */
+  cacheSize: () => number
 }
 
 interface CacheEntry {
@@ -30,6 +34,16 @@ interface CacheEntry {
 
 export function createLiveClient({ baseUrl, headers, httpError, parseError, decode = JSON.parse }: LiveClientOptions): LiveClient {
   const cache = new Map<string, CacheEntry>()
+
+  /** Stores a response, dropping every expired one and then the oldest past the cap. */
+  function remember(url: string, value: unknown): void {
+    const now = Date.now()
+    for (const [key, entry] of cache) if (entry.expiresAt <= now) cache.delete(key)
+    // Re-inserting moves the URL to the back of the Map's insertion order, which is its age.
+    cache.delete(url)
+    cache.set(url, { value, expiresAt: now + CACHE_TTL_MS })
+    while (cache.size > CACHE_MAX_ENTRIES) cache.delete(cache.keys().next().value as string)
+  }
 
   function logRequest(
     url: string,
@@ -108,9 +122,9 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError, deco
     }
 
     logRequest(url, path, startedAt, startedAtPerf, 'success', { httpStatus: res.status, responseBody: raw, responseSize: text.length })
-    cache.set(url, { value, expiresAt: Date.now() + CACHE_TTL_MS })
+    remember(url, value)
     return value
   }
 
-  return { request, clearCache: () => cache.clear() }
+  return { request, clearCache: () => cache.clear(), cacheSize: () => cache.size }
 }
