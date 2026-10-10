@@ -6,15 +6,15 @@
 // spare, so there the sheet is a panel down the right-hand side, always open, with just its close
 // button. The graph frames a selection into what the sheet leaves free, through sheetStore.
 
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
-import { getCompareSnapshot, subscribeCompare, toggleCompare } from '../data/compareStore'
 import { clearSelection, getSelectionSnapshot, subscribeSelection } from '../data/selectionStore'
 import { setSheetBox } from '../data/sheetStore'
 import { showView, type ViewId } from '../data/viewStore'
+import { CompareToggle } from './graph/CompareToggle'
 import { findGraphNode } from './graph/graphNodes'
+import { LiveTag } from './graph/LiveTag'
 import { NodeDetailContent } from './graph/NodeDetailPanel'
-import { liveStatusLabel } from './graph/nodeDetailFormat'
 import { restingSnap, sheetHeights } from './sheetSnap'
 import './DetailSheet.css'
 
@@ -43,7 +43,7 @@ interface DetailSheetProps {
 export function DetailSheet({ view, startOpen, side = false }: DetailSheetProps) {
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const node = findGraphNode(selection.selectedNodeId)
-  const compared = useSyncExternalStore(subscribeCompare, getCompareSnapshot).includes(node?.id ?? '')
+  const bodyId = useId()
   const [peekOrOpen, setOpen] = useState(startOpen)
   const open = side || peekOrOpen
   const [shownFor, setShownFor] = useState(view)
@@ -149,7 +149,6 @@ export function DetailSheet({ view, startOpen, side = false }: DetailSheetProps)
     clearSelection()
   }
 
-  const service = node.kind === 'service'
   return (
     <section
       ref={rootRef}
@@ -175,8 +174,10 @@ export function DetailSheet({ view, startOpen, side = false }: DetailSheetProps)
           <button
             type="button"
             className="detail-sheet-grabber"
+            // A stable name, with aria-expanded saying which way it folds (#352).
+            aria-label="Details"
             aria-expanded={open}
-            aria-label={open ? 'Collapse details' : 'Expand details'}
+            aria-controls={bodyId}
             onClick={() => {
               if (!swallowClick.current) setOpen((current) => !current)
             }}
@@ -187,27 +188,21 @@ export function DetailSheet({ view, startOpen, side = false }: DetailSheetProps)
         <div className="detail-sheet-title">
           <div className="detail-sheet-heading">
             <h3>{node.name}</h3>
-            {service && (
-              <span className={`node-detail-live-tag ${node.liveLayer ? 'node-detail-live' : 'node-detail-not-live'}`}>{liveStatusLabel(node)}</span>
-            )}
+            {node.kind === 'service' && <LiveTag node={node} />}
           </div>
           <button type="button" className="detail-sheet-action detail-sheet-close" aria-label="Close details" onClick={clearSelection}>
             <span aria-hidden="true">✕</span>
           </button>
         </div>
         <div className="detail-sheet-actions">
-          {service && (
-            <button type="button" className="detail-sheet-action" aria-pressed={compared} onClick={() => toggleCompare(node.id)}>
-              {compared ? '✓ ' : ''}Compare
-            </button>
-          )}
+          {node.kind === 'service' && <CompareToggle nodeId={node.id} className="detail-sheet-action" />}
           <button type="button" className="detail-sheet-action" onClick={() => showView('globe')}>
             Show on globe
           </button>
         </div>
       </div>
       {/* Folded, the body is clipped away, so it must not stay reachable by keyboard or screen reader. */}
-      <div className="detail-sheet-body" inert={!open}>
+      <div className="detail-sheet-body" id={bodyId} inert={!open}>
         <NodeDetailContent node={node} inSheet />
       </div>
     </section>

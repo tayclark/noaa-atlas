@@ -145,7 +145,7 @@ test('the footer is a single tappable line, with the full disclaimer behind Abou
   await dialog.getByRole('button', { name: 'Close' }).tap()
   await expect(dialog).toBeHidden()
 
-  await page.getByRole('button', { name: 'About this data' }).tap()
+  await page.getByRole('button', { name: 'About this app' }).tap()
   await expect(dialog).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(dialog).toBeHidden()

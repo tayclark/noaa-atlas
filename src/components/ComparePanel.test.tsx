@@ -15,6 +15,8 @@ describe('ComparePanel', () => {
   it('asks for at least two services until there are two', () => {
     render(<ComparePanel />)
     expect(screen.getByText(/Pick at least two services/)).toBeTruthy()
+    // Names the button both layouts show on a service's detail (#352).
+    expect(screen.getByText('Compare', { selector: 'strong' })).toBeTruthy()
     act(() => addCompare([services[0]!.id]))
     expect(screen.getByText(/Pick at least two services/)).toBeTruthy()
     expect(screen.getByRole('button', { name: `Remove ${services[0]!.name} from compare` })).toBeTruthy()

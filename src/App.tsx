@@ -42,8 +42,8 @@ function App() {
         <h1 className="app-title">NOAA Atlas</h1>
         <p className="app-subtitle">Which NOAA API do I use for X?</p>
         {compact && (
-          <button type="button" className="app-about-button" aria-label="About this data" onClick={() => setAboutOpen(true)}>
-            ⓘ
+          <button type="button" className="app-about-button" aria-label="About this app" onClick={() => setAboutOpen(true)}>
+            <span aria-hidden="true">ⓘ</span>
           </button>
         )}
       </header>

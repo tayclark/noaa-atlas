@@ -88,7 +88,7 @@ test('a selected node opens a panel down the right, and the graph frames it besi
   expect(box.height).toBeGreaterThanOrEqual(panel.height - 1)
   // Always open: the detail is readable at once, and there is no grabber to fold it.
   await expect(sheet.getByText('Base URL')).toBeVisible()
-  await expect(sheet.getByRole('button', { name: /Expand details|Collapse details/ })).toHaveCount(0)
+  await expect(sheet.getByRole('button', { name: 'Details', exact: true })).toHaveCount(0)
 
   const node = (await page.locator('.graph-node[data-node-id="nws-api"] circle').boundingBox())!
   await expect.poll(async () => {

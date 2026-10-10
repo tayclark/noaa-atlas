@@ -127,12 +127,12 @@ test('the detail panel collapses to its title bar and stays collapsed across sel
 
   await selectByKeyboard(page, 'coops-data-api')
   const panel = page.getByLabel('Node detail')
-  await page.getByRole('button', { name: 'Collapse details' }).click()
+  await page.getByRole('button', { name: 'Details', exact: true, expanded: true }).click()
   await expect(panel.getByText('Base URL')).toHaveCount(0)
   expect((await panel.boundingBox())!.height).toBeLessThan(48)
 
   await selectByKeyboard(page, 'nws-api')
   await expect(panel.getByRole('heading', { name: 'NWS API' })).toBeVisible()
-  await page.getByRole('button', { name: 'Expand details' }).click()
+  await page.getByRole('button', { name: 'Details', exact: true, expanded: false }).click()
   await expect(panel.getByText('Base URL')).toBeVisible()
 })

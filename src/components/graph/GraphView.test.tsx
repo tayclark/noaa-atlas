@@ -97,12 +97,12 @@ describe('GraphView', () => {
   it('keeps the detail panel collapsed across selection changes (#141)', () => {
     const { container } = render(<GraphView />)
     act(() => selectNode('nws-api'))
-    fireEvent.click(screen.getByRole('button', { name: 'Collapse details' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Details', expanded: true }))
     expect(container.querySelector('.node-detail-panel-collapsed')).not.toBeNull()
 
     act(() => selectNode('coops-data-api'))
-    expect(screen.getByRole('button', { name: 'Expand details' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Expand details' }))
+    expect(screen.getByRole('button', { name: 'Details', expanded: false })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Details', expanded: false }))
     expect(container.querySelector('.node-detail-panel-collapsed')).toBeNull()
   })
 

@@ -5,13 +5,14 @@
 // The panel is the floating card of a wide screen; `NodeDetailContent` is the body it shares with
 // the phone's bottom sheet (DetailSheet.tsx, #78).
 
-import { useSyncExternalStore } from 'react'
-import { getCompareSnapshot, subscribeCompare, toggleCompare } from '../../data/compareStore'
+import { useId, useSyncExternalStore } from 'react'
 import { summarizeCoverage } from '../../data/coverageSummary'
 import type { ServiceNode } from '../../data/graphSchema'
 import { getSelectionSnapshot, subscribeSelection } from '../../data/selectionStore'
+import { CompareToggle } from './CompareToggle'
 import { findGraphNode, type DetailNode } from './graphNodes'
-import { formatAuth, formatFormats, formatFreshness, formatOwner, formatRateLimits, liveStatusLabel } from './nodeDetailFormat'
+import { LiveTag } from './LiveTag'
+import { formatAuth, formatFormats, formatFreshness, formatOwner, formatRateLimits } from './nodeDetailFormat'
 import { NodeDatasetsSection } from './NodeDatasetsSection'
 import { NodeNeighborsSection } from './NodeNeighborsSection'
 import { NodeSampleSection } from './NodeSampleSection'
@@ -28,25 +29,32 @@ interface NodeDetailPanelProps {
 export function NodeDetailPanel({ collapsed, onToggleCollapsed }: NodeDetailPanelProps) {
   const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot)
   const node = findGraphNode(selection.selectedNodeId)
+  const bodyId = useId()
 
   if (!node) return null
 
   return (
-    <div className={`node-detail-panel${collapsed ? ' node-detail-panel-collapsed' : ''}`} aria-label="Node detail">
+    <section className={`node-detail-panel${collapsed ? ' node-detail-panel-collapsed' : ''}`} aria-label="Node detail">
       <div className="node-detail-header">
         <h3>{node.name}</h3>
+        {/* The name stays put and aria-expanded says which way it folds (#352), as on the phone's sheet. */}
         <button
           type="button"
           className="node-detail-toggle"
+          aria-label="Details"
           aria-expanded={!collapsed}
-          aria-label={collapsed ? 'Expand details' : 'Collapse details'}
+          aria-controls={bodyId}
           onClick={onToggleCollapsed}
         >
-          {collapsed ? '▸' : '▾'}
+          <span aria-hidden="true">{collapsed ? '▸' : '▾'}</span>
         </button>
       </div>
-      {!collapsed && <NodeDetailContent node={node} />}
-    </div>
+      {!collapsed && (
+        <div id={bodyId}>
+          <NodeDetailContent node={node} />
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -63,17 +71,12 @@ export function NodeDetailContent({ node, inSheet = false }: { node: DetailNode;
 }
 
 function NodeDetailBody({ node, inSheet }: { node: ServiceNode; inSheet: boolean }) {
-  const compared = useSyncExternalStore(subscribeCompare, getCompareSnapshot).includes(node.id)
   return (
     <>
       {!inSheet && (
         <>
-          <span className={`node-detail-live-tag ${node.liveLayer ? 'node-detail-live' : 'node-detail-not-live'}`}>
-            {liveStatusLabel(node)}
-          </span>
-          <button type="button" className="node-detail-compare" aria-pressed={compared} onClick={() => toggleCompare(node.id)}>
-            {compared ? 'Remove from compare' : 'Add to compare'}
-          </button>
+          <LiveTag node={node} />
+          <CompareToggle nodeId={node.id} className="node-detail-compare" />
         </>
       )}
       <dl>

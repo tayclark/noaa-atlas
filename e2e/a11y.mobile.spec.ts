@@ -58,7 +58,7 @@ test('the Inspector tab has no serious violations', async ({ page }) => {
 
 test('the About dialog has no serious violations', async ({ page }) => {
   await openApp(page)
-  await page.getByRole('button', { name: 'About this data' }).tap()
+  await page.getByRole('button', { name: 'About this app' }).tap()
   await expect(page.getByRole('dialog', { name: 'About NOAA Atlas' })).toBeVisible()
   expect(await seriousViolations(page)).toEqual([])
 })
@@ -71,7 +71,7 @@ test('the detail sheet, open and folded, has no serious violations', async ({ pa
   await expect(sheet.getByText('Base URL')).toBeVisible()
   expect(await seriousViolations(page)).toEqual([])
 
-  await sheet.getByRole('button', { name: 'Collapse details' }).tap()
+  await sheet.getByRole('button', { name: 'Details', exact: true, expanded: true }).tap()
   await expect(page.locator('.detail-sheet-body')).toHaveAttribute('inert', '')
   expect(await seriousViolations(page)).toEqual([])
 })

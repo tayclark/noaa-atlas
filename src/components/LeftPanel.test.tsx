@@ -228,15 +228,15 @@ describe('LeftPanel', () => {
       render(<LeftPanel globe={globe} />)
       fireEvent.click(screen.getByRole('tab', { name: 'Tasks' }))
       act(() => selectNode('nws-api'))
-      expect(screen.getByRole('button', { name: 'Collapse details' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Details', expanded: true })).toBeTruthy()
 
       fireEvent.click(screen.getByRole('tab', { name: /Graph/ }))
-      expect(screen.getByRole('button', { name: 'Expand details' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Details', expanded: false })).toBeTruthy()
 
       act(() => clearSelection())
       expect(screen.queryByLabelText('Node detail')).toBeNull()
       act(() => selectNode('coops-data-api'))
-      expect(screen.getByRole('button', { name: 'Expand details' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Details', expanded: false })).toBeTruthy()
     })
 
     it('carries an About button in the tab rail when it is given a way to open one', () => {

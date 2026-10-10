@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { mockNarrowLayout, unmockNarrowLayout } from './components/narrowLayoutTestUtils'
@@ -71,7 +71,7 @@ describe('App', () => {
   it('marks the wide layout for the stylesheets, with no About dialog', () => {
     const { container } = render(<App />)
     expect(container.querySelector('.app')?.getAttribute('data-layout')).toBe('wide')
-    expect(screen.queryByRole('button', { name: 'About this data' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'About this app' })).toBeNull()
   })
 
   it('keeps the same globe when the window crosses into the compact layout and back (#352)', async () => {
@@ -129,7 +129,7 @@ describe('App', () => {
 
     it('opens the same dialog from the header', () => {
       render(<App />)
-      fireEvent.click(screen.getByRole('button', { name: 'About this data' }))
+      fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'About this app' }))
       expect(document.querySelector('dialog')?.hasAttribute('open')).toBe(true)
     })
   })
