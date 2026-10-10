@@ -11,6 +11,10 @@
   --color-accent-muted: #1d4f7a;
   --color-alert-warning: #f5a524;
   --color-alert-danger: #ff3d7a;
+  /* "Live" badges. Their text is --color-surface-raised, like the "not live" badge's. */
+  --color-success: #3fb950;
+  /* The drop shadow of a sheet or popover floating over the view. */
+  --shadow-overlay-color: rgb(0 0 0 / 0.45);
 
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;

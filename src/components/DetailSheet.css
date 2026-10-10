@@ -13,7 +13,7 @@
   border-top: 1px solid var(--color-border);
   border-radius: var(--radius-md) var(--radius-md) 0 0;
   background: var(--color-surface-raised);
-  box-shadow: 0 -6px 20px rgb(0 0 0 / 0.45);
+  box-shadow: 0 -6px 20px var(--shadow-overlay-color);
   color: var(--color-text);
   font-size: var(--font-size-sm);
   line-height: 1.4;
@@ -168,7 +168,7 @@
   border-top: 0;
   border-left: 1px solid var(--color-border);
   border-radius: var(--radius-md) 0 0 var(--radius-md);
-  box-shadow: -6px 0 20px rgb(0 0 0 / 0.45);
+  box-shadow: -6px 0 20px var(--shadow-overlay-color);
 }
 
 .detail-sheet-side .detail-sheet-header {

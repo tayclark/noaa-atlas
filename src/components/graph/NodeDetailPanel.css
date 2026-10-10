@@ -59,7 +59,7 @@
 
 .node-detail-live {
   background: var(--color-success);
-  color: #fff;
+  color: var(--color-surface-raised);
 }
 
 .node-detail-not-live {
@@ -130,7 +130,7 @@
 
 .node-sample-error {
   margin: 0 0 var(--space-1);
-  color: var(--color-danger, #e5484d);
+  color: var(--color-alert-danger);
 }
 
 .node-sample-label {
@@ -313,7 +313,7 @@
   padding: 0 4px;
   border-radius: var(--radius-sm);
   background: var(--color-success);
-  color: #fff;
+  color: var(--color-surface-raised);
   font-size: 0.6rem;
   font-weight: 600;
   text-transform: uppercase;
