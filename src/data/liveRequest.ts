@@ -34,6 +34,7 @@ interface CacheEntry {
 
 export function createLiveClient({ baseUrl, headers, httpError, parseError, decode = JSON.parse }: LiveClientOptions): LiveClient {
   const cache = new Map<string, CacheEntry>()
+  const inFlight = new Map<string, Promise<unknown>>()
 
   /** Stores a response, dropping every expired one and then the oldest past the cap. */
   function remember(url: string, value: unknown): void {
@@ -66,13 +67,25 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError, deco
     })
   }
 
-  async function request<T>(path: string, parse: (raw: unknown) => T): Promise<T> {
+  function request<T>(path: string, parse: (raw: unknown) => T): Promise<T> {
     const url = `${baseUrl}${path}`
     const cached = cache.get(url)
-    if (cached && cached.expiresAt > Date.now()) {
-      return cached.value as T
-    }
+    if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.value as T)
 
+    // Callers asking for the same URL at once (a point select reads the point twice) share one
+    // fetch. It is forgotten when it settles, so a failure is not remembered.
+    const shared = inFlight.get(url)
+    if (shared) return shared as Promise<T>
+    const pending = load(url, path, parse)
+    inFlight.set(url, pending)
+    const forget = () => {
+      if (inFlight.get(url) === pending) inFlight.delete(url)
+    }
+    pending.then(forget, forget)
+    return pending
+  }
+
+  async function load<T>(url: string, path: string, parse: (raw: unknown) => T): Promise<T> {
     const startedAt = Date.now()
     const startedAtPerf = performance.now()
     let res: Response
@@ -126,5 +139,10 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError, deco
     return value
   }
 
-  return { request, clearCache: () => cache.clear(), cacheSize: () => cache.size }
+  function clearCache(): void {
+    cache.clear()
+    inFlight.clear()
+  }
+
+  return { request, clearCache, cacheSize: () => cache.size }
 }

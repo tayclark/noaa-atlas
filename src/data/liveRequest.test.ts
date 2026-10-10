@@ -137,6 +137,30 @@ describe('createLiveClient', () => {
     expect(await client.request('/a', parseOk)).toEqual({ ok: true })
   })
 
+  it('shares one fetch between identical concurrent requests', async () => {
+    vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })))
+    const [a, b] = await Promise.all([client.request('/a', parseOk), client.request('/a', parseOk)])
+    expect(a).toBe(b)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(getRequestLogSnapshot()).toHaveLength(1)
+  })
+
+  it('shares a failure with every waiting caller, then retries on the next request', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 502 }))
+    const results = await Promise.allSettled([client.request('/a', parseOk), client.request('/a', parseOk)])
+    expect(results.map((r) => r.status)).toEqual(['rejected', 'rejected'])
+    expect(fetch).toHaveBeenCalledTimes(1)
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }))
+    expect(await client.request('/a', parseOk)).toEqual({ ok: true })
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not share a fetch between different URLs', async () => {
+    vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })))
+    await Promise.all([client.request('/a', parseOk), client.request('/b', parseOk)])
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
   it('forgets its cache on clearCache', async () => {
     vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })))
     await client.request('/a', parseOk)
