@@ -1,10 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import { SplitPane } from './SplitPane'
 import { MAX_FRACTION, MIN_FRACTION, clampFraction } from './splitFraction'
-
-afterEach(cleanup)
 
 const renderPane = () => render(<SplitPane left={<p>L</p>} right={<p>R</p>} />)
 const value = () => Number(screen.getByRole('separator').getAttribute('aria-valuenow'))

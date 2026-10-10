@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { mockNarrowLayout, unmockNarrowLayout } from './components/narrowLayoutTestUtils'
@@ -30,7 +30,6 @@ beforeAll(() => import('./components/globe/MapLibreGlobe'), 60_000)
 beforeEach(resetView)
 
 afterEach(() => {
-  cleanup()
   unmockNarrowLayout()
   clearSelection()
 })
