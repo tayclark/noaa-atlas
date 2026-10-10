@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { boxRelativeTo, labelBudget, placeLabels, type LabelItem } from './labelPlacement'
+import {
+  boxRelativeTo,
+  defaultLabelPriority,
+  LABEL_HEIGHT,
+  LABEL_PRIORITY,
+  labelAnchor,
+  labelBox,
+  labelBudget,
+  labelPriorities,
+  placeLabels,
+  type LabelItem,
+  type LabelSide,
+} from './labelPlacement'
 
 const item = (id: string, x: number, y: number, priority = 0, width = 60): LabelItem => ({
   id,
@@ -118,5 +130,70 @@ describe('label budget', () => {
     expect(labelBudget(1, 100)).toBeLessThan(labelBudget(2, 100))
     expect(labelBudget(5, 40)).toBe(40)
     expect(labelBudget(0.01, 100)).toBeGreaterThan(0)
+  })
+})
+
+describe('labelAnchor', () => {
+  const SIDES: LabelSide[] = ['right', 'left', 'below', 'above', 'upper-right', 'lower-right', 'upper-left', 'lower-left']
+
+  // The text must land in the box placeLabels reserved, at any zoom: x on the edge (or the middle) its
+  // anchor names, and the baseline inside the box.
+  for (const k of [0.5, 1, 2]) {
+    for (const side of SIDES) {
+      it(`puts a ${side} label in its reserved box at zoom ${k}`, () => {
+        const r = 6
+        const box = labelBox({ id: 'n', x: 0, y: 0, radius: r * k, width: 50, height: LABEL_HEIGHT, priority: 0 }, side)
+        const { x, y, anchor } = labelAnchor(side, r, k)
+        const edge = anchor === 'start' ? box.x0 : anchor === 'end' ? box.x1 : (box.x0 + box.x1) / 2
+        expect(x * k).toBeCloseTo(edge, 6)
+        expect(y * k).toBeGreaterThan(box.y0)
+        expect(y * k).toBeLessThanOrEqual(box.y1)
+      })
+    }
+  }
+
+  it('matches the baselines the graph has always used', () => {
+    expect(labelAnchor('right', 6, 1)).toEqual({ x: 10, y: 4, anchor: 'start' })
+    expect(labelAnchor('left', 6, 2)).toEqual({ x: -8, y: 2, anchor: 'end' })
+    expect(labelAnchor('below', 6, 1)).toEqual({ x: 0, y: 21, anchor: 'middle' })
+    expect(labelAnchor('above', 6, 1)).toEqual({ x: 0, y: -13, anchor: 'middle' })
+    const upperLeft = labelAnchor('upper-left', 6, 1)
+    expect(upperLeft.x).toBeCloseTo(-7)
+    expect(upperLeft.y).toBeCloseTo(-10)
+    expect(upperLeft.anchor).toBe('end')
+  })
+
+  it('keeps a hidden label in the default place, to the right', () => {
+    expect(labelAnchor(null, 6, 1)).toEqual(labelAnchor('right', 6, 1))
+  })
+})
+
+describe('labelPriorities', () => {
+  it('ranks the selection over matches over hubs over neighbours', () => {
+    const priorities = labelPriorities({
+      highlightedIds: ['picked'],
+      matchedIds: new Set(['match', 'picked']),
+      hubIds: ['hub', 'match'],
+      neighborIds: ['near', 'hub'],
+    })
+    expect(Object.fromEntries(priorities)).toEqual({
+      picked: LABEL_PRIORITY.highlighted,
+      match: LABEL_PRIORITY.match,
+      hub: LABEL_PRIORITY.hub,
+      near: LABEL_PRIORITY.neighbor,
+    })
+    expect(LABEL_PRIORITY.highlighted).toBeGreaterThan(LABEL_PRIORITY.match)
+    expect(LABEL_PRIORITY.match).toBeGreaterThan(LABEL_PRIORITY.hub)
+    expect(LABEL_PRIORITY.hub).toBeGreaterThan(LABEL_PRIORITY.neighbor)
+    expect(LABEL_PRIORITY.neighbor).toBeGreaterThan(LABEL_PRIORITY.service)
+  })
+
+  it('lists nothing without a search', () => {
+    expect(labelPriorities({ highlightedIds: [], matchedIds: null, hubIds: [], neighborIds: [] }).size).toBe(0)
+  })
+
+  it('defaults a service to the bottom and anything else to the hubs', () => {
+    expect(defaultLabelPriority(true)).toBe(LABEL_PRIORITY.service)
+    expect(defaultLabelPriority(false)).toBe(LABEL_PRIORITY.hub)
   })
 })

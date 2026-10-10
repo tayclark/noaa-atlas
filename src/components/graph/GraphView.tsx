@@ -60,7 +60,20 @@ import { selectionAnnouncement } from './a11yAnnouncements'
 import { GraphLegend } from './GraphLegend'
 import { GraphSearch, type SearchResult } from './GraphSearch'
 import { buildSearchIndex, matchNodeIds } from './searchMatch'
-import { boxRelativeTo, DIAGONAL_OFFSET, LABEL_GAP, labelBudget, placeLabels, type Box, type LabelItem } from './labelPlacement'
+import {
+  boxRelativeTo,
+  defaultLabelPriority,
+  LABEL_GAP,
+  LABEL_HEIGHT,
+  LABEL_PRIORITY,
+  LABEL_PX,
+  labelAnchor,
+  labelBudget,
+  labelPriorities,
+  placeLabels,
+  type Box,
+  type LabelItem,
+} from './labelPlacement'
 import { NodeDetailPanel } from './NodeDetailPanel'
 import { revealTransform, rovingOrder, rovingTabStop, rovingTarget } from './rovingFocus'
 import { useNarrowLayout } from '../useNarrowLayout'
@@ -89,9 +102,6 @@ const SELECTION_MAX_SCALE = 1.25
 const PATH_MIN_SCALE = 0.8
 const PATH_LINK_DISTANCE = 150
 const FIT_ALL_PADDING = 40
-// Labels render at this size on screen at every zoom level (#138); overlaps are hidden instead.
-const LABEL_PX = 12
-const LABEL_HEIGHT = 13
 const AUTOFIT_TICK_INTERVAL = 20
 // A touch is a tap, rather than the start of a pan or a pinch, when it ends this close (px) and this
 // soon (ms) to where it began; it means the nearest dot within TAP_REACH_PX of its edge (#78).
@@ -104,6 +114,10 @@ const ZOOM_MS = 250
 // How far inside the canvas edge (px) a node the arrow keys move to is kept (#284).
 const REVEAL_MARGIN = 40
 
+// The theme hubs and the NOAA root, whose labels outrank the services' (the org and access hubs get the same by default).
+const hubNodeIds = graph.nodes.filter((node) => node.kind !== 'service').map((node) => node.id)
+// The nodes one edge from `id` that its detail lists, framed and labelled with a single selection.
+const neighborIdsOf = (id: string) => getNeighbors(graph, id).flatMap((group) => group.neighbors.map((n) => n.node.id))
 const nodeNameById = new Map(graph.nodes.map((node) => [node.id, node.name]))
 const taskLabelById = new Map(tasks.map((task) => [task.id, task.label]))
 
@@ -343,7 +357,7 @@ export function GraphView() {
         const pos = nodePositionsRef.current.get(id)
         const node = nodeById.get(id)
         if (!pos || !node || !isNodeVisible(node, modeRef.current)) return
-        const priority = labelPriorityRef.current.get(id) ?? (node.kind === 'service' ? 0 : 3)
+        const priority = labelPriorityRef.current.get(id) ?? defaultLabelPriority(node.kind === 'service')
         items.push({
           id,
           x: t.applyX(pos.x),
@@ -354,7 +368,7 @@ export function GraphView() {
           priority,
           rank: nodeRadius(node) * 100 + (nodeDegree.get(id) ?? 0),
           // Hubs, matches and the selection may cover other nodes' dots (never another label).
-          overNodes: priority >= 3,
+          overNodes: priority >= LABEL_PRIORITY.hub,
         })
       })
       const obstacles = [detailPanelBox(svgEl, sheetRef.current), zoomControlsBox(svgEl)].filter((box) => box !== null)
@@ -364,25 +378,8 @@ export function GraphView() {
         const text = el.querySelector('text')
         const node = nodeById.get(id)
         if (!text || !node) return
-        // Positions are in world units (the zoom layer scales them), so screen gaps divide by k.
         const side = sides.get(id) ?? null
-        const r = nodeRadius(node)
-        const gap = LABEL_GAP / t.k
-        // Diagonal labels (#145) hang off a corner (r + gap) * DIAGONAL_OFFSET from the centre;
-        // the baseline offsets match the box placeLabels reserved for them.
-        const d = (r + gap) * DIAGONAL_OFFSET
-        const [x, y, anchor] =
-          side === 'left'
-            ? [-(r + gap), 4 / t.k, 'end']
-            : side === 'below'
-              ? [0, r + gap + 11 / t.k, 'middle']
-              : side === 'above'
-                ? [0, -(r + gap + 3 / t.k), 'middle']
-                : side === 'upper-right' || side === 'upper-left'
-                  ? [side === 'upper-right' ? d : -d, -(d + 3 / t.k), side === 'upper-right' ? 'start' : 'end']
-                  : side === 'lower-right' || side === 'lower-left'
-                    ? [side === 'lower-right' ? d : -d, d + 11 / t.k, side === 'lower-right' ? 'start' : 'end']
-                    : [r + gap, 4 / t.k, 'start']
+        const { x, y, anchor } = labelAnchor(side, nodeRadius(node), t.k)
         text.setAttribute('x', String(x))
         text.setAttribute('y', String(y))
         text.setAttribute('text-anchor', anchor)
@@ -596,21 +593,16 @@ export function GraphView() {
     // panelCollapsed and the sheet's size change the area the selection is framed into.
   }, [selection, size, highlightKey, panelCollapsed, sheet])
 
-  // Label priority (#138): what the user asked for wins space first (the selection, task path or
-  // globe point, then search matches), then theme hubs, then a single selected node's
-  // neighbours. Separate from the pan effect above so typing in the search box re-places labels
-  // without resetting the user's pan/zoom.
+  // Label priority (#138, see labelPriorities). Separate from the pan effect above so typing in the
+  // search box re-places labels without resetting the user's pan/zoom.
   useEffect(() => {
     const ids = highlightKey ? highlightKey.split('|') : []
-    const priorities = new Map<string, number>()
-    if (ids.length === 1) {
-      getNeighbors(graph, ids[0] as string).forEach((group) => group.neighbors.forEach((n) => priorities.set(n.node.id, 1)))
-    }
-    graph.nodes.forEach((node) => {
-      if (node.kind !== 'service') priorities.set(node.id, 3)
+    const priorities = labelPriorities({
+      highlightedIds: ids,
+      matchedIds,
+      hubIds: hubNodeIds,
+      neighborIds: ids.length === 1 ? neighborIdsOf(ids[0] as string) : [],
     })
-    matchedIds?.forEach((id) => priorities.set(id, 4))
-    ids.forEach((id) => priorities.set(id, 5))
     labelPriorityRef.current = priorities
     placeLabelsRef.current()
   }, [highlightKey, matchedIds])
