@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getViewSnapshot, resetView, resolveView, showView, subscribeView, tabsFor } from './viewStore'
+import { getViewSnapshot, clearView, resolveView, showView, subscribeView, tabsFor } from './viewStore'
 
-beforeEach(resetView)
+beforeEach(clearView)
 
 describe('viewStore', () => {
   it('starts on Explore and notifies subscribers when the view changes', () => {

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   clampToRange,
   getTimeSnapshot,
-  resetTime,
+  clearTime,
   startPlayer,
   stopPlayer,
   setRange,
@@ -10,7 +10,7 @@ import {
   subscribeTime,
 } from './timeStore'
 
-afterEach(resetTime)
+afterEach(clearTime)
 
 describe('timeStore', () => {
   it('starts at now, paused, with no range', () => {

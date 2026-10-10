@@ -5,8 +5,8 @@ import { DetailSheet } from './DetailSheet'
 import { clearCompare, getCompareSnapshot } from '../data/compareStore'
 import { getPoint } from '../data/nwsClient'
 import { clearSelection, getSelectionSnapshot, selectNode } from '../data/selectionStore'
-import { getSheetBox, setSheetBox } from '../data/sheetStore'
-import { getViewSnapshot, resetView } from '../data/viewStore'
+import { getSheetBoxSnapshot, setSheetBox } from '../data/sheetStore'
+import { getViewSnapshot, clearView } from '../data/viewStore'
 
 vi.mock('../data/nwsClient', () => ({ getPoint: vi.fn() }))
 
@@ -17,7 +17,7 @@ const HEADER = 124
 beforeEach(() => {
   clearSelection()
   clearCompare()
-  resetView()
+  clearView()
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(AREA)
   vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(HEADER)
   vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(360)
@@ -64,24 +64,24 @@ describe('DetailSheet', () => {
     const grabber = screen.getByRole('button', { name: 'Expand details' })
     expect(grabber.getAttribute('aria-expanded')).toBe('false')
     expect(body().hasAttribute('inert')).toBe(true)
-    expect(getSheetBox()?.size).toBe(HEADER)
+    expect(getSheetBoxSnapshot()?.size).toBe(HEADER)
     expect(root().style.height).toBe(`${HEADER}px`)
 
     fireEvent.click(grabber)
     expect(screen.getByRole('button', { name: 'Collapse details' }).getAttribute('aria-expanded')).toBe('true')
     expect(body().hasAttribute('inert')).toBe(false)
-    expect(getSheetBox()?.size).toBe(AREA - 56)
+    expect(getSheetBoxSnapshot()?.size).toBe(AREA - 56)
     expect(root().style.height).toBe(`${AREA - 56}px`)
 
     fireEvent.click(screen.getByRole('button', { name: 'Collapse details' }))
-    expect(getSheetBox()?.size).toBe(HEADER)
+    expect(getSheetBoxSnapshot()?.size).toBe(HEADER)
   })
 
   it('starts open when asked to, as a finder step does', () => {
     selectNode('nws-api')
     render(sheet({ startOpen: true }))
     expect(screen.getByRole('button', { name: 'Collapse details' })).toBeTruthy()
-    expect(getSheetBox()?.size).toBe(AREA - 56)
+    expect(getSheetBoxSnapshot()?.size).toBe(AREA - 56)
   })
 
   it('folds again when it moves to another view', () => {
@@ -116,9 +116,9 @@ describe('DetailSheet', () => {
   it('releases its height when it goes away', () => {
     selectNode('nws-api')
     const { unmount } = render(sheet())
-    expect(getSheetBox()?.size).toBe(HEADER)
+    expect(getSheetBoxSnapshot()?.size).toBe(HEADER)
     unmount()
-    expect(getSheetBox()).toBeNull()
+    expect(getSheetBoxSnapshot()).toBeNull()
   })
 
   it('dismisses, clearing the selection, from the close button and from Escape', () => {
@@ -169,7 +169,7 @@ describe('DetailSheet', () => {
       expect(screen.queryByRole('button', { name: /Expand details|Collapse details/ })).toBeNull()
       expect(body().hasAttribute('inert')).toBe(false)
       expect(root().style.height).toBe('')
-      expect(getSheetBox()?.edge).toBe('right')
+      expect(getSheetBoxSnapshot()?.edge).toBe('right')
     })
 
     it('keeps its close button, Compare and Show on globe', () => {
@@ -187,7 +187,7 @@ describe('DetailSheet', () => {
       fireEvent.pointerMove(header(), { clientY: 200 })
       expect(root().className).not.toContain('detail-sheet-dragging')
       fireEvent.pointerUp(header(), { clientY: 200 })
-      expect(getSheetBox()?.edge).toBe('right')
+      expect(getSheetBoxSnapshot()?.edge).toBe('right')
     })
   })
 

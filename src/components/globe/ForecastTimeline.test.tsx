@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ForecastTimelineData } from './forecastTimelineData'
 import { ForecastTimeline } from './ForecastTimeline'
-import { getTimeSnapshot, resetTime } from '../../data/timeStore'
+import { getTimeSnapshot, clearTime } from '../../data/timeStore'
 
 vi.mock('./forecastTimelineData', () => ({ loadForecastTimeline: vi.fn() }))
 import { loadForecastTimeline } from './forecastTimelineData'
@@ -42,7 +42,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
-  resetTime()
+  clearTime()
   vi.useRealTimers()
   vi.clearAllMocks()
 })

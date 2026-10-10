@@ -1,3 +1,4 @@
+import { createStore } from './createStore'
 import { parseNceiDatasets, type NceiDataset } from './nceiDatasetSchema'
 
 // The dataset rows (#62, #64, #68) load on demand (#269): they're about 44 kB gzip, and only the
@@ -15,9 +16,8 @@ export interface DatasetCatalog {
   forService: (serviceId: string) => NceiDataset[]
 }
 
-let catalog: DatasetCatalog | null = null
+const store = createStore<DatasetCatalog | null>(null)
 let pending: Promise<DatasetCatalog> | null = null
-const listeners = new Set<() => void>()
 
 function buildCatalog(ncei: NceiDataset[], onestop: NceiDataset[], aws: NceiDataset[]): DatasetCatalog {
   const byService = new Map<string, NceiDataset[]>()
@@ -29,8 +29,8 @@ function buildCatalog(ncei: NceiDataset[], onestop: NceiDataset[], aws: NceiData
 export function loadDatasetCatalog(): Promise<DatasetCatalog> {
   pending ??= Promise.all([import('./nceiDatasets.json'), import('./onestopDatasets.json'), import('./awsOpenDataDatasets.json')]).then(
     ([ncei, onestop, aws]) => {
-      catalog = buildCatalog(parseNceiDatasets(ncei.default), parseNceiDatasets(onestop.default), parseNceiDatasets(aws.default))
-      for (const listener of listeners) listener()
+      const catalog = buildCatalog(parseNceiDatasets(ncei.default), parseNceiDatasets(onestop.default), parseNceiDatasets(aws.default))
+      store.set(catalog)
       return catalog
     },
     (err: unknown) => {
@@ -42,11 +42,6 @@ export function loadDatasetCatalog(): Promise<DatasetCatalog> {
 }
 
 /** The loaded catalog, or null until `loadDatasetCatalog` has settled. */
-export function getDatasetCatalog(): DatasetCatalog | null {
-  return catalog
-}
+export const getDatasetCatalogSnapshot = store.get
 
-export function subscribeDatasetCatalog(listener: () => void): () => void {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
+export const subscribeDatasetCatalog = store.subscribe
