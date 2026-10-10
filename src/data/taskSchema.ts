@@ -6,11 +6,10 @@ import { slug } from './schemaPrimitives'
 
 const nonEmpty = z.string().trim().min(1)
 
-export const taskNodeSchema = z.strictObject({
+const taskNodeSchema = z.strictObject({
   nodeId: slug,
   why: nonEmpty,
 })
-export type TaskNode = z.infer<typeof taskNodeSchema>
 
 export const taskSchema = z.strictObject({
   id: slug,
@@ -19,11 +18,11 @@ export const taskSchema = z.strictObject({
 })
 export type Task = z.infer<typeof taskSchema>
 
-export const tasksFileSchema = z.strictObject({
+const tasksFileSchema = z.strictObject({
   version: z.literal(1),
   tasks: z.array(taskSchema),
 })
-export type TasksFile = z.infer<typeof tasksFileSchema>
+type TasksFile = z.infer<typeof tasksFileSchema>
 
 /** Validates untrusted task data and throws an Error with readable field paths. */
 export function parseTasksFile(raw: unknown): TasksFile {

@@ -28,7 +28,7 @@ const { request, invalidate, clearCache } = createLiveClient({
 })
 
 /** The summary service's layer ids. */
-export const NHC_LAYERS = { forecastPoints: 5, cone: 7, pastPoints: 10 } as const
+const NHC_LAYERS = { forecastPoints: 5, cone: 7, pastPoints: 10 } as const
 
 /** How often the globe re-fetches the tracks while they are shown; advisories come every 3 to 6 hours. */
 export const NHC_REFRESH_MS = 10 * 60_000

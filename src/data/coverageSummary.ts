@@ -23,7 +23,7 @@ function ringBbox(ring: readonly (readonly [number, number])[]): [number, number
 /** Longitude gaps narrower than this (degrees) count as covering every longitude. */
 const FULL_CIRCLE_GAP = 5
 
-export function coverageBbox(coverage: Coverage): [number, number, number, number] {
+function coverageBbox(coverage: Coverage): [number, number, number, number] {
   const rings = coverage.type === 'Polygon' ? coverage.coordinates : coverage.coordinates.flat()
   const bboxes = rings.map(ringBbox)
   const arc = smallestLonArc(bboxes.map((b) => [b[0], b[2]] as const))

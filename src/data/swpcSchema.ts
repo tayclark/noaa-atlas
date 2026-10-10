@@ -25,7 +25,6 @@ const kpRowSchema = z.object({
   estimated_kp: z.number(),
 })
 const kp1mSchema = z.array(kpRowSchema).nonempty()
-export type SwpcKpRow = z.infer<typeof kpRowSchema>
 export type SwpcKp1m = z.infer<typeof kp1mSchema>
 
 export function parseOvation(raw: unknown): SwpcOvation {

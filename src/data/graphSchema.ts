@@ -150,16 +150,15 @@ export const serviceNodeSchema = z
 export type ServiceNode = z.infer<typeof serviceNodeSchema>
 
 /** Theme edges are derived by buildGraph(), so only these types are authored. */
-export const authoredEdgeSchema = z.strictObject({
+const authoredEdgeSchema = z.strictObject({
   source: slug,
   target: slug,
   type: z.enum(['shared-id', 'data-flow']),
   label: nonEmpty,
   sourceUrl: z.url(),
 })
-export type AuthoredEdge = z.infer<typeof authoredEdgeSchema>
 
-export const graphFileSchema = z
+const graphFileSchema = z
   .strictObject({
     version: z.literal(1),
     nodes: z.array(serviceNodeSchema),
