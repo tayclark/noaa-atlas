@@ -13,6 +13,8 @@ export interface LiveClientOptions {
   httpError: (res: Response) => Error
   /** Builds the error thrown when the response doesn't match its schema. */
   parseError: (path: string, cause: unknown) => Error
+  /** Turns the body text into the value `parse` validates and the Inspector shows; JSON by default (#242). */
+  decode?: (text: string) => unknown
 }
 
 export interface LiveClient {
@@ -26,7 +28,7 @@ interface CacheEntry {
   expiresAt: number
 }
 
-export function createLiveClient({ baseUrl, headers, httpError, parseError }: LiveClientOptions): LiveClient {
+export function createLiveClient({ baseUrl, headers, httpError, parseError, decode = JSON.parse }: LiveClientOptions): LiveClient {
   const cache = new Map<string, CacheEntry>()
 
   function logRequest(
@@ -76,7 +78,7 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError }: Li
 
     // Read as text so the log knows the body's size (#265).
     const text = await res.text()
-    const raw: unknown = JSON.parse(text)
+    const raw: unknown = decode(text)
     let value: T
     try {
       value = parse(raw)
