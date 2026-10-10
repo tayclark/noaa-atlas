@@ -5,7 +5,7 @@ import { LeftPanel } from './components/LeftPanel'
 import { SplitPane } from './components/SplitPane'
 import { GlobeErrorBoundary } from './components/globe/GlobeErrorBoundary'
 import { GlobePlaceholder } from './components/globe/GlobePlaceholder'
-import { useGlobeHost } from './components/GlobeHost'
+import { useGlobeHost } from './components/useGlobeHost'
 import { useNarrowLayout } from './components/useNarrowLayout'
 import './App.css'
 
