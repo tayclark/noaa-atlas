@@ -3,7 +3,8 @@
 // radar). Nothing is requested until the node is selected. MapLibre owns the image fetches, so only
 // the legend JSON call goes through the typed client and shows up in the Inspector.
 
-import { ArcgisHttpError, ArcgisParseError } from '../../data/arcgisClient'
+import { describeClientError } from '../../data/clientErrors'
+import { arcgisErrors } from '../../data/arcgisClient'
 import type { ArcgisLegend, ArcgisLegendEntry } from '../../data/arcgisSchema'
 import type { LiveLayerKey } from './liveLayers'
 
@@ -122,8 +123,10 @@ export function legendEntriesFor(legend: ArcgisLegend, sublayers: readonly numbe
 
 /** A human-readable message for a failed legend fetch, by error kind. */
 export function describeArcgisFetchOutcome(err: unknown): string {
-  if (err instanceof ArcgisHttpError) return 'The map service is unavailable, so the legend could not be loaded.'
-  if (err instanceof ArcgisParseError) return 'The map service returned an unexpected legend response.'
-  if (err instanceof TypeError) return 'Could not reach the map service, so the legend could not be loaded.'
-  return 'Something went wrong loading the legend.'
+  return describeClientError(err, arcgisErrors, {
+    http: 'The map service is unavailable, so the legend could not be loaded.',
+    parse: 'The map service returned an unexpected legend response.',
+    network: 'Could not reach the map service, so the legend could not be loaded.',
+    fallback: 'Something went wrong loading the legend.',
+  })
 }
