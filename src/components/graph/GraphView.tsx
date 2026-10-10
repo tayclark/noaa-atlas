@@ -503,7 +503,8 @@ export function GraphView() {
         simulation.alpha(1)
         settleSimulation(simulation)
         renderTick()
-        requestAnimationFrame(onSettled)
+        cancelAnimationFrame(settledFrame)
+        settledFrame = requestAnimationFrame(onSettled)
       } else {
         simulation.alpha(1).restart()
       }

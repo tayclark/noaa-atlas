@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GraphView } from './GraphView'
 import graphJson from '../../data/graph.json'
 import { buildGraph } from '../../data/buildGraph'
@@ -10,6 +10,7 @@ import { parseTasksFile } from '../../data/taskSchema'
 import tasksJson from '../../data/tasks.json'
 import { nodeColor } from '../../data/themeColors'
 import { mockNarrowLayout, unmockNarrowLayout } from '../narrowLayoutTestUtils'
+import { REDUCED_MOTION_QUERY } from '../prefersReducedMotion'
 import { EDGE_CLASS } from './graphLayout'
 
 beforeEach(() => {
@@ -29,6 +30,33 @@ describe('GraphView', () => {
     const { container } = render(<GraphView />)
     expect(screen.getByRole('region', { name: 'Graph' })).toBeTruthy()
     expect(container.querySelectorAll('.graph-node')).toHaveLength(expectedGraph.nodes.length)
+  })
+
+  it('cancels a reduced-motion relayout frame still pending at unmount (#352)', () => {
+    const matchMedia = (query: string) => ({ matches: query === REDUCED_MOTION_QUERY, addEventListener: () => {}, removeEventListener: () => {} })
+    Object.defineProperty(window, 'matchMedia', { value: matchMedia, configurable: true, writable: true })
+    const pending = new Map<number, FrameRequestCallback>()
+    let nextFrame = 0
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      pending.set(++nextFrame, callback)
+      return nextFrame
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => void pending.delete(id))
+    // The settled layout gets framed, and d3-zoom reads the extent from SVG lengths jsdom lacks.
+    for (const side of ['width', 'height'] as const) {
+      Object.defineProperty(SVGSVGElement.prototype, side, { get: () => ({ baseVal: { value: 400 } }), configurable: true })
+    }
+    try {
+      const { unmount } = render(<GraphView />)
+      fireEvent.click(screen.getByRole('button', { name: 'Org view' }))
+      expect(pending.size).toBeGreaterThan(0)
+      unmount()
+      expect(pending.size).toBe(0)
+    } finally {
+      vi.restoreAllMocks()
+      delete (window as { matchMedia?: unknown }).matchMedia
+      for (const side of ['width', 'height'] as const) delete (SVGSVGElement.prototype as Partial<Record<typeof side, unknown>>)[side]
+    }
   })
 
   it('labels a node with its shortName but keeps the full name accessible (#141)', () => {
