@@ -6,7 +6,7 @@
 // spare, so there the sheet is a panel down the right-hand side, always open, with just its close
 // button. The graph frames a selection into what the sheet leaves free, through sheetStore.
 
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import { getCompareSnapshot, subscribeCompare, toggleCompare } from '../data/compareStore'
 import { clearSelection, getSelectionSnapshot, subscribeSelection } from '../data/selectionStore'
@@ -59,6 +59,8 @@ export function DetailSheet({ view, startOpen, side = false }: DetailSheetProps)
   const headerRef = useRef<HTMLDivElement>(null)
   const drag = useRef<DragState | null>(null)
   const swallowClick = useRef(false)
+  const swallowTimer = useRef(0)
+  useEffect(() => () => window.clearTimeout(swallowTimer.current), [])
 
   // The area is whatever the sheet sits in; the header's height is the peek height.
   const present = Boolean(node)
@@ -125,7 +127,8 @@ export function DetailSheet({ view, startOpen, side = false }: DetailSheetProps)
     if (!state?.active) return
     // A drag that ends over the grabber still produces a click, which must not toggle the sheet.
     swallowClick.current = true
-    window.setTimeout(() => {
+    window.clearTimeout(swallowTimer.current)
+    swallowTimer.current = window.setTimeout(() => {
       swallowClick.current = false
     }, 50)
     setDragHeight(null)

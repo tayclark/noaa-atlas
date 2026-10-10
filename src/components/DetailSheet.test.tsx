@@ -255,6 +255,22 @@ describe('DetailSheet', () => {
       expect(screen.getByRole('button', { name: 'Collapse details' })).toBeTruthy()
     })
 
+    it('leaves no timer running once it unmounts after a drag', () => {
+      vi.useFakeTimers()
+      try {
+        selectNode('nws-api')
+        const { unmount } = render(sheet())
+        fireEvent.pointerDown(header(), { clientY: 700 })
+        fireEvent.pointerMove(header(), { clientY: 200 })
+        fireEvent.pointerUp(header(), { clientY: 200 })
+        expect(vi.getTimerCount()).toBeGreaterThan(0)
+        unmount()
+        expect(vi.getTimerCount()).toBe(0)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     it('puts the sheet back when the browser takes the touch over', () => {
       selectNode('nws-api')
       render(sheet())
