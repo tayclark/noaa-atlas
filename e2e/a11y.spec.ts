@@ -172,11 +172,13 @@ test('the phone layout has no serious axe violations on the Tasks, Graph and Glo
   await mockAlerts(page, emptyAlertsFixture())
   await mockSwpc(page)
   await page.goto('/')
-  await expect(page.getByRole('tab', { name: 'Tasks', selected: true })).toBeVisible()
+  // A phone lands on Graph (#349).
+  await expect(page.getByRole('tab', { name: 'Graph', selected: true })).toBeVisible()
+  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
   expect(await seriousViolations(page)).toEqual([])
 
-  await page.getByRole('tab', { name: 'Graph' }).click()
-  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
+  await page.getByRole('tab', { name: 'Tasks' }).click()
+  await expect(page.locator('.finder-task-item').first()).toBeVisible()
   expect(await seriousViolations(page)).toEqual([])
 
   await page.getByRole('tab', { name: 'Globe' }).click()
