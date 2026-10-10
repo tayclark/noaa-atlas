@@ -1,21 +1,17 @@
 // The GFS wind overlay (#229): drawn only while the GFS (AWS) node is selected, against a mocked
 // bucket, and following the shared time slider.
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { mockGfs } from './fixtures/gfs'
 import { GLOBE, waitForGlobe } from './fixtures/globe'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
 
 const NODE = 'gfs-aws-open-data'
-
-async function selectByKeyboard(page: Page, nodeId: string) {
-  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
-  await page.keyboard.press('Enter')
-}
 
 test.beforeEach(async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())

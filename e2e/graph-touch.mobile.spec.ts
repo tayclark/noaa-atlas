@@ -3,20 +3,10 @@
 // from on a dot, and a tap on nothing dismisses the selection. Zoom buttons stand in for the pinch.
 
 import { expect, test, type Page } from '@playwright/test'
-import { mockAlerts, zoneOnlyAlertsFixture } from './fixtures/nwsAlerts'
-import { mockSwpc } from './fixtures/swpc'
+import { nodeSheet, openGraph } from './fixtures/graph'
 import { pinch, swipe, tapWithDrift, type Point } from './fixtures/touch'
 
-async function openGraph(page: Page) {
-  await mockAlerts(page, zoneOnlyAlertsFixture(1))
-  await mockSwpc(page)
-  await page.goto('/')
-  await page.getByRole('tab', { name: /Graph/ }).tap()
-  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
-}
-
 const layer = (page: Page) => page.locator('.graph-canvas svg > g').first()
-const sheet = (page: Page) => page.getByLabel('Node detail')
 const selectedNode = (page: Page) => page.locator('.graph-node[aria-pressed="true"]')
 
 /** The scale and offset of the zoom layer. */
@@ -89,7 +79,7 @@ test('a tap on a dot selects it, without moving the layout', async ({ page }) =>
   await page.touchscreen.tap(dot.x, dot.y)
 
   await expect(selectedNode(page)).toHaveAttribute('data-node-id', dot.id)
-  await expect(sheet(page)).toBeVisible()
+  await expect(nodeSheet(page)).toBeVisible()
   // A touch used to reheat the simulation (and drop this flag) whatever it did.
   await expect(page.locator('.graph-canvas svg')).toHaveAttribute('data-layout-settled', 'true')
 })
@@ -114,14 +104,14 @@ test('a tap on nothing dismisses the selection and leaves the view alone', async
   await openGraph(page)
   const dot = await isolatedDot(page)
   await page.touchscreen.tap(dot.x, dot.y)
-  await expect(sheet(page)).toBeVisible()
+  await expect(nodeSheet(page)).toBeVisible()
   await expect.poll(async () => (await view(page)).k).toBeGreaterThan(0)
 
   const spot = await emptySpot(page)
   expect(spot.clearance).toBeGreaterThan(40)
   const before = await view(page)
   await page.touchscreen.tap(spot.x, spot.y)
-  await expect(sheet(page)).toHaveCount(0)
+  await expect(nodeSheet(page)).toHaveCount(0)
   await expect(selectedNode(page)).toHaveCount(0)
   // Dismissing is not a request to re-frame the whole graph.
   await page.waitForTimeout(300)
@@ -205,7 +195,7 @@ test('the search lists matches by name, and picking one selects it', async ({ pa
 
   await first.tap()
   await expect(results).toHaveCount(0)
-  await expect(sheet(page).getByRole('heading', { name })).toBeVisible()
+  await expect(nodeSheet(page).getByRole('heading', { name })).toBeVisible()
   await expect(search).toHaveValue('')
 })
 

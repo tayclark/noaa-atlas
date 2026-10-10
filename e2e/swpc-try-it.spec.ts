@@ -1,19 +1,15 @@
 // SWPC try-its (#240): the alerts, solar wind and GOES nodes have no map layer, so Run sample fetches
 // the feed and shows a table in the detail panel, with an Inspector entry.
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
 import { makeAlerts, makeScales, makeSolarWindMagRows, makeSolarWindRows, makeXrayRows } from '../src/data/swpcFixtures'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
-
-async function selectByKeyboard(page: Page, nodeId: string) {
-  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
-  await page.keyboard.press('Enter')
-}
 
 test.beforeEach(async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())

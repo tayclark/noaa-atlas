@@ -2,6 +2,7 @@
 
 import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
+import { selectByKeyboard } from './fixtures/graph'
 
 test('searching dims non-matching nodes and reports no results', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
@@ -20,8 +21,7 @@ test('selecting a node dims the others (#255)', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await page.goto('/')
 
-  await page.locator('.graph-node[data-node-id="nws-api"]').focus()
-  await page.keyboard.press('Enter')
+  await selectByKeyboard(page, 'nws-api')
   await expect(page.locator('.graph-node[data-node-id="spc-gis-data"]')).toHaveClass(/graph-node-dimmed/)
   await expect(page.locator('.graph-node[data-node-id="nws-api"]')).not.toHaveClass(/graph-node-dimmed/)
 })

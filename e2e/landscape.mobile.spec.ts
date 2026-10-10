@@ -6,6 +6,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
+import { openGraph, selectByKeyboard } from './fixtures/graph'
 
 // Reduced motion lays the graph out in one go instead of animating the ~6.5 s settle, and these
 // specs assert the settled layout, not the animation.
@@ -17,12 +18,6 @@ test.beforeEach(async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await mockSwpc(page)
 })
-
-async function openGraph(page: Page) {
-  await page.goto('/')
-  await page.getByRole('tab', { name: /Graph/ }).tap()
-  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
-}
 
 async function seriousViolations(page: Page) {
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze()
@@ -68,16 +63,15 @@ test('About is at the foot of the rail, with the full disclaimer', async ({ page
 })
 
 test('the graph has the room of the whole screen, not a sliver', async ({ page }) => {
-  await openGraph(page)
+  await openGraph(page, { mocks: false })
   const canvas = (await page.locator('.graph-canvas').boundingBox())!
   expect(canvas.height).toBeGreaterThan(250)
   expect(canvas.width).toBeGreaterThan(700)
 })
 
 test('a selected node opens a panel down the right, and the graph frames it beside it', async ({ page }) => {
-  await openGraph(page)
-  await page.locator('.graph-node[data-node-id="nws-api"]').focus()
-  await page.keyboard.press('Enter')
+  await openGraph(page, { mocks: false })
+  await selectByKeyboard(page, 'nws-api')
 
   const sheet = page.getByLabel('Node detail')
   await expect(sheet).toBeVisible()
@@ -113,9 +107,8 @@ test('the globe card shrinks to its title, and the overlays leave most of the gl
 })
 
 test('landscape has no serious violations on the Graph (with the panel open) and the Globe', async ({ page }) => {
-  await openGraph(page)
-  await page.locator('.graph-node[data-node-id="nws-api"]').focus()
-  await page.keyboard.press('Enter')
+  await openGraph(page, { mocks: false })
+  await selectByKeyboard(page, 'nws-api')
   await expect(page.getByLabel('Node detail')).toBeVisible()
   expect(await seriousViolations(page)).toEqual([])
 

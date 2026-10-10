@@ -3,6 +3,7 @@
 import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
+import { selectByKeyboard } from './fixtures/graph'
 
 test('the access view shows access hubs and rings token-gated services, and switches back', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
@@ -37,8 +38,7 @@ test('the access view shows access hubs and rings token-gated services, and swit
   expect(await distance('nws-api', 'access-rest')).toBeLessThan(await distance('nws-api', 'access-cloud-bucket'))
 
   // Services stay selectable by keyboard in this view too.
-  await page.locator('.graph-node[data-node-id="nws-api"]').focus()
-  await page.keyboard.press('Enter')
+  await selectByKeyboard(page, 'nws-api')
   await expect(page.getByRole('heading', { name: 'NWS API', exact: false }).first()).toBeVisible()
 
   await page.getByRole('button', { name: 'Theme view' }).click()

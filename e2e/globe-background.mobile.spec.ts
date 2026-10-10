@@ -4,6 +4,7 @@
 
 import { expect, test, type Page } from '@playwright/test'
 import { GLOBE, waitForGlobe } from './fixtures/globe'
+import { selectByKeyboard, showGraphTab } from './fixtures/graph'
 import { RADAR_FRAMES, mockRadar } from './fixtures/nowcoast'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc, mockSwpcRefresh } from './fixtures/swpc'
@@ -13,19 +14,13 @@ test.use({ reducedMotion: 'reduce' })
 
 const NOWCOAST = 'nowcoast-map-services'
 
-async function selectNowcoast(page: Page) {
-  await page.getByRole('tab', { name: /Graph/ }).tap()
-  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
-  await page.locator(`.graph-node[data-node-id="${NOWCOAST}"]`).focus()
-  await page.keyboard.press('Enter')
-}
-
 async function openRadar(page: Page) {
   await mockAlerts(page, emptyAlertsFixture())
   await mockSwpc(page)
   await mockRadar(page)
   await page.goto('/')
-  await selectNowcoast(page)
+  await showGraphTab(page)
+  await selectByKeyboard(page, NOWCOAST)
   await page.getByRole('tab', { name: /Globe/ }).tap()
   await expect(page.getByRole('slider', { name: 'Radar frame' })).toBeVisible({ timeout: 20_000 })
 }

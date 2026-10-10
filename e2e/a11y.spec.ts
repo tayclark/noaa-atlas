@@ -6,6 +6,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { emptyAlertsFixture, mappableAlertsFixture, mockAlerts, zoneOnlyAlertsFixture } from './fixtures/nwsAlerts'
 import { mockRadar } from './fixtures/nowcoast'
 import { mockSwpc } from './fixtures/swpc'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
@@ -31,8 +32,7 @@ test('the initial view has no serious axe violations', async ({ page }) => {
 
 test('a selected node and its detail panel have no serious axe violations', async ({ page }) => {
   await openApp(page)
-  await page.locator('.graph-node[data-node-id="nws-api"]').focus()
-  await page.keyboard.press('Enter')
+  await selectByKeyboard(page, 'nws-api')
   await expect(page.getByLabel('Node detail')).toBeVisible()
   expect(await seriousViolations(page)).toEqual([])
 })
@@ -188,8 +188,7 @@ test('the phone layout has no serious axe violations on the Tasks, Graph and Glo
 
 test('a selection is announced and the focused graph pans and zooms from the keyboard', async ({ page }) => {
   await openApp(page)
-  await page.locator('.graph-node[data-node-id="nws-api"]').focus()
-  await page.keyboard.press('Enter')
+  await selectByKeyboard(page, 'nws-api')
   await expect(page.getByTestId('selection-announcement')).toHaveText(/^Selected /)
 
   const layer = page.locator('.graph-canvas svg > g').first()
@@ -233,8 +232,7 @@ test('the expanded zone-only alerts overlay has no serious axe violations (#86)'
 test('the radar time slider has no serious axe violations (#74)', async ({ page }) => {
   await mockRadar(page)
   await openApp(page)
-  await page.locator('.graph-node[data-node-id="nowcoast-map-services"]').focus()
-  await page.keyboard.press('Enter')
+  await selectByKeyboard(page, 'nowcoast-map-services')
   await expect(page.getByRole('slider', { name: 'Radar frame' })).toBeVisible()
   expect(await seriousViolations(page)).toEqual([])
 })

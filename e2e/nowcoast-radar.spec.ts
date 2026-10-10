@@ -1,21 +1,17 @@
 // nowCOAST radar tiles (#56): drawn only while the nowCOAST node is selected, against mocked WMS
 // tiles, plus one `@live` smoke test that fetches a real tile.
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockRadar, RADAR_FRAMES, RADAR_TILES } from './fixtures/nowcoast'
 import { mockSwpc } from './fixtures/swpc'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
 
 const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
 const NODE = 'nowcoast-map-services'
-
-async function selectByKeyboard(page: Page, nodeId: string) {
-  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
-  await page.keyboard.press('Enter')
-}
 
 test.beforeEach(async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())

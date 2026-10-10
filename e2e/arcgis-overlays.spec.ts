@@ -1,7 +1,7 @@
 // ArcGIS MapServer overlays (#247): drawn only while their node is selected, against mocked export
 // tiles and legend, plus `@live` checks that the real services draw (#287).
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import {
   BLANK_TILE_MAX_BYTES,
   collectArcgisTiles,
@@ -15,16 +15,12 @@ import {
 import { GLOBE, waitForGlobe } from './fixtures/globe'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
 
 const NODE = 'nws-raster-map-services'
-
-async function selectByKeyboard(page: Page, nodeId: string) {
-  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
-  await page.keyboard.press('Enter')
-}
 
 test.beforeEach(async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
