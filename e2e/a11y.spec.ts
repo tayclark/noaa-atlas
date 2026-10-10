@@ -1,29 +1,15 @@
 // Accessibility baseline (#47): axe finds no serious or critical WCAG A/AA violations, the skip
 // link and tabs work from the keyboard, and "reduce motion" settles the graph without animating.
 
-import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mappableAlertsFixture, mockAlerts, zoneOnlyAlertsFixture } from './fixtures/nwsAlerts'
+import { openApp, seriousViolations } from './fixtures/axe'
 import { mockRadar } from './fixtures/nowcoast'
 import { mockSwpc } from './fixtures/swpc'
 import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
-
-async function openApp(page: Page) {
-  await mockAlerts(page, emptyAlertsFixture())
-  await mockSwpc(page)
-  await page.goto('/')
-  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
-}
-
-async function seriousViolations(page: Page) {
-  const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
-  return violations
-    .filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')
-    .map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`)
-}
 
 test('the initial view has no serious axe violations', async ({ page }) => {
   await openApp(page)

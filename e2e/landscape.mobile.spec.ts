@@ -2,8 +2,8 @@
 // height. The tabs are a rail down the left with About at its foot, and the node detail is a panel
 // down the right that the graph frames the selection beside.
 
-import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+import { seriousViolations } from './fixtures/axe'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 import { openGraph, selectByKeyboard } from './fixtures/graph'
@@ -18,13 +18,6 @@ test.beforeEach(async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await mockSwpc(page)
 })
-
-async function seriousViolations(page: Page) {
-  const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze()
-  return violations
-    .filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')
-    .map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`)
-}
 
 test('the tabs are a rail down the left, and the views take the whole height', async ({ page }) => {
   await page.goto('/')
