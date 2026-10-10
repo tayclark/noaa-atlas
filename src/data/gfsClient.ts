@@ -76,23 +76,57 @@ const client = createLiveClient({
   parseError: (path, cause) => new Error(`GFS response for ${path} could not be read`, { cause }),
 })
 
-/** The `.idx` sidecar text. */
-const fetchIndex = (path: string) => client.requestRaw(`${path}.idx`, { as: 'text', logBody: () => ({ bytes: 'index' }) })
-
 /** One GRIB message, by its byte range in the `.idx`. */
 const fetchMessage = (path: string, name: string, entry: GribIdxEntry) =>
   client.requestRaw(path, { as: 'arrayBuffer', headers: { Range: rangeHeader(entry) }, logBody: (body) => ({ name, bytes: body.byteLength }) })
 
 const cycleCache = new Map<GfsProduct, { cycle: number; expiresAt: number }>()
-const fieldCache = new Map<string, Promise<WindField>>()
+// The wind and reflectivity fields read different messages of the same file, so they share its index.
+const indexCache = new Map<string, Promise<GribIdxEntry[]>>()
+const windCache = new Map<string, Promise<WindField>>()
+const reflectivityCache = new Map<string, Promise<GribField>>()
 const waveCache = new Map<string, Promise<GribField>>()
 
-/** Clears the cycle and field caches. Intended for test isolation between cases. */
+/** Clears the cycle, index and field caches. Intended for test isolation between cases. */
 export function clearGfsCache(): void {
   cycleCache.clear()
-  fieldCache.clear()
-  waveCache.clear()
+  indexCache.clear()
+  windCache.clear()
   reflectivityCache.clear()
+  waveCache.clear()
+}
+
+/**
+ * Starts `load` once per key, keeping the newest FIELD_CACHE_SIZE results. A failure is forgotten so
+ * the next call retries, but only if the entry is still this load: one evicted and started again
+ * meanwhile stays.
+ */
+function cachedLoad<T>(cache: Map<string, Promise<T>>, key: string, load: () => Promise<T>): Promise<T> {
+  const cached = cache.get(key)
+  if (cached) return cached
+  const pending = load()
+  cache.set(key, pending)
+  pending.catch(() => {
+    if (cache.get(key) === pending) cache.delete(key)
+  })
+  while (cache.size > FIELD_CACHE_SIZE) cache.delete(cache.keys().next().value as string)
+  return pending
+}
+
+/**
+ * Runs `read` on the file's parsed `.idx` sidecar. When `read` fails the index is forgotten as well,
+ * so a retry doesn't reuse one written before the file was complete.
+ */
+async function withIndex<T>(path: string, read: (index: GribIdxEntry[]) => Promise<T>): Promise<T> {
+  const index = cachedLoad(indexCache, path, async () =>
+    parseGribIdx(await client.requestRaw(`${path}.idx`, { as: 'text', logBody: () => ({ bytes: 'index' }) })),
+  )
+  try {
+    return await read(await index)
+  } catch (err) {
+    if (indexCache.get(path) === index) indexCache.delete(path)
+    throw err
+  }
 }
 
 /** The newest GFS cycle whose first file is already published (the wave files can lag the atmos ones). */
@@ -113,8 +147,8 @@ export async function getLatestCycle(now = Date.now(), product: GfsProduct = 'at
   throw lastError
 }
 
-async function fetchComponent(path: string, idxText: string, name: 'UGRD' | 'VGRD'): Promise<GribField> {
-  const entry = findGribField(parseGribIdx(idxText), name, '10 m above ground')
+async function fetchComponent(path: string, index: GribIdxEntry[], name: 'UGRD' | 'VGRD'): Promise<GribField> {
+  const entry = findGribField(index, name, '10 m above ground')
   if (!entry) throw new Error(`GFS index has no 10 m ${name}`)
   return decodeGribField(await fetchMessage(path, name, entry))
 }
@@ -122,51 +156,34 @@ async function fetchComponent(path: string, idxText: string, name: 'UGRD' | 'VGR
 /** The 10 m wind field for `hour` hours after `cycle`. Results are cached for the session. */
 export function getWindField(cycle: number, hour: number): Promise<WindField> {
   const path = fieldPath(cycle, hour)
-  const cached = fieldCache.get(path)
-  if (cached) return cached
-  const pending = (async () => {
-    const idx = await fetchIndex(path)
-    const [u, v] = await Promise.all([fetchComponent(path, idx, 'UGRD'), fetchComponent(path, idx, 'VGRD')])
-    return { u, v }
-  })()
-  fieldCache.set(path, pending)
-  pending.catch(() => fieldCache.delete(path))
-  while (fieldCache.size > FIELD_CACHE_SIZE) fieldCache.delete(fieldCache.keys().next().value as string)
-  return pending
+  return cachedLoad(windCache, path, () =>
+    withIndex(path, async (index) => {
+      const [u, v] = await Promise.all([fetchComponent(path, index, 'UGRD'), fetchComponent(path, index, 'VGRD')])
+      return { u, v }
+    }),
+  )
 }
-
-const reflectivityCache = new Map<string, Promise<GribField>>()
 
 /** Composite reflectivity (dBZ, the model's simulated radar) for `hour` hours after `cycle` (#340). Cached for the session. */
 export function getReflectivityField(cycle: number, hour: number): Promise<GribField> {
   const path = fieldPath(cycle, hour)
-  const cached = reflectivityCache.get(path)
-  if (cached) return cached
-  const pending = (async () => {
-    const idx = await fetchIndex(path)
-    const entry = findGribField(parseGribIdx(idx), 'REFC', 'entire atmosphere')
-    if (!entry) throw new Error('GFS index has no REFC')
-    return decodeGribField(await fetchMessage(path, 'REFC', entry))
-  })()
-  reflectivityCache.set(path, pending)
-  pending.catch(() => reflectivityCache.delete(path))
-  while (reflectivityCache.size > FIELD_CACHE_SIZE) reflectivityCache.delete(reflectivityCache.keys().next().value as string)
-  return pending
+  return cachedLoad(reflectivityCache, path, () =>
+    withIndex(path, async (index) => {
+      const entry = findGribField(index, 'REFC', 'entire atmosphere')
+      if (!entry) throw new Error('GFS index has no REFC')
+      return decodeGribField(await fetchMessage(path, 'REFC', entry))
+    }),
+  )
 }
 
 /** Significant wave height (m) for `hour` hours after the wave `cycle`; land is NaN. Cached for the session. */
 export function getWaveField(cycle: number, hour: number): Promise<GribField> {
   const path = fieldPath(cycle, hour, 'wave')
-  const cached = waveCache.get(path)
-  if (cached) return cached
-  const pending = (async () => {
-    const idx = await fetchIndex(path)
-    const entry = findGribField(parseGribIdx(idx), 'HTSGW', 'surface')
-    if (!entry) throw new Error('GFS-Wave index has no HTSGW')
-    return decodeWaveField(await fetchMessage(path, 'HTSGW', entry))
-  })()
-  waveCache.set(path, pending)
-  pending.catch(() => waveCache.delete(path))
-  while (waveCache.size > FIELD_CACHE_SIZE) waveCache.delete(waveCache.keys().next().value as string)
-  return pending
+  return cachedLoad(waveCache, path, () =>
+    withIndex(path, async (index) => {
+      const entry = findGribField(index, 'HTSGW', 'surface')
+      if (!entry) throw new Error('GFS-Wave index has no HTSGW')
+      return decodeWaveField(await fetchMessage(path, 'HTSGW', entry))
+    }),
+  )
 }

@@ -107,6 +107,31 @@ describe('gfs client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it('reads the index once for the wind and reflectivity fields of the same file', async () => {
+    serve()
+    const cycle = T('2026-10-01T00:00:00Z')
+    await Promise.all([getWindField(cycle, 12), getReflectivityField(cycle, 12)])
+    const idxCalls = fetchMock.mock.calls.filter((c) => (c[0] as string).endsWith('.idx'))
+    expect(idxCalls).toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+  })
+
+  it('keeps a newer load when an evicted one fails late', async () => {
+    let failFirst: (err: Error) => void = () => {}
+    fetchMock.mockImplementationOnce(() => new Promise((_resolve, reject) => (failFirst = reject)))
+    const cycle = T('2026-10-01T00:00:00Z')
+    const first = getWindField(cycle, 0)
+    serve()
+    // Nine more paths push hour 0 out of the eight-entry cache, then hour 0 loads again.
+    await Promise.all([3, 6, 9, 12, 15, 18, 21, 24, 27].map((hour) => getWindField(cycle, hour)))
+    const second = getWindField(cycle, 0)
+    expect(second).not.toBe(first)
+    failFirst(new TypeError('Failed to fetch'))
+    await expect(first).rejects.toBeInstanceOf(TypeError)
+    expect(getWindField(cycle, 0)).toBe(second)
+    await second
+  })
+
   it('reports an index without reflectivity, and does not cache the failure', async () => {
     fetchMock.mockImplementation(async () => new Response('1:0:d=2026100100:PRMSL:mean sea level:12 hour fcst:\n'))
     const cycle = T('2026-10-01T00:00:00Z')
