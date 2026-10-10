@@ -143,6 +143,7 @@ test('with reduced motion the graph is laid out before the first frame settles',
   const positions = () =>
     page.locator('.graph-node').evaluateAll((els) => els.map((el) => el.getAttribute('transform')))
   const first = await positions()
+  // A sleep on purpose: "nothing moves" has no event to wait for, so give an animation time to show.
   await page.waitForTimeout(500)
   expect(await positions()).toEqual(first)
 })

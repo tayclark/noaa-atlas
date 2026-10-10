@@ -4,6 +4,7 @@
 import { expect, test } from '@playwright/test'
 import { mockGfs } from './fixtures/gfs'
 import { GLOBE, waitForGlobe } from './fixtures/globe'
+import { mockRadar } from './fixtures/nowcoast'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 import { selectByKeyboard } from './fixtures/graph'
@@ -20,9 +21,14 @@ test.beforeEach(async ({ page }) => {
 
 test('requests no wind data until the GFS node is selected', async ({ page }) => {
   const seen = await mockGfs(page)
+  const radar = await mockRadar(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await expect(page.locator(GLOBE)).toHaveAttribute('data-wind', 'hidden')
-  await page.waitForTimeout(1000)
+  // Rather than sleep and hope a stray request shows up: a wind fetch would start on mount, well
+  // before the map loads and another overlay's tiles are asked for.
+  await selectByKeyboard(page, 'nowcoast-map-services')
+  await expect.poll(() => radar.length).toBeGreaterThan(0)
   expect(seen).toHaveLength(0)
 })
 

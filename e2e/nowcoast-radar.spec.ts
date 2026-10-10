@@ -2,6 +2,8 @@
 // tiles, plus one `@live` smoke test that fetches a real tile.
 
 import { expect, test } from '@playwright/test'
+import { mockArcgisRaster } from './fixtures/arcgis'
+import { waitForGlobe } from './fixtures/globe'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockRadar, RADAR_FRAMES, RADAR_TILES } from './fixtures/nowcoast'
 import { mockSwpc } from './fixtures/swpc'
@@ -20,10 +22,14 @@ test.beforeEach(async ({ page }) => {
 
 test('requests no radar tiles until the nowCOAST node is selected', async ({ page }) => {
   const tiles = await mockRadar(page)
+  const arcgis = await mockArcgisRaster(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await expect(page.locator(GLOBE)).toHaveAttribute('data-nowcoast-radar', 'hidden')
-  // Give a stray request time to show up before asserting that none did.
-  await page.waitForTimeout(1000)
+  // Rather than sleep and hope a stray request shows up: once another overlay's tiles are asked for,
+  // the loaded map has rendered with every source it has, so this one's would have been asked for too.
+  await selectByKeyboard(page, 'nws-raster-map-services')
+  await expect.poll(() => arcgis.length).toBeGreaterThan(0)
   expect(tiles).toHaveLength(0)
 })
 

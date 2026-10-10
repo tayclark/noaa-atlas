@@ -113,7 +113,8 @@ test('a tap on nothing dismisses the selection and leaves the view alone', async
   await page.touchscreen.tap(spot.x, spot.y)
   await expect(nodeSheet(page)).toHaveCount(0)
   await expect(selectedNode(page)).toHaveCount(0)
-  // Dismissing is not a request to re-frame the whole graph.
+  // Dismissing is not a request to re-frame the whole graph. A sleep on purpose: a re-frame that
+  // never starts has no event to wait for, so give one time to begin before comparing.
   await page.waitForTimeout(300)
   expect(await view(page)).toEqual(before)
 })

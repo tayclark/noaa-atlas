@@ -13,6 +13,7 @@ import {
   type LiveTile,
 } from './fixtures/arcgis'
 import { GLOBE, waitForGlobe } from './fixtures/globe'
+import { mockRadar } from './fixtures/nowcoast'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 import { selectByKeyboard } from './fixtures/graph'
@@ -29,10 +30,14 @@ test.beforeEach(async ({ page }) => {
 
 test('requests no overlay tiles or legend until the node is selected', async ({ page }) => {
   const tiles = await mockArcgisRaster(page)
+  const radar = await mockRadar(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'hidden')
-  // Give a stray request time to show up before asserting that none did.
-  await page.waitForTimeout(1000)
+  // Rather than sleep and hope a stray request shows up: once another overlay's tiles are asked for,
+  // the loaded map has rendered with every source it has, so this one's would have been asked for too.
+  await selectByKeyboard(page, 'nowcoast-map-services')
+  await expect.poll(() => radar.length).toBeGreaterThan(0)
   expect(tiles).toHaveLength(0)
 })
 

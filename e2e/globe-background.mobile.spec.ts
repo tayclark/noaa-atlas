@@ -33,7 +33,8 @@ test('the radar loop stops while another tab shows, and goes on when the globe i
   await expect.poll(() => radarTime(page)).not.toBe('latest')
 
   await page.getByRole('tab', { name: /Graph/ }).tap()
-  // Let a tick that was already due go by, then see that no more arrive.
+  // Let a tick that was already due go by, then see that no more arrive. Sleeps on purpose: a
+  // paused loop has no event to wait for, so the second one spans a few of its ticks.
   await page.waitForTimeout(900)
   const held = await radarTime(page)
   await page.waitForTimeout(2300)
