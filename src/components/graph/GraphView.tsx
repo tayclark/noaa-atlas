@@ -18,7 +18,6 @@ import './GraphView.css'
 import { buildAccessHierarchy } from '../../data/accessHierarchy'
 import { buildOrgHierarchy } from '../../data/orgHierarchy'
 import { graph, graphFile, tasks } from '../../data/graphData'
-import { THEME_LABELS } from '../../data/graphSchema'
 import { getDatasetCatalog, loadDatasetCatalog, subscribeDatasetCatalog } from '../../data/nceiDatasets'
 import { getNeighbors } from '../../data/neighbors'
 import {
@@ -32,7 +31,8 @@ import {
 import { getSheetBox, subscribeSheetBox, type SheetBox } from '../../data/sheetStore'
 import { nodeColor } from '../../data/themeColors'
 import { prefersReducedMotion } from '../prefersReducedMotion'
-import { focusIds, isEdgeDimmed, neighborIds, nodeDim } from './focusDim'
+import { edgeClassName, focusIds, isEdgeDimmed, neighborIds, nodeClassName, nodeDim } from './focusDim'
+import { findGraphNode, isHub, isSelectable, labelText, nodeDegree as countDegrees } from './graphNodes'
 import {
   computeFitTransform,
   computeLabelledFitTransform,
@@ -48,6 +48,7 @@ import {
   nearestNodeWithin,
   nodeRadius,
   panelInset,
+  selectionFraming,
   type FitTransform,
   type HitNode,
   type Inset,
@@ -58,8 +59,8 @@ import {
 } from './graphLayout'
 import { selectionAnnouncement } from './a11yAnnouncements'
 import { GraphLegend } from './GraphLegend'
-import { GraphSearch, type SearchResult } from './GraphSearch'
-import { buildSearchIndex, matchNodeIds } from './searchMatch'
+import { GraphSearch } from './GraphSearch'
+import { buildSearchIndex, matchNodeIds, searchResults as listSearchResults } from './searchMatch'
 import {
   boxRelativeTo,
   defaultLabelPriority,
@@ -78,12 +79,10 @@ import { NodeDetailPanel } from './NodeDetailPanel'
 import { revealTransform, rovingOrder, rovingTabStop, rovingTarget } from './rovingFocus'
 import { useNarrowLayout } from '../useNarrowLayout'
 
-const graphNodeById = new Map(graph.nodes.map((node) => [node.id, node]))
 // The org (#58) and access-method (#60) hubs are only drawn: search, neighbours and the detail panel keep reading `graph`.
 const orgHierarchy = buildOrgHierarchy(graphFile)
 const accessHierarchy = buildAccessHierarchy(graphFile)
 const drawnNodes: LayoutNode[] = [...graph.nodes, ...orgHierarchy.nodes, ...accessHierarchy.nodes]
-const dimClass = { none: '', near: ' graph-node-near', dim: ' graph-node-dimmed' } as const
 const drawnEdges = [...graph.edges, ...orgHierarchy.edges, ...accessHierarchy.edges]
 // `short` is the visible text on a phone, where the toolbar is one row; the accessible name stays `label`.
 const LAYOUT_MODES: { mode: LayoutMode; label: string; short: string; title: string }[] = [
@@ -91,9 +90,8 @@ const LAYOUT_MODES: { mode: LayoutMode; label: string; short: string; title: str
   { mode: 'org', label: 'Org view', short: 'Org', title: 'Group services by the NOAA office and program that runs them' },
   { mode: 'access', label: 'Access view', short: 'Access', title: 'Group services by how the data is reached: REST, OGC, ArcGIS, cloud bucket or file download' },
 ]
-// Connectedness breaks label ties between nodes of one size (every service is the same radius).
-const nodeDegree = new Map<string, number>()
-for (const edge of drawnEdges) for (const end of [edge.source, edge.target]) nodeDegree.set(end, (nodeDegree.get(end) ?? 0) + 1)
+const nodeDegree = countDegrees(drawnEdges)
+// Every drawn node, hubs included, by id: read on each tap and fit, so it's a map rather than a search.
 const drawnNodeById = new Map(drawnNodes.map((node) => [node.id, node]))
 // A selected node is framed together with its neighbors, at a scale capped so labels stay legible.
 const SELECTION_MAX_SCALE = 1.25
@@ -121,11 +119,6 @@ const neighborIdsOf = (id: string) => getNeighbors(graph, id).flatMap((group) =>
 const nodeNameById = new Map(graph.nodes.map((node) => [node.id, node.name]))
 const taskLabelById = new Map(tasks.map((task) => [task.id, task.label]))
 
-// The on-graph label; the full name stays in the aria-label and detail panel, and in a tooltip when the
-// label is shortened (#141). An unshortened node gets no <title>, which screen readers would read as a
-// description repeating its name (#290).
-const labelText = (node: LayoutNode) => (node.kind === 'service' ? (node.shortName ?? node.name) : node.name)
-
 // Positions the synthetic task-path connectors (#34) from the live node positions. The lines are
 // React-rendered (they come and go with the selection) but positioned imperatively, like every
 // other element here, so simulation ticks don't trigger re-renders.
@@ -147,6 +140,11 @@ function positionPathEdges(root: Element | null, positions: Map<string, { x: num
  * whose place comes from sheetStore because the sheet is a sibling of the whole view, not of the
  * canvas.
  */
+/** Moves the view at once: d3-transition isn't a dependency here, so a pan or zoom is applied rather than animated. */
+function applyView(svgEl: SVGSVGElement, zoomBehavior: ZoomBehavior<SVGSVGElement, unknown>, view: FitTransform) {
+  select(svgEl).call(zoomBehavior.transform, zoomIdentity.translate(view.x, view.y).scale(view.k))
+}
+
 function detailPanelBox(svgEl: SVGSVGElement, sheet: SheetBox | null): Box | null {
   if (sheet) {
     const { clientWidth: width, clientHeight: height } = svgEl
@@ -202,7 +200,7 @@ export function GraphView() {
   const [lastFocusedId, setLastFocusedId] = useState<string | null>(null)
   // Kept across selections, so a user who collapses the panel isn't fighting it on every click.
   // A phone has no floating card: its detail is a bottom sheet, which publishes its height (#78).
-  const narrow = useNarrowLayout()
+  const compact = useNarrowLayout()
   const [panelCollapsed, setPanelCollapsed] = useState(false)
   const sheet = useSyncExternalStore(subscribeSheetBox, getSheetBox)
   // Read by placeLabelsRef, which runs outside React renders (zoom, ticks), so it's a ref. It is
@@ -221,19 +219,7 @@ export function GraphView() {
   const matchedIds = useMemo(() => matchNodeIds(searchIndex, query), [searchIndex, query])
   const focus = focusIds(matchedIds, highlightedIds)
   const near = neighborIds(drawnEdges, highlightedIds, matchedIds)
-  // What a phone lists under the search box: the matches by name, with where each sits (#78).
-  // Services come first, since an API is what the reader is after; the theme hubs follow.
-  const searchResults = useMemo<SearchResult[]>(() => {
-    const found = [...(matchedIds ?? [])].flatMap((id) => {
-      const node = graphNodeById.get(id)
-      return node ? [node] : []
-    })
-    return [...found.filter((node) => node.kind === 'service'), ...found.filter((node) => node.kind !== 'service')].map((node) => ({
-      id: node.id,
-      name: node.name,
-      detail: node.kind === 'service' ? THEME_LABELS[node.theme] : node.kind === 'theme' ? 'Theme' : 'NOAA',
-    }))
-  }, [matchedIds])
+  const searchResults = useMemo(() => listSearchResults(matchedIds, findGraphNode), [matchedIds])
 
   useEffect(() => {
     sheetRef.current = sheet
@@ -264,7 +250,7 @@ export function GraphView() {
       const hittable: HitNode[] = []
       nodePositionsRef.current.forEach((position, id) => {
         const node = drawnNodeById.get(id)
-        if (node && (node.kind === 'service' || node.kind === 'theme' || node.kind === 'root') && isNodeVisible(node, modeRef.current)) {
+        if (node && isSelectable(node) && isNodeVisible(node, modeRef.current)) {
           hittable.push({ id, ...position, radius: nodeRadius(node) })
         }
       })
@@ -539,9 +525,8 @@ export function GraphView() {
       // neighbours (and their labels) aren't hidden under it (#141).
       const fit = fitInto(panelInset(detailPanelBox(svgEl, sheet), size.width, size.height))
       if (!fit) return false
-      // d3-transition isn't a dependency here, so the pan/zoom is applied immediately rather
-      // than animated (unlike MapLibre's flyTo in the reverse direction, #44).
-      select(svgEl).call(zoomBehavior.transform, zoomIdentity.translate(fit.x, fit.y).scale(fit.k))
+      // Applied at once, unlike MapLibre's flyTo in the reverse direction (#44).
+      applyView(svgEl, zoomBehavior, fit)
       return true
     }
 
@@ -570,13 +555,10 @@ export function GraphView() {
       // The layout settling is not a reason to move a view the user has since moved themselves.
       if (settled && userMovedRef.current) return
       if (!settled) userMovedRef.current = false
-      const onlyId = highlightedIds.length === 1 ? (highlightedIds[0] as string) : null
-      const ids = onlyId
-        ? [onlyId, ...getNeighbors(graph, onlyId).flatMap((group) => group.neighbors.map((n) => n.node.id))]
-        : highlightedIds
+      const { onlyId, ids } = selectionFraming(highlightedIds, neighborIdsOf)
       const framed = ids.flatMap((id) => {
         const pos = nodePositionsRef.current.get(id)
-        const node = graphNodeById.get(id)
+        const node = findGraphNode(id)
         return pos && node ? [{ ...pos, radius: nodeRadius(node), labelWidth: labelWidthsRef.current.get(id) ?? 0 }] : []
       })
       applyTransform((inset) =>
@@ -611,6 +593,13 @@ export function GraphView() {
   // canvas itself has focus, so typing in the search box or moving between nodes is untouched.
   // Moves the view as a pan or zoom key would, and says whether the key was one. The zoom buttons of
   // the phone layout use it too, as the single-pointer alternative to a pinch (#78).
+  // A view the user asked for: a programmatic transform has no sourceEvent, so this ends the
+  // automatic framing explicitly.
+  const applyUserView = (svgEl: SVGSVGElement, zoomBehavior: ZoomBehavior<SVGSVGElement, unknown>, view: FitTransform) => {
+    applyView(svgEl, zoomBehavior, view)
+    initialFitDoneRef.current = true
+    userMovedRef.current = true
+  }
   const nudgeView = (key: string): boolean => {
     const svgEl = svgRef.current
     const zoomBehavior = zoomBehaviorRef.current
@@ -618,10 +607,7 @@ export function GraphView() {
     const current = zoomTransform(svgEl)
     const next = keyboardViewTransform({ x: current.x, y: current.y, k: current.k }, key, size.width, size.height)
     if (!next) return false
-    select(svgEl).call(zoomBehavior.transform, zoomIdentity.translate(next.x, next.y).scale(next.k))
-    // A programmatic transform has no sourceEvent, so end the automatic framing explicitly.
-    initialFitDoneRef.current = true
-    userMovedRef.current = true
+    applyUserView(svgEl, zoomBehavior, next)
     return true
   }
   const onCanvasKeyDown = (event: ReactKeyboardEvent<SVGSVGElement>) => {
@@ -646,9 +632,7 @@ export function GraphView() {
     const inset = panelInset(detailPanelBox(svgEl, sheet), size.width, size.height)
     const next = revealTransform({ x: current.x, y: current.y, k: current.k }, pos, size.width, size.height, REVEAL_MARGIN, inset)
     if (!next) return
-    select(svgEl).call(zoomBehavior.transform, zoomIdentity.translate(next.x, next.y).scale(next.k))
-    initialFitDoneRef.current = true
-    userMovedRef.current = true
+    applyUserView(svgEl, zoomBehavior, next)
   }
 
   return (
@@ -659,7 +643,7 @@ export function GraphView() {
           onQueryChange={setQuery}
           onFocus={() => void loadDatasetCatalog()}
           matchCount={matchedIds?.size ?? null}
-          {...(narrow
+          {...(compact
             ? {
                 placeholder: 'Search APIs…',
                 results: searchResults,
@@ -671,7 +655,7 @@ export function GraphView() {
             : {})}
         />
         {/* The phone layout has Fit with the zoom buttons over the canvas instead. */}
-        {!narrow && (
+        {!compact && (
           <button type="button" className="graph-toolbar-button" onClick={() => fitAllRef.current()}>
             Fit
           </button>
@@ -687,7 +671,7 @@ export function GraphView() {
               title={option.title}
               onClick={() => setMode(option.mode)}
             >
-              {narrow ? option.short : option.label}
+              {compact ? option.short : option.label}
             </button>
           ))}
         </div>
@@ -724,7 +708,10 @@ export function GraphView() {
               {drawnEdges.map((edge, i) => (
                 <line
                   key={`${edge.source}-${edge.target}-${edge.type}`}
-                  className={`graph-edge ${EDGE_CLASS[edge.type]}${isEdgeVisible(edge, mode) ? '' : ' graph-hidden'}${isEdgeDimmed(focus, matchedIds, highlightedIds, edge.source, edge.target) ? ' graph-edge-dimmed' : ''}`}
+                  className={edgeClassName(EDGE_CLASS[edge.type], {
+                    hidden: !isEdgeVisible(edge, mode),
+                    dimmed: isEdgeDimmed(focus, matchedIds, highlightedIds, edge.source, edge.target),
+                  })}
                   data-edge-type={edge.type}
                   ref={(el) => {
                     edgeElsRef.current[i] = el as SVGLineElement
@@ -744,14 +731,20 @@ export function GraphView() {
             </g>
             <g className="graph-nodes">
               {drawnNodes.map((node) => {
-                const hub = node.kind === 'office' || node.kind === 'program' || node.kind === 'access'
-                // Token-gated services get a ring in the access view (#60); `auth.type` is the source, not a method.
-                const gated = mode === 'access' && node.kind === 'service' && node.auth.type !== 'none'
-                const hidden = isNodeVisible(node, mode) ? '' : ' graph-hidden'
+                const hub = isHub(node)
                 return (
                   <g
                     key={node.id}
-                    className={`${hub ? 'graph-org-node' : 'graph-node'} graph-node-${node.kind}${hidden}${gated ? ' graph-node-gated' : ''}${highlightedIds.includes(node.id) ? ' graph-node-highlighted' : ''}${matchedIds?.has(node.id) ? ' graph-node-match' : ''}${dimClass[nodeDim(focus, near, node.id)]}`}
+                    className={nodeClassName({
+                      kind: node.kind,
+                      hub,
+                      hidden: !isNodeVisible(node, mode),
+                      // `auth.type` is the source of a token gate, not an access method.
+                      gated: mode === 'access' && node.kind === 'service' && node.auth.type !== 'none',
+                      highlighted: highlightedIds.includes(node.id),
+                      matched: matchedIds?.has(node.id) ?? false,
+                      dim: nodeDim(focus, near, node.id),
+                    })}
                     data-node-id={node.id}
                     {...(hub
                       ? {}
@@ -768,6 +761,7 @@ export function GraphView() {
                       else nodeElsRef.current.delete(node.id)
                     }}
                   >
+                    {/* An unshortened node gets no <title>, which screen readers would read as a description repeating its name (#290). */}
                     {labelText(node) !== node.name && <title>{node.name}</title>}
                     <circle r={nodeRadius(node)} style={{ fill: nodeColor(node) }} />
                     <text x={nodeRadius(node) + 4} y={4}>
@@ -779,7 +773,7 @@ export function GraphView() {
             </g>
           </g>
         </svg>
-        {narrow && (
+        {compact && (
           // Pinch and the arrow keys have no single-pointer equivalent on a touch screen without these.
           <div className="graph-zoom-controls" role="group" aria-label="Zoom">
             <button type="button" aria-label="Zoom in" onClick={() => nudgeView('+')}>
@@ -793,7 +787,7 @@ export function GraphView() {
             </button>
           </div>
         )}
-        {!narrow && <NodeDetailPanel collapsed={panelCollapsed} onToggleCollapsed={() => setPanelCollapsed((c) => !c)} />}
+        {!compact && <NodeDetailPanel collapsed={panelCollapsed} onToggleCollapsed={() => setPanelCollapsed((c) => !c)} />}
         {legendOpen && <GraphLegend mode={mode} />}
       </div>
     </section>

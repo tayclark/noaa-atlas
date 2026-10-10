@@ -100,6 +100,18 @@ export const EDGE_TYPE_LABELS: Record<GraphEdge['type'], string> = {
   'data-flow': 'Data flows into',
 }
 
+/**
+ * The nodes a selection frames: one selected node together with its neighbours (`onlyId` is set),
+ * or else every highlighted node, such as a task's path.
+ */
+export function selectionFraming(
+  highlightedIds: readonly string[],
+  neighborsOf: (id: string) => readonly string[],
+): { onlyId: string | null; ids: string[] } {
+  const onlyId = highlightedIds.length === 1 ? (highlightedIds[0] as string) : null
+  return { onlyId, ids: onlyId ? [onlyId, ...neighborsOf(onlyId)] : [...highlightedIds] }
+}
+
 export interface FitTransform {
   x: number
   y: number

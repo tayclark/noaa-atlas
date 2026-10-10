@@ -5,7 +5,7 @@ import { buildGraph } from '../../data/buildGraph'
 import { loadDatasetCatalog, type DatasetCatalog } from '../../data/nceiDatasets'
 import { parseGraphFile } from '../../data/graphSchema'
 import { parseTasksFile } from '../../data/taskSchema'
-import { buildSearchIndex, matchNodeIds } from './searchMatch'
+import { buildSearchIndex, matchNodeIds, searchResults } from './searchMatch'
 
 const graph = buildGraph(parseGraphFile(graphJson))
 const { tasks } = parseTasksFile(tasksJson)
@@ -82,5 +82,23 @@ describe('matchNodeIds', () => {
 
   it('gives every node a non-empty haystack', () => {
     for (const node of graph.nodes) expect(index.get(node.id)?.length).toBeGreaterThan(0)
+  })
+})
+
+describe('searchResults', () => {
+  const find = (id: string) => graph.nodes.find((node) => node.id === id)
+
+  it('lists nothing without a search', () => {
+    expect(searchResults(null, find)).toEqual([])
+  })
+
+  it('lists services before hubs, each with where it sits, and skips unknown ids', () => {
+    const theme = graph.nodes.find((node) => node.kind === 'theme')!
+    const root = graph.nodes.find((node) => node.kind === 'root')!
+    const results = searchResults(new Set([theme.id, 'no-such-node', 'nws-api', root.id]), find)
+    expect(results.map((result) => result.id)).toEqual(['nws-api', theme.id, root.id])
+    expect(results[0]).toEqual({ id: 'nws-api', name: 'NWS API', detail: 'Weather & forecast' })
+    expect(results[1]?.detail).toBe('Theme')
+    expect(results[2]?.detail).toBe('NOAA')
   })
 })

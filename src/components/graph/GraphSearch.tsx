@@ -1,12 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import type { SearchResult } from './searchMatch'
 import './GraphSearch.css'
 
-/** A match, listed under the search box on a phone (#78). */
-export interface SearchResult {
-  id: string
-  name: string
-  detail: string
-}
+export type { SearchResult }
 
 /** The list stops here; the status line still counts every match. */
 const MAX_RESULTS = 6
