@@ -161,6 +161,90 @@ describe('createLiveClient', () => {
     expect(fetch).toHaveBeenCalledTimes(2)
   })
 
+  describe('with an abort signal', () => {
+    /** A fetch that never answers until its signal aborts, as a slow network does. */
+    function hangUntilAborted() {
+      vi.mocked(fetch).mockImplementation(
+        (_url, init) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')))
+          }),
+      )
+    }
+
+    it('passes the signal to fetch and rejects with the AbortError, without logging it', async () => {
+      hangUntilAborted()
+      const controller = new AbortController()
+      const pending = client.request('/a', parseOk, { signal: controller.signal })
+      expect(vi.mocked(fetch).mock.calls[0][1]).toMatchObject({ signal: controller.signal })
+      controller.abort()
+      await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+      expect(getRequestLogSnapshot()).toHaveLength(0)
+    })
+
+    it('does not join or get joined by an unsignalled request, so aborting it fails no one else', async () => {
+      hangUntilAborted()
+      const controller = new AbortController()
+      const signalled = client.request('/a', parseOk, { signal: controller.signal })
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }))
+      const plain = client.request('/a', parseOk)
+      expect(fetch).toHaveBeenCalledTimes(2)
+      controller.abort()
+      await expect(signalled).rejects.toMatchObject({ name: 'AbortError' })
+      expect(await plain).toEqual({ ok: true })
+    })
+
+    it('makes its own fetch while an unsignalled one is in flight', async () => {
+      vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })))
+      await Promise.all([client.request('/a', parseOk), client.request('/a', parseOk, { signal: new AbortController().signal })])
+      expect(fetch).toHaveBeenCalledTimes(2)
+    })
+
+    it('caches a success, and answers from the cache', async () => {
+      vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })))
+      await client.request('/a', parseOk, { signal: new AbortController().signal })
+      await client.request('/a', parseOk)
+      await client.request('/a', parseOk, { signal: new AbortController().signal })
+      expect(fetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not log an abort during the body read', async () => {
+      const controller = new AbortController()
+      const body = new ReadableStream({
+        start(c) {
+          controller.signal.addEventListener('abort', () => c.error(new DOMException('aborted', 'AbortError')))
+        },
+      })
+      vi.mocked(fetch).mockResolvedValue(new Response(body))
+      const pending = client.request('/a', parseOk, { signal: controller.signal })
+      await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+      controller.abort()
+      await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+      expect(getRequestLogSnapshot()).toHaveLength(0)
+    })
+  })
+
+  it('logs a body that fails mid-read as a network error', async () => {
+    const body = new ReadableStream({
+      start(c) {
+        c.error(new TypeError('network error'))
+      },
+    })
+    vi.mocked(fetch).mockResolvedValue(new Response(body))
+    await expect(client.request('/a', parseOk)).rejects.toBeInstanceOf(TypeError)
+    expect(getRequestLogSnapshot()[0]).toMatchObject({ status: 'network-error', httpStatus: 200, errorMessage: 'network error' })
+  })
+
+  it('forgets one path on invalidate', async () => {
+    vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })))
+    await client.request('/a', parseOk)
+    await client.request('/b', parseOk)
+    client.invalidate('/a')
+    await client.request('/a', parseOk)
+    await client.request('/b', parseOk)
+    expect(fetch).toHaveBeenCalledTimes(3)
+  })
+
   it('forgets its cache on clearCache', async () => {
     vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })))
     await client.request('/a', parseOk)

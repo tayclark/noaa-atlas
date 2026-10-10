@@ -19,8 +19,19 @@ export interface LiveClientOptions {
   decode?: (text: string) => unknown
 }
 
+export interface RequestOptions {
+  /**
+   * Cancels this call. A call with a signal makes its own fetch: it neither joins an identical call
+   * already in flight nor lets later ones join it, so aborting it can't fail anyone else's request.
+   * It still caches a success. An abort rejects with the fetch's AbortError and isn't logged.
+   */
+  signal?: AbortSignal
+}
+
 export interface LiveClient {
-  request: <T>(path: string, parse: (raw: unknown) => T) => Promise<T>
+  request: <T>(path: string, parse: (raw: unknown) => T, options?: RequestOptions) => Promise<T>
+  /** Forgets the cached response for one path, so the next request for it goes to the network. */
+  invalidate: (path: string) => void
   /** Clears this client's in-memory response cache. Intended for test isolation between cases. */
   clearCache: () => void
   /** How many responses the cache holds. For tests. */
@@ -67,10 +78,11 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError, deco
     })
   }
 
-  function request<T>(path: string, parse: (raw: unknown) => T): Promise<T> {
+  function request<T>(path: string, parse: (raw: unknown) => T, { signal }: RequestOptions = {}): Promise<T> {
     const url = `${baseUrl}${path}`
     const cached = cache.get(url)
     if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.value as T)
+    if (signal) return load(url, path, parse, signal)
 
     // Callers asking for the same URL at once (a point select reads the point twice) share one
     // fetch. It is forgotten when it settles, so a failure is not remembered.
@@ -85,13 +97,14 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError, deco
     return pending
   }
 
-  async function load<T>(url: string, path: string, parse: (raw: unknown) => T): Promise<T> {
+  async function load<T>(url: string, path: string, parse: (raw: unknown) => T, signal?: AbortSignal): Promise<T> {
     const startedAt = Date.now()
     const startedAtPerf = performance.now()
     let res: Response
     try {
-      res = await fetch(url, { headers })
+      res = await fetch(url, signal ? { headers, signal } : { headers })
     } catch (err) {
+      if (signal?.aborted) throw err
       logRequest(url, path, startedAt, startedAtPerf, 'network-error', {
         errorMessage: err instanceof Error ? err.message : 'Network request failed',
       })
@@ -109,6 +122,7 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError, deco
     try {
       text = await res.text()
     } catch (err) {
+      if (signal?.aborted) throw err
       logRequest(url, path, startedAt, startedAtPerf, 'network-error', {
         httpStatus: res.status,
         errorMessage: err instanceof Error ? err.message : 'Response body could not be read',
@@ -144,5 +158,5 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError, deco
     inFlight.clear()
   }
 
-  return { request, clearCache, cacheSize: () => cache.size }
+  return { request, invalidate: (path) => cache.delete(`${baseUrl}${path}`), clearCache, cacheSize: () => cache.size }
 }
