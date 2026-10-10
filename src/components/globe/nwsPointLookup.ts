@@ -5,6 +5,7 @@
 
 import { describeClientError } from '../../data/clientErrors'
 import { nwsErrors } from '../../data/nwsClient'
+import { MPH_PER_UNIT } from '../../data/units'
 import type { NwsForecastPeriod, NwsObservation, NwsStation, NwsStationCollection } from '../../data/nwsSchema'
 import { escapeHtml } from './popupHtml'
 
@@ -50,12 +51,6 @@ function toFahrenheit(value: number | null, unitCode: string): number | null {
   if (value === null) return null
   if (unitCode === CELSIUS_UNIT_CODE) return Math.round((value * 9) / 5 + 32)
   return Math.round(value)
-}
-
-const MPH_PER_UNIT: Record<string, number> = {
-  'wmoUnit:km_h-1': 0.621371,
-  'wmoUnit:m_s-1': 2.23694,
-  'wmoUnit:kn': 1.15078,
 }
 
 /** Converts an NWS wind speed to mph, or null if the sensor reported no value. */

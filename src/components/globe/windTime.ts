@@ -3,8 +3,7 @@
 // to two neighbouring files and a blend weight.
 
 import { MAX_FORECAST_HOUR, STEP_HOURS } from '../../data/gfsClient'
-
-const HOUR_MS = 3_600_000
+import { HOUR_MS } from '../../data/time'
 
 export interface WindBlend {
   hourA: number

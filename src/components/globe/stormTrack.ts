@@ -8,8 +8,7 @@ import { nhcErrors, type NhcStormData } from '../../data/nhcClient'
 import type { NhcForecastPoint, NhcPastPoint } from '../../data/nhcSchema'
 import type { Bounds } from './coverageFlyTarget'
 import { escapeHtml } from './popupHtml'
-
-const HOUR_MS = 3_600_000
+import { HOUR_MS } from '../../data/time'
 
 // Declared here rather than imported from 'geojson', as in selectionGlobeView.ts: @types/geojson
 // would tighten maplibre-gl's own GeoJSON typings.

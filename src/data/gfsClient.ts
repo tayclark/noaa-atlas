@@ -10,11 +10,12 @@ import { decodeWaveField } from './gribDecodeClient'
 import { findGribField, parseGribIdx, rangeHeader, type GribIdxEntry } from './gribIdx'
 import { makeClientErrors, type ClientHttpError } from './clientErrors'
 import { createLiveClient } from './liveRequest'
+import { HOUR_MS, utcYmd } from './time'
 
 const BASE_URL = 'https://noaa-gfs-bdp-pds.s3.amazonaws.com'
-const CYCLE_MS = 6 * 3_600_000
+const CYCLE_MS = 6 * HOUR_MS
 /** A cycle is usually complete about 4.5 hours after its nominal time. */
-const PUBLISH_DELAY_MS = 4.5 * 3_600_000
+const PUBLISH_DELAY_MS = 4.5 * HOUR_MS
 export const STEP_HOURS = 3
 export const MAX_FORECAST_HOUR = 120
 const CYCLE_TTL_MS = 10 * 60_000
@@ -43,20 +44,15 @@ export function cycleCandidates(now: number): number[] {
 
 /** The forecast hour to show at `time`: nearest available step, clamped to the file range. */
 export function forecastHourFor(cycle: number, time: number): number {
-  const hours = Math.round((time - cycle) / 3_600_000 / STEP_HOURS) * STEP_HOURS
+  const hours = Math.round((time - cycle) / HOUR_MS / STEP_HOURS) * STEP_HOURS
   return Math.min(MAX_FORECAST_HOUR, Math.max(0, hours))
-}
-
-function pad(n: number): string {
-  return String(n).padStart(2, '0')
 }
 
 export type GfsProduct = 'atmos' | 'wave'
 
 function fieldPath(cycle: number, hour: number, product: GfsProduct = 'atmos'): string {
-  const d = new Date(cycle)
-  const day = `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}`
-  const cc = pad(d.getUTCHours())
+  const day = utcYmd(cycle)
+  const cc = String(new Date(cycle).getUTCHours()).padStart(2, '0')
   const f = String(hour).padStart(3, '0')
   return product === 'wave'
     ? `/gfs.${day}/${cc}/wave/gridded/gfswave.t${cc}z.global.0p25.f${f}.grib2`
