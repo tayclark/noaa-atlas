@@ -105,6 +105,13 @@ describe('decodeWaveField', () => {
     expect((await decodeWaveField(waveBuffer())).ni).toBe(1440)
   })
 
+  it('rejects a decode still waiting on the worker when the factory is swapped', async () => {
+    useFakeWorker()
+    const pending = decodeWaveField(new ArrayBuffer(1))
+    setGribWorkerFactoryForTests(null)
+    await expect(pending).rejects.toThrow('The GRIB decode worker was replaced')
+  })
+
   it('rejects in-thread with the decoder error', async () => {
     await expect(decodeWaveField(new ArrayBuffer(8))).rejects.toBeInstanceOf(Grib2Error)
   })
