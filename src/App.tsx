@@ -5,6 +5,7 @@ import { LeftPanel } from './components/LeftPanel'
 import { SplitPane } from './components/SplitPane'
 import { GlobeErrorBoundary } from './components/globe/GlobeErrorBoundary'
 import { GlobePlaceholder } from './components/globe/GlobePlaceholder'
+import { useGlobeHost } from './components/GlobeHost'
 import { useNarrowLayout } from './components/useNarrowLayout'
 import './App.css'
 
@@ -24,12 +25,13 @@ function App() {
   }, [])
   // A globe that can't start (no WebGL2), or whose chunk fails to load, shows a message in its pane
   // instead of blanking the app (#260).
-  const globe = (
+  // The same globe in either layout: crossing 700px moves it rather than remounting MapLibre (#352).
+  const { slot: globe, portal: globePortal } = useGlobeHost(
     <GlobeErrorBoundary>
       <Suspense fallback={<GlobePlaceholder />}>
         <MapLibreGlobe />
       </Suspense>
-    </GlobeErrorBoundary>
+    </GlobeErrorBoundary>,
   )
   return (
     <div className="app" data-layout={compact ? 'compact' : 'wide'}>
@@ -64,6 +66,7 @@ function App() {
         )}
       </footer>
       {compact && <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />}
+      {globePortal}
     </div>
   )
 }

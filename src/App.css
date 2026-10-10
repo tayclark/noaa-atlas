@@ -37,6 +37,13 @@
   min-height: 0;
 }
 
+/* The globe's place in the layout, and the element it lives in, which moves between layouts (#352). */
+.globe-slot,
+.globe-host {
+  width: 100%;
+  height: 100%;
+}
+
 .app-footer {
   flex: none;
   padding: var(--space-1) var(--space-4);
