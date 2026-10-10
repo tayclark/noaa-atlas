@@ -1,11 +1,12 @@
 import { z } from 'zod'
+import { lonLatPosition } from './schemaPrimitives'
 
 // Schemas for api.weather.gov responses. Unlike graphSchema.ts (which validates our own
 // authored data with z.strictObject), these use z.object: the NWS payloads are a third-party,
 // evolving API and we only model the fields we actually consume — unrelated fields it adds
 // later should not fail validation.
 
-const position = z.tuple([z.number(), z.number()])
+const position = lonLatPosition
 const ring = z.array(position)
 const polygonCoordinates = z.array(ring)
 

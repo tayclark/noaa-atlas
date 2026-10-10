@@ -1,7 +1,8 @@
 import { z } from 'zod'
+import { SLUG_PATTERN } from './schemaPrimitives'
 
 const datasetSchema = z.strictObject({
-  id: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'must be a lowercase slug'),
+  id: z.string().regex(SLUG_PATTERN, 'must be a lowercase slug'),
   name: z.string().trim().min(1),
   summary: z.string(),
   startDate: z.string().nullable(),

@@ -2,8 +2,8 @@
 // why. Mirrors graphSchema.ts's authored-file + zod-validation pattern.
 
 import { z } from 'zod'
+import { slug } from './schemaPrimitives'
 
-const slug = z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'must be a lowercase slug (a-z, 0-9, hyphens)')
 const nonEmpty = z.string().trim().min(1)
 
 export const taskNodeSchema = z.strictObject({

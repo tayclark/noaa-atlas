@@ -1,14 +1,12 @@
 import { z } from 'zod'
+import { feedRing } from './schemaPrimitives'
 
 // Schema for the SPC GIS GeoJSON outlook files (#245; see the spc-gis-data node in graph.json). As in
 // nwsSchema.ts and swpcSchema.ts this uses z.object, not z.strictObject: it's a third-party feed and
 // only the fields we consume are modelled. `fill` and `stroke` are SPC's own hex colours per category.
 
-const position = z.tuple([z.number(), z.number()]).rest(z.number())
-const ring = z.array(position)
-
-const polygonGeometry = z.object({ type: z.literal('Polygon'), coordinates: z.array(ring) })
-const multiPolygonGeometry = z.object({ type: z.literal('MultiPolygon'), coordinates: z.array(z.array(ring)) })
+const polygonGeometry = z.object({ type: z.literal('Polygon'), coordinates: z.array(feedRing) })
+const multiPolygonGeometry = z.object({ type: z.literal('MultiPolygon'), coordinates: z.array(z.array(feedRing)) })
 
 const outlookFeatureSchema = z.object({
   type: z.literal('Feature'),
