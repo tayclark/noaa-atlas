@@ -252,4 +252,35 @@ describe('createLiveClient', () => {
     await client.request('/a', parseOk)
     expect(fetch).toHaveBeenCalledTimes(2)
   })
+
+  describe('requestRaw', () => {
+    it('reads text, merges the call headers into the client ones, and logs the size with the given body', async () => {
+      vi.mocked(fetch).mockResolvedValue(new Response('line one\nline two'))
+      const text = await client.requestRaw('/a.idx', { as: 'text', headers: { Range: 'bytes=0-9' }, logBody: (t) => ({ lines: t.split('\n').length }) })
+      expect(text).toBe('line one\nline two')
+      expect(fetch).toHaveBeenCalledWith(`${BASE}/a.idx`, { headers: { Accept: 'application/json', Range: 'bytes=0-9' } })
+      expect(getRequestLogSnapshot()[0]).toMatchObject({
+        status: 'success',
+        requestHeaders: { Accept: 'application/json', Range: 'bytes=0-9' },
+        responseBody: { lines: 2 },
+        responseSize: 17,
+      })
+    })
+
+    it('reads bytes, logs their length and no body by default, and caches nothing', async () => {
+      vi.mocked(fetch).mockImplementation(() => Promise.resolve(new Response(new Uint8Array([1, 2, 3]))))
+      const bytes = await client.requestRaw('/a.grib2', { as: 'arrayBuffer' })
+      expect(bytes.byteLength).toBe(3)
+      expect(getRequestLogSnapshot()[0]).toMatchObject({ status: 'success', responseSize: 3 })
+      expect(getRequestLogSnapshot()[0].responseBody).toBeUndefined()
+      await client.requestRaw('/a.grib2', { as: 'arrayBuffer' })
+      expect(fetch).toHaveBeenCalledTimes(2)
+    })
+
+    it('throws and logs the client http error', async () => {
+      vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 404 }))
+      await expect(client.requestRaw('/a', { as: 'text' })).rejects.toMatchObject({ status: 404 })
+      expect(getRequestLogSnapshot()[0]).toMatchObject({ status: 'http-error', httpStatus: 404 })
+    })
+  })
 })

@@ -2,13 +2,13 @@
 // (#229). The bucket sends `access-control-allow-origin: *` and honours Range requests, so no proxy
 // is needed: the `.idx` sidecar gives each field's byte range and only that field (~80 kB for wind,
 // ~430 kB for waves) is fetched.
-// Requests are logged to requestLog.ts for the Inspector, like the other live clients. The wave
+// Requests go through liveRequest.ts's raw mode, so the Inspector logs them like the other clients'. The wave
 // field's JPEG 2000 decode runs in a worker (gribDecodeClient.ts, #291).
 
 import { decodeGribField, type GribField } from './grib2'
 import { decodeWaveField } from './gribDecodeClient'
-import { findGribField, parseGribIdx, rangeHeader } from './gribIdx'
-import { pushLogEntry, type RequestLogStatus } from './requestLog'
+import { findGribField, parseGribIdx, rangeHeader, type GribIdxEntry } from './gribIdx'
+import { createLiveClient } from './liveRequest'
 
 const BASE_URL = 'https://noaa-gfs-bdp-pds.s3.amazonaws.com'
 const CYCLE_MS = 6 * 3_600_000
@@ -68,36 +68,20 @@ function fieldPath(cycle: number, hour: number, product: GfsProduct = 'atmos'): 
     : `/gfs.${day}/${cc}/atmos/gfs.t${cc}z.pgrb2.1p00.f${f}`
 }
 
-async function logged(path: string, headers: Record<string, string>, read: (res: Response) => Promise<unknown>): Promise<Response> {
-  const url = `${BASE_URL}${path}`
-  const startedAt = Date.now()
-  const t0 = performance.now()
-  const log = (status: RequestLogStatus, extra: { httpStatus?: number; responseBody?: unknown; errorMessage?: string } = {}) =>
-    pushLogEntry({
-      id: crypto.randomUUID(),
-      method: 'GET',
-      url,
-      path,
-      requestHeaders: headers,
-      startedAt,
-      durationMs: performance.now() - t0,
-      status,
-      ...extra,
-    })
-  let res: Response
-  try {
-    res = await fetch(url, { headers })
-  } catch (err) {
-    log('network-error', { errorMessage: err instanceof Error ? err.message : 'Network request failed' })
-    throw err
-  }
-  if (!res.ok) {
-    log('http-error', { httpStatus: res.status })
-    throw new GfsHttpError(res.status)
-  }
-  log('success', { httpStatus: res.status, responseBody: await read(res.clone()) })
-  return res
-}
+const client = createLiveClient({
+  baseUrl: BASE_URL,
+  headers: {},
+  httpError: (res) => new GfsHttpError(res.status),
+  // Never thrown: the GFS files are read raw, and their decode errors are the decoder's own.
+  parseError: (path, cause) => new Error(`GFS response for ${path} could not be read`, { cause }),
+})
+
+/** The `.idx` sidecar text. */
+const fetchIndex = (path: string) => client.requestRaw(`${path}.idx`, { as: 'text', logBody: () => ({ bytes: 'index' }) })
+
+/** One GRIB message, by its byte range in the `.idx`. */
+const fetchMessage = (path: string, name: string, entry: GribIdxEntry) =>
+  client.requestRaw(path, { as: 'arrayBuffer', headers: { Range: rangeHeader(entry) }, logBody: (body) => ({ name, bytes: body.byteLength }) })
 
 const cycleCache = new Map<GfsProduct, { cycle: number; expiresAt: number }>()
 const fieldCache = new Map<string, Promise<WindField>>()
@@ -118,7 +102,7 @@ export async function getLatestCycle(now = Date.now(), product: GfsProduct = 'at
   let lastError: unknown = new GfsHttpError(404)
   for (const cycle of cycleCandidates(now)) {
     try {
-      await logged(`${fieldPath(cycle, 0, product)}.idx`, {}, async () => ({ cycle: new Date(cycle).toISOString() }))
+      await client.requestRaw(`${fieldPath(cycle, 0, product)}.idx`, { as: 'text', logBody: () => ({ cycle: new Date(cycle).toISOString() }) })
       cycleCache.set(product, { cycle, expiresAt: now + CYCLE_TTL_MS })
       return cycle
     } catch (err) {
@@ -132,9 +116,7 @@ export async function getLatestCycle(now = Date.now(), product: GfsProduct = 'at
 async function fetchComponent(path: string, idxText: string, name: 'UGRD' | 'VGRD'): Promise<GribField> {
   const entry = findGribField(parseGribIdx(idxText), name, '10 m above ground')
   if (!entry) throw new Error(`GFS index has no 10 m ${name}`)
-  const headers = { Range: rangeHeader(entry) }
-  const res = await logged(path, headers, async (r) => ({ name, bytes: (await r.arrayBuffer()).byteLength }))
-  return decodeGribField(await res.arrayBuffer())
+  return decodeGribField(await fetchMessage(path, name, entry))
 }
 
 /** The 10 m wind field for `hour` hours after `cycle`. Results are cached for the session. */
@@ -143,7 +125,7 @@ export function getWindField(cycle: number, hour: number): Promise<WindField> {
   const cached = fieldCache.get(path)
   if (cached) return cached
   const pending = (async () => {
-    const idx = await (await logged(`${path}.idx`, {}, async () => ({ bytes: 'index' }))).text()
+    const idx = await fetchIndex(path)
     const [u, v] = await Promise.all([fetchComponent(path, idx, 'UGRD'), fetchComponent(path, idx, 'VGRD')])
     return { u, v }
   })()
@@ -161,12 +143,10 @@ export function getReflectivityField(cycle: number, hour: number): Promise<GribF
   const cached = reflectivityCache.get(path)
   if (cached) return cached
   const pending = (async () => {
-    const idx = await (await logged(`${path}.idx`, {}, async () => ({ bytes: 'index' }))).text()
+    const idx = await fetchIndex(path)
     const entry = findGribField(parseGribIdx(idx), 'REFC', 'entire atmosphere')
     if (!entry) throw new Error('GFS index has no REFC')
-    const headers = { Range: rangeHeader(entry) }
-    const res = await logged(path, headers, async (r) => ({ name: 'REFC', bytes: (await r.arrayBuffer()).byteLength }))
-    return decodeGribField(await res.arrayBuffer())
+    return decodeGribField(await fetchMessage(path, 'REFC', entry))
   })()
   reflectivityCache.set(path, pending)
   pending.catch(() => reflectivityCache.delete(path))
@@ -180,12 +160,10 @@ export function getWaveField(cycle: number, hour: number): Promise<GribField> {
   const cached = waveCache.get(path)
   if (cached) return cached
   const pending = (async () => {
-    const idx = await (await logged(`${path}.idx`, {}, async () => ({ bytes: 'index' }))).text()
+    const idx = await fetchIndex(path)
     const entry = findGribField(parseGribIdx(idx), 'HTSGW', 'surface')
     if (!entry) throw new Error('GFS-Wave index has no HTSGW')
-    const headers = { Range: rangeHeader(entry) }
-    const res = await logged(path, headers, async (r) => ({ name: 'HTSGW', bytes: (await r.arrayBuffer()).byteLength }))
-    return decodeWaveField(await res.arrayBuffer())
+    return decodeWaveField(await fetchMessage(path, 'HTSGW', entry))
   })()
   waveCache.set(path, pending)
   pending.catch(() => waveCache.delete(path))

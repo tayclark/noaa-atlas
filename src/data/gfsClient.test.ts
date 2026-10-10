@@ -4,7 +4,7 @@ import grib from './fixtures/gfs-ugrd10m-f012.grib2.b64?raw'
 import waveIdx from './fixtures/gfswave-0p25-f024.idx?raw'
 import waveGrib from './fixtures/gfswave-htsgw-f024.grib2.b64?raw'
 import { clearGfsCache, cycleAtOrBefore, cycleCandidates, forecastHourFor, getLatestCycle, getReflectivityField, getWaveField, getWindField, GfsHttpError } from './gfsClient'
-import { getRequestLogSnapshot } from './requestLog'
+import { clearRequestLog, getRequestLogSnapshot } from './requestLog'
 
 const bytes = Uint8Array.from(atob(grib.trim()), (c) => c.charCodeAt(0))
 const T = (iso: string) => Date.parse(iso)
@@ -81,6 +81,20 @@ describe('gfs client', () => {
     expect(await getWindField(cycle, 12)).toBe(field)
     expect(fetchMock).toHaveBeenCalledTimes(3)
     expect(getRequestLogSnapshot()[0]).toMatchObject({ status: 'success', httpStatus: 200 })
+  })
+
+  it('logs each request with its Range, a summary body and the size read', async () => {
+    serve()
+    clearRequestLog()
+    await getWindField(T('2026-10-01T00:00:00Z'), 12)
+    const log = getRequestLogSnapshot()
+    expect(log).toHaveLength(3)
+    expect(log.at(-1)).toMatchObject({ path: '/gfs.20261001/00/atmos/gfs.t00z.pgrb2.1p00.f012.idx', responseSize: idx.length })
+    expect(log[0]).toMatchObject({
+      requestHeaders: { Range: expect.stringMatching(/^bytes=/) },
+      responseBody: { name: expect.stringMatching(/^[UV]GRD$/), bytes: bytes.byteLength },
+      responseSize: bytes.byteLength,
+    })
   })
 
   it('fetches only the composite reflectivity message for the simulated radar, and caches it', async () => {

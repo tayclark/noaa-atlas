@@ -1,6 +1,6 @@
-// The fetch → validate → cache → log core shared by the live clients (nwsClient.ts, swpcClient.ts;
-// #54). Each client makes its own instance, so it keeps its own cache and error types, while every
-// call still lands in requestLog.ts for the Inspector tab.
+// The fetch → validate → cache → log core shared by every live client (#54): NWS, SWPC, CO-OPS, SPC,
+// NHC, ArcGIS, NCEI and the GFS bucket. Each client makes its own instance, so it keeps its own cache
+// and error types, while every call still lands in requestLog.ts for the Inspector tab.
 
 import { pushLogEntry, type RequestLogStatus } from './requestLog'
 
@@ -28,8 +28,25 @@ export interface RequestOptions {
   signal?: AbortSignal
 }
 
+export type RawBodyKind = 'text' | 'arrayBuffer'
+export type RawBody<K extends RawBodyKind> = K extends 'text' ? string : ArrayBuffer
+
+export interface RawRequestOptions<K extends RawBodyKind> extends RequestOptions {
+  /** How to read the body. */
+  as: K
+  /** Headers for this call on top of the client's, such as a Range. */
+  headers?: Record<string, string>
+  /** What the Inspector shows as the body, such as a summary of bytes it can't display. Nothing by default. */
+  logBody?: (body: RawBody<K>) => unknown
+}
+
 export interface LiveClient {
   request: <T>(path: string, parse: (raw: unknown) => T, options?: RequestOptions) => Promise<T>
+  /**
+   * Fetches and logs a body as text or bytes, unparsed. It isn't cached or shared between callers,
+   * so a caller that wants either keeps its own (gfsClient.ts caches its decoded fields).
+   */
+  requestRaw: <K extends RawBodyKind>(path: string, options: RawRequestOptions<K>) => Promise<RawBody<K>>
   /** Forgets the cached response for one path, so the next request for it goes to the network. */
   invalidate: (path: string) => void
   /** Clears this client's in-memory response cache. Intended for test isolation between cases. */
@@ -37,6 +54,9 @@ export interface LiveClient {
   /** How many responses the cache holds. For tests. */
   cacheSize: () => number
 }
+
+type LogExtra = { httpStatus?: number; responseBody?: unknown; responseSize?: number; errorMessage?: string }
+type Log = (status: RequestLogStatus, extra?: LogExtra) => void
 
 interface CacheEntry {
   value: unknown
@@ -57,25 +77,50 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError, deco
     while (cache.size > CACHE_MAX_ENTRIES) cache.delete(cache.keys().next().value as string)
   }
 
-  function logRequest(
-    url: string,
-    path: string,
-    startedAt: number,
-    startedAtPerf: number,
-    status: RequestLogStatus,
-    extra: { httpStatus?: number; responseBody?: unknown; responseSize?: number; errorMessage?: string } = {},
-  ): void {
-    pushLogEntry({
-      id: crypto.randomUUID(),
-      method: 'GET',
-      url,
-      path,
-      requestHeaders: headers,
-      startedAt,
-      durationMs: performance.now() - startedAtPerf,
-      status,
-      ...extra,
-    })
+  /** Starts one call's log: each entry it writes carries the URL, the headers sent and the time taken. */
+  function startLog(url: string, path: string, requestHeaders: Record<string, string>): Log {
+    const startedAt = Date.now()
+    const startedAtPerf = performance.now()
+    return (status, extra = {}) =>
+      pushLogEntry({
+        id: crypto.randomUUID(),
+        method: 'GET',
+        url,
+        path,
+        requestHeaders,
+        startedAt,
+        durationMs: performance.now() - startedAtPerf,
+        status,
+        ...extra,
+      })
+  }
+
+  /** Fetches and checks the status, logging a failure. An abort is rethrown without a log entry. */
+  async function send(url: string, requestHeaders: Record<string, string>, log: Log, signal?: AbortSignal): Promise<Response> {
+    let res: Response
+    try {
+      res = await fetch(url, signal ? { headers: requestHeaders, signal } : { headers: requestHeaders })
+    } catch (err) {
+      if (signal?.aborted) throw err
+      log('network-error', { errorMessage: err instanceof Error ? err.message : 'Network request failed' })
+      throw err
+    }
+    if (!res.ok) {
+      log('http-error', { httpStatus: res.status })
+      throw httpError(res)
+    }
+    return res
+  }
+
+  /** Reads the body. One that breaks off mid-read is logged as a network failure. */
+  async function readBody<B>(res: Response, read: (res: Response) => Promise<B>, log: Log, signal?: AbortSignal): Promise<B> {
+    try {
+      return await read(res)
+    } catch (err) {
+      if (signal?.aborted) throw err
+      log('network-error', { httpStatus: res.status, errorMessage: err instanceof Error ? err.message : 'Response body could not be read' })
+      throw err
+    }
   }
 
   function request<T>(path: string, parse: (raw: unknown) => T, { signal }: RequestOptions = {}): Promise<T> {
@@ -98,42 +143,16 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError, deco
   }
 
   async function load<T>(url: string, path: string, parse: (raw: unknown) => T, signal?: AbortSignal): Promise<T> {
-    const startedAt = Date.now()
-    const startedAtPerf = performance.now()
-    let res: Response
-    try {
-      res = await fetch(url, signal ? { headers, signal } : { headers })
-    } catch (err) {
-      if (signal?.aborted) throw err
-      logRequest(url, path, startedAt, startedAtPerf, 'network-error', {
-        errorMessage: err instanceof Error ? err.message : 'Network request failed',
-      })
-      throw err
-    }
-
-    if (!res.ok) {
-      logRequest(url, path, startedAt, startedAtPerf, 'http-error', { httpStatus: res.status })
-      throw httpError(res)
-    }
-
-    // Read as text so the log knows the body's size (#265). A body that breaks off mid-read is a
-    // network failure; one that isn't JSON (an HTML error page sent as a 200) is a parse error.
-    let text: string
-    try {
-      text = await res.text()
-    } catch (err) {
-      if (signal?.aborted) throw err
-      logRequest(url, path, startedAt, startedAtPerf, 'network-error', {
-        httpStatus: res.status,
-        errorMessage: err instanceof Error ? err.message : 'Response body could not be read',
-      })
-      throw err
-    }
+    const log = startLog(url, path, headers)
+    const res = await send(url, headers, log, signal)
+    // Read as text so the log knows the body's size (#265). One that isn't JSON (an HTML error page
+    // sent as a 200) is a parse error.
+    const text = await readBody(res, (r) => r.text(), log, signal)
     let raw: unknown
     try {
       raw = decode(text)
     } catch (err) {
-      logRequest(url, path, startedAt, startedAtPerf, 'parse-error', {
+      log('parse-error', {
         httpStatus: res.status,
         responseSize: text.length,
         errorMessage: err instanceof Error ? err.message : 'Response could not be decoded',
@@ -144,13 +163,24 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError, deco
     try {
       value = parse(raw)
     } catch (err) {
-      logRequest(url, path, startedAt, startedAtPerf, 'parse-error', { httpStatus: res.status, responseBody: raw, responseSize: text.length })
+      log('parse-error', { httpStatus: res.status, responseBody: raw, responseSize: text.length })
       throw parseError(path, err)
     }
 
-    logRequest(url, path, startedAt, startedAtPerf, 'success', { httpStatus: res.status, responseBody: raw, responseSize: text.length })
+    log('success', { httpStatus: res.status, responseBody: raw, responseSize: text.length })
     remember(url, value)
     return value
+  }
+
+  async function requestRaw<K extends RawBodyKind>(path: string, { as, headers: extra, signal, logBody }: RawRequestOptions<K>): Promise<RawBody<K>> {
+    const url = `${baseUrl}${path}`
+    const requestHeaders = extra ? { ...headers, ...extra } : headers
+    const log = startLog(url, path, requestHeaders)
+    const res = await send(url, requestHeaders, log, signal)
+    const body = (await readBody<string | ArrayBuffer>(res, (r) => (as === 'text' ? r.text() : r.arrayBuffer()), log, signal)) as RawBody<K>
+    const responseSize = typeof body === 'string' ? body.length : (body as ArrayBuffer).byteLength
+    log('success', { httpStatus: res.status, responseBody: logBody?.(body), responseSize })
+    return body
   }
 
   function clearCache(): void {
@@ -158,5 +188,5 @@ export function createLiveClient({ baseUrl, headers, httpError, parseError, deco
     inFlight.clear()
   }
 
-  return { request, invalidate: (path) => cache.delete(`${baseUrl}${path}`), clearCache, cacheSize: () => cache.size }
+  return { request, requestRaw, invalidate: (path) => cache.delete(`${baseUrl}${path}`), clearCache, cacheSize: () => cache.size }
 }
