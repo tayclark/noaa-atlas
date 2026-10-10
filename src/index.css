@@ -36,6 +36,12 @@
   --radius-sm: 4px;
   --radius-md: 8px;
 
+  /* Stacking, lowest first. Each layer only has to beat the ones below it in the same container. */
+  --z-sticky: 1; /* sticky headers and row labels over their own scrolling content */
+  --z-sheet: 5; /* the phone's detail sheet over the view it covers */
+  --z-popover: 7; /* the search results list over the graph canvas */
+  --z-skip-link: 100; /* the skip link over everything */
+
   --divider-size: 6px;
   --header-height: 44px;
 }
@@ -123,7 +129,7 @@ summary:active,
   position: absolute;
   top: var(--space-2);
   left: var(--space-2);
-  z-index: 100;
+  z-index: var(--z-skip-link);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--color-surface-raised);
