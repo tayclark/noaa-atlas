@@ -1,6 +1,6 @@
 // A canvas source on the MapLibre map that shades a GFS field over the whole globe (#229, #340),
 // redrawn once per field. Shared by the wave and simulated radar overlays: each supplies its ids and
-// how to render. Covered by e2e rather than unit tests, like windOverlay.ts.
+// how to render. Its drawing is covered by e2e, like windOverlay.ts.
 
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { AURORA_RASTER_COORDINATES } from './auroraLayer'
@@ -9,6 +9,8 @@ import { pushCanvas } from './windOverlay'
 export interface CanvasShadingOverlay<F> {
   setField: (field: F | null) => void
   setVisible: (visible: boolean) => void
+  /** Stops it touching the map, which is going away; later calls do nothing (#354). */
+  dispose: () => void
 }
 
 export interface CanvasShadingOptions<F> {
@@ -35,8 +37,10 @@ export function createCanvasShadingOverlay<F>(map: MapLibreMap, options: CanvasS
     },
     beforeId,
   )
+  let disposed = false
   return {
     setField(field) {
+      if (disposed) return
       const ctx = canvas.getContext('2d')
       if (!ctx) return
       if (!field) ctx.clearRect(0, 0, size, size)
@@ -44,7 +48,10 @@ export function createCanvasShadingOverlay<F>(map: MapLibreMap, options: CanvasS
       pushCanvas(map, sourceId)
     },
     setVisible(visible) {
-      map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none')
+      if (!disposed) map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none')
+    },
+    dispose() {
+      disposed = true
     },
   }
 }

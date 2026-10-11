@@ -107,6 +107,7 @@ import { useWindForecast } from './useWindForecast'
 import { WindControl, type ForecastLayer } from './WindControl'
 import { NOWCOAST_CAPABILITIES_URL, frameForTime, parseRadarFrames } from './radarTimes'
 import { ForecastTimeline } from './ForecastTimeline'
+import { useWmsFrames } from './useWmsFrames'
 import { getTimeSnapshot, setTime, stopPlayer, subscribeTime } from '../../data/timeStore'
 import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePopup'
 import { hitBox, hitPadding, isOnGlobe, nearestCandidate } from './hitPick'
@@ -317,12 +318,13 @@ function showPointLookup(map: MapLibreMap, lng: number, lat: number, ovation: Sw
         return getLatestObservation(nearest.properties.stationIdentifier).then((observation) => {
           const period = forecast.properties.periods[0]
           if (!period) throw new Error('No forecast periods returned for this location')
-          popup.setHTML(`${formatPointPopupHtml(describePointForPopup(period, observation))}<hr/>${coverageHtml}`)
+          // A popup closed meanwhile (another tap, Escape, the globe unmounting) is left closed (#354).
+          if (popup.isOpen()) popup.setHTML(`${formatPointPopupHtml(describePointForPopup(period, observation))}<hr/>${coverageHtml}`)
         })
       }),
     )
     .catch((err: unknown) => {
-      popup.setHTML(`${formatPointErrorHtml(describePointError(err))}<hr/>${coverageHtml}`)
+      if (popup.isOpen()) popup.setHTML(`${formatPointErrorHtml(describePointError(err))}<hr/>${coverageHtml}`)
     })
 }
 
@@ -335,7 +337,7 @@ function openStationPopup(map: MapLibreMap, feature: MapGeoJSONFeature) {
     const station = feature.properties as StationProperties
     const popup = showPopup(map, [lng, lat], formatStationLoadingHtml(station))
     void Promise.allSettled([getWaterLevel(station.id), getHiloPredictions(station.id)]).then(([water, tides]) => {
-      popup.setHTML(formatStationPopupHtml(station, water, tides))
+      if (popup.isOpen()) popup.setHTML(formatStationPopupHtml(station, water, tides))
     })
   } else if (feature.layer.id === DART_LAYER_ID) {
     showPopup(map, [lng, lat], formatDartPopupHtml(feature.properties as DartProperties))
@@ -381,11 +383,9 @@ export function MapLibreGlobe() {
   const [kp, setKp] = useState<{ status: 'loading' } | { status: 'ok'; readout: KpReadout } | { status: 'error'; message: string }>({
     status: 'loading',
   })
-  // Radar time (#74): the frame list. The chosen frame comes from the shared time (#228), so the
-  // radar and the point forecast timeline scrub together; null follows the latest frame.
-  const [radarFrames, setRadarFrames] = useState<string[]>([])
+  // The radar's chosen frame (#74) comes from the shared time (#228), so the radar and the point
+  // forecast timeline scrub together; null follows the latest frame.
   const sharedTime = useSyncExternalStore(subscribeTime, getTimeSnapshot).time
-  const radarTime = useMemo(() => frameForTime(radarFrames, sharedTime), [radarFrames, sharedTime])
   const radarUrlRef = useRef(NOWCOAST_RADAR_TILE_URL)
   const windRef = useRef<WindOverlay | null>(null)
   // The alert polygons' current emphasis (#342), read when the alerts layer is first added.
@@ -479,6 +479,8 @@ export function MapLibreGlobe() {
     // An error before `load` (the style or its sources failing) means `load` may never come, so say
     // why the globe is empty. Later errors, such as a missing tile, keep being ignored.
     let loaded = false
+    // Set by the cleanup, so a response that lands after the map is removed draws nothing (#354).
+    let disposed = false
     map.on('error', (e) => {
       if (!loaded) setMapError(describeStyleError(e.error))
     })
@@ -811,6 +813,7 @@ export function MapLibreGlobe() {
       const loadAurora = () =>
         getOvationAurora().then(
           (ovation) => {
+            if (disposed) return
             ovationRef.current = ovation
             const raster = auroraRaster(ovation)
             if (!auroraCanvas) {
@@ -842,18 +845,19 @@ export function MapLibreGlobe() {
             setAuroraCells(raster.cells)
           },
           (err: unknown) => {
-            if (!auroraCanvas) setAuroraError(describeSwpcFetchOutcome(err))
+            if (!disposed && !auroraCanvas) setAuroraError(describeSwpcFetchOutcome(err))
           },
         )
 
       const loadKp = () =>
         getPlanetaryKp().then(
           (rows) => {
+            if (disposed) return
             kpLoaded = true
             setKp({ status: 'ok', readout: describeKp(rows) })
           },
           (err: unknown) => {
-            if (!kpLoaded) setKp({ status: 'error', message: describeSwpcFetchOutcome(err) })
+            if (!disposed && !kpLoaded) setKp({ status: 'error', message: describeSwpcFetchOutcome(err) })
           },
         )
 
@@ -868,6 +872,7 @@ export function MapLibreGlobe() {
       const loadAlerts = () =>
         getActiveAlerts()
         .then((alerts) => {
+          if (disposed) return
           const { mappable, zoneOnly } = splitAlertsByGeometry(alerts)
           setZoneOnlyAlerts(zoneOnly)
           setAlertPolygons(mappable.features.map((f) => ({ event: f.properties.event, geometry: f.geometry })))
@@ -909,7 +914,7 @@ export function MapLibreGlobe() {
         })
         .catch((err: unknown) => {
           // A failed refresh keeps the last good alerts on screen.
-          if (alertsLoaded) return
+          if (disposed || alertsLoaded) return
           setAlertsStatus('error')
           setAlertsErrorMessage(describeAlertsFetchOutcome(err))
         })
@@ -922,6 +927,7 @@ export function MapLibreGlobe() {
     })
 
     return () => {
+      disposed = true
       readyObserver.disconnect()
       unregisterDismisser()
       canvas.removeEventListener('keydown', onCanvasKeyDown)
@@ -931,6 +937,13 @@ export function MapLibreGlobe() {
       geolocateRef.current = null
       windRef.current?.dispose()
       windRef.current = null
+      waveRef.current?.dispose()
+      waveRef.current = null
+      reflectivityRef.current?.dispose()
+      reflectivityRef.current = null
+      // The popup is module-level, so it would outlive the map, and Escape would still find it (#354).
+      openPopup?.remove()
+      openPopup = null
       map.remove()
     }
   }, [])
@@ -1053,27 +1066,15 @@ export function MapLibreGlobe() {
   // out for as long as the globe is looked at (#78). A failed fetch leaves the latest-frame layer
   // without a slider. Leaving resets to latest (#286): the shared time returns to now and a radar
   // loop stops, so the point timeline and the wind also start from now after the radar goes.
-  const loadRadarFrames = useCallback((signal?: AbortSignal) => {
-    fetch(NOWCOAST_CAPABILITIES_URL, signal ? { signal } : undefined)
-      .then((res) => (res.ok ? res.text() : Promise.reject(new Error(String(res.status)))))
-      .then((xml) => setRadarFrames(parseRadarFrames(xml)))
-      .catch(() => {})
-  }, [])
+  const radarFrames = useWmsFrames(NOWCOAST_CAPABILITIES_URL, parseRadarFrames, radarShown, active, RADAR_FRAMES_REFRESH_MS)
+  const radarTime = useMemo(() => frameForTime(radarFrames, sharedTime), [radarFrames, sharedTime])
   useEffect(() => {
     if (!radarShown) return
-    const controller = new AbortController()
-    loadRadarFrames(controller.signal)
     return () => {
-      controller.abort()
-      setRadarFrames([])
       stopPlayer('radar')
       setTime(null)
     }
-  }, [radarShown, loadRadarFrames])
-  useEffect(() => {
-    if (!radarShown || !active) return
-    return pollWhileVisible(() => loadRadarFrames(), RADAR_FRAMES_REFRESH_MS)
-  }, [radarShown, active, loadRadarFrames])
+  }, [radarShown])
 
   // Seen again after being hidden: MapLibre's own resize observer is throttled, so say so at once.
   useEffect(() => {
@@ -1130,8 +1131,10 @@ export function MapLibreGlobe() {
   const forecastLabel = forecastLayer === 'wind' ? 'Wind' : 'Wave'
 
   // The DART buoys (#80) are shown only while their node is selected, once the layer exists. The
-  // list loads the first time they're shown (#269).
+  // list loads the first time they're shown (#269); a failed load is forgotten once they're hidden,
+  // so the next select tries again (#354).
   const dartShown = liveLayers.includes('dart-stations')
+  if (!dartShown && dartStations === 'error') setDartStations(null)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(DART_LAYER_ID)) return
@@ -1152,9 +1155,12 @@ export function MapLibreGlobe() {
     }
   }, [dartShown, dartStations, mapLoaded])
 
-  // The SPC outlook (#245) is fetched only while its node is selected, and refreshed while the tab
-  // is visible. A failed refresh keeps the polygons already drawn.
+  // The SPC outlook (#245) is fetched only while its node is selected, and refreshed while the globe
+  // is looked at, at once on return if it is stale. A failed refresh keeps the polygons already
+  // drawn. Hiding it clears them and its status, so the next show starts from loading (#354).
   const spcShown = liveLayers.includes('spc-outlook')
+  const loadSpcRef = useRef<() => void>(() => {})
+  const spcAtRef = useRef(0)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(SPC_FILL_LAYER_ID)) return
@@ -1164,7 +1170,8 @@ export function MapLibreGlobe() {
     if (!spcShown) return
     let cancelled = false
     let loaded = false
-    const load = () => {
+    loadSpcRef.current = () => {
+      spcAtRef.current = Date.now()
       getDay1CategoricalOutlook()
         .then((outlook) => {
           if (cancelled) return
@@ -1176,28 +1183,39 @@ export function MapLibreGlobe() {
           if (!cancelled && !loaded) setSpc({ status: 'error', message: describeSpcFetchOutcome(err) })
         })
     }
-    load()
-    const stop = pollWhileVisible(load, SPC_REFRESH_MS)
+    loadSpcRef.current()
     return () => {
       cancelled = true
-      stop()
+      loadSpcRef.current = () => {}
+      // An unmounted globe has removed its map already.
+      if (mapRef.current === map) map.getSource<GeoJSONSource>(SPC_SOURCE_ID)?.setData({ type: 'FeatureCollection', features: [] })
+      setSpc({ status: 'loading' })
     }
   }, [spcShown, mapLoaded])
+  useEffect(() => {
+    if (!mapLoaded || !spcShown || !active) return
+    if (Date.now() - spcAtRef.current >= SPC_REFRESH_MS) loadSpcRef.current()
+    return pollWhileVisible(() => loadSpcRef.current(), SPC_REFRESH_MS)
+  }, [spcShown, mapLoaded, active])
 
   // The NHC storm tracks (#334), like the SPC outlook: fetched only while the node is selected, or
-  // while a point is selected so the impact prompt can check it (#344), and refreshed while the tab is
-  // visible. A failed refresh keeps the tracks already drawn.
+  // while a point is selected so the impact prompt can check it (#344), and refreshed while the globe
+  // is looked at. A failed refresh keeps the tracks already drawn; no longer wanted, they and their
+  // status are forgotten (#354).
   const stormsWanted = nhcShown || selection.selectedPoint !== null
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(NHC_FIX_LAYER_ID)) return
     for (const id of NHC_LAYER_IDS) map.setLayoutProperty(id, 'visibility', nhcShown ? 'visible' : 'none')
   }, [nhcShown, mapLoaded])
+  const loadStormsRef = useRef<() => void>(() => {})
+  const stormsAtRef = useRef(0)
   useEffect(() => {
     if (!stormsWanted) return
     let cancelled = false
     let loaded = false
-    const load = () => {
+    loadStormsRef.current = () => {
+      stormsAtRef.current = Date.now()
       getActiveStorms()
         .then((data) => {
           if (cancelled) return
@@ -1209,13 +1227,18 @@ export function MapLibreGlobe() {
           if (!cancelled && !loaded) setStorms({ status: 'error', message: describeNhcFetchOutcome(err) })
         })
     }
-    load()
-    const stop = pollWhileVisible(load, NHC_REFRESH_MS)
+    loadStormsRef.current()
     return () => {
       cancelled = true
-      stop()
+      loadStormsRef.current = () => {}
+      setStorms({ status: 'loading' })
     }
   }, [stormsWanted])
+  useEffect(() => {
+    if (!stormsWanted || !active) return
+    if (Date.now() - stormsAtRef.current >= NHC_REFRESH_MS) loadStormsRef.current()
+    return pollWhileVisible(() => loadStormsRef.current(), NHC_REFRESH_MS)
+  }, [stormsWanted, active])
 
   const stormTracks = storms.status === 'ok' ? storms.tracks : NO_STORMS
   const storm = stormTracks.find((track) => track.bin === stormBin) ?? stormTracks[0] ?? null
@@ -1259,26 +1282,7 @@ export function MapLibreGlobe() {
   // The GOES frame list (#338) is read while the tracks are shown and refreshed as frames arrive. A
   // failed read leaves the latest image, which needs no list. The image follows the storm slider
   // inside the archive and is the latest one outside it; debounced like the radar.
-  const [goesFrames, setGoesFrames] = useState<string[]>([])
-  const loadGoesFrames = useCallback((signal?: AbortSignal) => {
-    fetch(GOES_CAPABILITIES_URL, signal ? { signal } : undefined)
-      .then((res) => (res.ok ? res.text() : Promise.reject(new Error(String(res.status)))))
-      .then((xml) => setGoesFrames(parseGoesFrames(xml)))
-      .catch(() => {})
-  }, [])
-  useEffect(() => {
-    if (!stormFull) return
-    const controller = new AbortController()
-    loadGoesFrames(controller.signal)
-    return () => {
-      controller.abort()
-      setGoesFrames([])
-    }
-  }, [stormFull, loadGoesFrames])
-  useEffect(() => {
-    if (!stormFull || !active) return
-    return pollWhileVisible(() => loadGoesFrames(), GOES_FRAMES_REFRESH_MS)
-  }, [stormFull, active, loadGoesFrames])
+  const goesFrames = useWmsFrames(GOES_CAPABILITIES_URL, parseGoesFrames, stormFull, active, GOES_FRAMES_REFRESH_MS)
   const goesFrame = goesFrameForTime(goesFrames, stormFrameTime)
   // Past the advisory there is no satellite image of the storm yet, so the GFS simulated radar takes
   // its place. The first forecast step is loaded while the slider is still before the advisory.
@@ -1372,8 +1376,9 @@ export function MapLibreGlobe() {
     }
   }, [arcgisKey, mapLoaded])
 
-  // The NDBC buoys load the first time they're shown too (#269).
+  // The NDBC buoys load the first time they're shown too (#269), and retry like the DART ones.
   const ndbcShown = liveLayers.includes('ndbc-stations')
+  if (!ndbcShown && ndbcStations === 'error') setNdbcStations(null)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(NDBC_LAYER_ID)) return
