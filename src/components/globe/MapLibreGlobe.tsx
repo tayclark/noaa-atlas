@@ -1131,8 +1131,10 @@ export function MapLibreGlobe() {
   const forecastLabel = forecastLayer === 'wind' ? 'Wind' : 'Wave'
 
   // The DART buoys (#80) are shown only while their node is selected, once the layer exists. The
-  // list loads the first time they're shown (#269).
+  // list loads the first time they're shown (#269); a failed load is forgotten once they're hidden,
+  // so the next select tries again (#354).
   const dartShown = liveLayers.includes('dart-stations')
+  if (!dartShown && dartStations === 'error') setDartStations(null)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(DART_LAYER_ID)) return
@@ -1374,8 +1376,9 @@ export function MapLibreGlobe() {
     }
   }, [arcgisKey, mapLoaded])
 
-  // The NDBC buoys load the first time they're shown too (#269).
+  // The NDBC buoys load the first time they're shown too (#269), and retry like the DART ones.
   const ndbcShown = liveLayers.includes('ndbc-stations')
+  if (!ndbcShown && ndbcStations === 'error') setNdbcStations(null)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(NDBC_LAYER_ID)) return

@@ -11,6 +11,8 @@ import { clearSpcCache, SPC_REFRESH_MS } from '../../data/spcClient'
 import { clearNhcCache, NHC_REFRESH_MS } from '../../data/nhcClient'
 import { clearSwpcCache } from '../../data/swpcClient'
 import { clearNwsCache } from '../../data/nwsClient'
+import { loadDartStations } from '../../data/dartStations'
+import { loadNdbcStations } from '../../data/ndbcStations'
 
 type Handler = (...args: unknown[]) => void
 
@@ -155,6 +157,9 @@ vi.mock('maplibre-gl', () => ({
   LngLat: { convert: (lngLat: unknown) => lngLat },
 }))
 
+
+vi.mock('../../data/dartStations', () => ({ loadDartStations: vi.fn() }))
+vi.mock('../../data/ndbcStations', () => ({ loadNdbcStations: vi.fn() }))
 
 const { MapLibreGlobe } = await import('./MapLibreGlobe')
 
@@ -313,5 +318,21 @@ describe('MapLibreGlobe lifecycle (#354)', () => {
     act(() => selectNode('nws-api'))
     act(() => selectNode('nhc-active-storms'))
     expect(globe().getAttribute('data-nhc-tracks')).toBe('loading')
+  })
+
+  it('retries the DART and NDBC buoy lists on a later select after a failure', async () => {
+    vi.mocked(loadDartStations).mockRejectedValueOnce(new Error('chunk failed')).mockResolvedValueOnce([])
+    vi.mocked(loadNdbcStations).mockRejectedValueOnce(new Error('chunk failed')).mockResolvedValueOnce([])
+    const { globe } = renderGlobe()
+    for (const [node, attribute] of [
+      ['ndbc-dart-realtime', 'data-dart-stations'],
+      ['ndbc-realtime', 'data-ndbc-stations'],
+    ] as const) {
+      await act(async () => selectNode(node))
+      expect(globe().getAttribute(attribute)).toBe('error')
+      act(() => selectNode('nws-api'))
+      await act(async () => selectNode(node))
+      expect(globe().getAttribute(attribute)).toBe('0')
+    }
   })
 })
