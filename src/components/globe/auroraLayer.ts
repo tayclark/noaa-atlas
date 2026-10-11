@@ -4,6 +4,13 @@
 import type { SwpcOvation } from '../../data/swpcSchema'
 import { describeClientError } from '../../data/clientErrors'
 import { swpcErrors } from '../../data/swpcClient'
+import type { LayerGroup } from './mapLayers'
+
+export const AURORA_SOURCE_ID = 'swpc-aurora'
+export const AURORA_LAYER_ID = 'swpc-aurora-raster'
+export const AURORA_OPACITY = 0.75
+/** While the aurora node is selected. */
+export const AURORA_OPACITY_SELECTED = 1
 
 /** Cells below this probability (%) are left out of the click popup and the drawn-cell count. */
 export const AURORA_MIN_VALUE = 1
@@ -134,4 +141,20 @@ export function describeSwpcFetchOutcome(err: unknown): string {
     network: 'Could not reach SWPC for space weather.',
     fallback: 'Something went wrong loading space weather.',
   })
+}
+
+/** The aurora raster over the whole Mercator square, drawn from `canvas` (which auroraRaster fills). */
+export function auroraLayers(canvas: HTMLCanvasElement): LayerGroup {
+  return {
+    sourceId: AURORA_SOURCE_ID,
+    source: { type: 'canvas', canvas, coordinates: AURORA_RASTER_COORDINATES, animate: false },
+    layers: [
+      {
+        id: AURORA_LAYER_ID,
+        type: 'raster',
+        source: AURORA_SOURCE_ID,
+        paint: { 'raster-opacity': AURORA_OPACITY, 'raster-resampling': 'linear', 'raster-fade-duration': 0 },
+      },
+    ],
+  }
 }

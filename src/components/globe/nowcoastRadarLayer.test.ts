@@ -3,8 +3,10 @@ import {
   NOWCOAST_RADAR_ATTRIBUTION,
   NOWCOAST_RADAR_TILE_SIZE,
   NOWCOAST_RADAR_TILE_URL,
+  radarLayers,
   radarTileUrl,
 } from './nowcoastRadarLayer'
+import type { LayerGroup } from './mapLayers'
 
 describe('nowCOAST radar tile URL', () => {
   const url = new URL(NOWCOAST_RADAR_TILE_URL.replace('{bbox-epsg-3857}', '0,0,1,1'))
@@ -38,5 +40,19 @@ describe('nowCOAST radar tile URL', () => {
   it('credits NOAA and nowCOAST', () => {
     expect(NOWCOAST_RADAR_ATTRIBUTION).toContain('nowCOAST')
     expect(NOWCOAST_RADAR_ATTRIBUTION).toContain('NOAA')
+  })
+})
+
+const layerIds = (group: LayerGroup) => group.layers.map((layer) => layer.id)
+const visibility = (group: LayerGroup) => group.layers.map((layer) => ('layout' in layer ? layer.layout?.visibility : undefined))
+const sources = (group: LayerGroup) => new Set(group.layers.map((layer) => ('source' in layer ? layer.source : undefined)))
+
+describe('radarLayers', () => {
+  it('is a credited raster of the latest frame, hidden until selected', () => {
+    const group = radarLayers()
+    expect(group.source).toMatchObject({ type: 'raster', tiles: [NOWCOAST_RADAR_TILE_URL], tileSize: 256, attribution: NOWCOAST_RADAR_ATTRIBUTION })
+    expect(layerIds(group)).toEqual(['nowcoast-radar-raster'])
+    expect(sources(group)).toEqual(new Set([group.sourceId]))
+    expect(visibility(group)).toEqual(['none'])
   })
 })

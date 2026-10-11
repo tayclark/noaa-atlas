@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { CoopsHttpError, CoopsParseError } from '../../data/coopsClient'
 import type { CoopsReading, CoopsResult, CoopsTide } from '../../data/coopsSchema'
 import {
+  COOPS_LAYER_ID,
+  COOPS_MIN_ZOOM,
+  COOPS_RADIUS,
+  COOPS_RADIUS_SELECTED,
+  coopsRadius,
+  coopsStationLayers,
   describeCoopsFetchOutcome,
   formatStationLoadingHtml,
   formatStationPopupHtml,
@@ -82,5 +88,24 @@ describe('describeCoopsFetchOutcome', () => {
     expect(describeCoopsFetchOutcome(new CoopsHttpError(500))).toBe('CO-OPS is unavailable (500).')
     expect(describeCoopsFetchOutcome(new CoopsParseError('x', null))).toBe('CO-OPS returned an unexpected response.')
     expect(describeCoopsFetchOutcome(new TypeError('Failed to fetch'))).toBe('Could not reach CO-OPS.')
+  })
+})
+
+describe('coopsStationLayers', () => {
+  it('draws every station from regional zoom, growing with zoom', () => {
+    const stations = [{ id: '8443970', name: 'Boston', state: 'MA', lng: -71.05, lat: 42.35 }]
+    const group = coopsStationLayers(stations)
+    expect(group.source).toEqual({ type: 'geojson', data: stationsToGeoJSON(stations) })
+    expect(group.layers).toHaveLength(1)
+    expect(group.layers[0]).toMatchObject({ id: COOPS_LAYER_ID, type: 'circle', source: group.sourceId, minzoom: COOPS_MIN_ZOOM })
+    expect(group.layers[0]!.paint).toMatchObject({ 'circle-radius': coopsRadius(COOPS_RADIUS) })
+  })
+
+  it('interpolates the radius over the zoom stops, two pixels larger when selected', () => {
+    expect(coopsRadius(COOPS_RADIUS)).toEqual(['interpolate', ['linear'], ['zoom'], COOPS_MIN_ZOOM, 3, 8, 6])
+    expect(COOPS_RADIUS_SELECTED).toEqual([
+      [COOPS_MIN_ZOOM, 5],
+      [8, 8],
+    ])
   })
 })

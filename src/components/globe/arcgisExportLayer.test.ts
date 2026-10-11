@@ -6,6 +6,7 @@ import {
   ARCGIS_TILE_SIZE,
   arcgisExportTileUrl,
   arcgisLegendSections,
+  arcgisOverlayLayers,
   arcgisOverlaysFor,
   describeArcgisFetchOutcome,
   legendEntriesFor,
@@ -125,5 +126,29 @@ describe('describeArcgisFetchOutcome', () => {
     expect(describeArcgisFetchOutcome(new ArcgisParseError('bad', null))).toContain('unexpected')
     expect(describeArcgisFetchOutcome(new TypeError('Failed to fetch'))).toContain('Could not reach')
     expect(describeArcgisFetchOutcome(new Error('x'))).toContain('Something went wrong')
+  })
+})
+
+describe('arcgisOverlayLayers', () => {
+  it('draws each overlay from its export endpoint with its credit, hidden until lit', () => {
+    for (const overlay of ARCGIS_OVERLAYS) {
+      const group = arcgisOverlayLayers(overlay)
+      expect(group.sourceId).toBe(overlay.sourceId)
+      expect(group.source).toEqual({
+        type: 'raster',
+        tiles: [arcgisExportTileUrl(overlay.serviceUrl, overlay.layerIdsInService)],
+        tileSize: 256,
+        attribution: overlay.attribution,
+      })
+      expect(group.layers).toEqual([
+        {
+          id: overlay.layerId,
+          type: 'raster',
+          source: overlay.sourceId,
+          layout: { visibility: 'none' },
+          paint: { 'raster-opacity': overlay.opacity, 'raster-fade-duration': 0 },
+        },
+      ])
+    }
   })
 })

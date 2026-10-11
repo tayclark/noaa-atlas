@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeGoesFrame, GOES_TILE_URL, goesFrameForTime, goesTileUrl, parseGoesFrames } from './goesSatelliteLayer'
+import { describeGoesFrame, GOES_ATTRIBUTION, GOES_TILE_URL, goesFrameForTime, goesLayers, goesTileUrl, parseGoesFrames } from './goesSatelliteLayer'
 
 const FRAMES = ['2026-10-09T12:03:00.000Z', '2026-10-09T12:08:00.000Z', '2026-10-09T12:13:00.000Z']
 const at = (iso: string) => Date.parse(iso)
@@ -47,5 +47,21 @@ describe('describeGoesFrame', () => {
     expect(describeGoesFrame(FRAMES, FRAMES[1] as string)).toBe('satellite 12:08 UTC')
     expect(describeGoesFrame(FRAMES, null)).toBe('satellite latest, 12:13 UTC')
     expect(describeGoesFrame([], null)).toBeNull()
+  })
+})
+
+describe('goesLayers', () => {
+  it('is a credited raster of the latest image, hidden until the storm view opens', () => {
+    const group = goesLayers()
+    expect(group.source).toEqual({ type: 'raster', tiles: [GOES_TILE_URL], tileSize: 256, attribution: GOES_ATTRIBUTION })
+    expect(group.layers).toEqual([
+      {
+        id: 'goes-satellite-raster',
+        type: 'raster',
+        source: group.sourceId,
+        layout: { visibility: 'none' },
+        paint: { 'raster-opacity': 0.85, 'raster-fade-duration': 0 },
+      },
+    ])
   })
 })

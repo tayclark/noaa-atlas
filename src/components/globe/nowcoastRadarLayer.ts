@@ -4,6 +4,11 @@
 // The WMS `time` dimension defaults to the latest frame, so the base URL deliberately omits it;
 // `radarTileUrl` adds it while the time slider (#74) is on an earlier frame.
 
+import type { LayerGroup } from './mapLayers'
+
+export const RADAR_SOURCE_ID = 'nowcoast-radar'
+export const RADAR_LAYER_ID = 'nowcoast-radar-raster'
+
 export const NOWCOAST_RADAR_TILE_SIZE = 256
 export const NOWCOAST_RADAR_OPACITY = 0.7
 
@@ -20,3 +25,20 @@ export function radarTileUrl(time: string | null): string {
 
 export const NOWCOAST_RADAR_ATTRIBUTION =
   'Radar: <a href="https://nowcoast.noaa.gov/">NOAA/NWS via nowCOAST</a>'
+
+/** The radar raster, hidden (so no tile is fetched) until the nowCOAST node is selected. */
+export function radarLayers(): LayerGroup {
+  return {
+    sourceId: RADAR_SOURCE_ID,
+    source: { type: 'raster', tiles: [NOWCOAST_RADAR_TILE_URL], tileSize: NOWCOAST_RADAR_TILE_SIZE, attribution: NOWCOAST_RADAR_ATTRIBUTION },
+    layers: [
+      {
+        id: RADAR_LAYER_ID,
+        type: 'raster',
+        source: RADAR_SOURCE_ID,
+        layout: { visibility: 'none' },
+        paint: { 'raster-opacity': NOWCOAST_RADAR_OPACITY, 'raster-fade-duration': 0 },
+      },
+    ],
+  }
+}

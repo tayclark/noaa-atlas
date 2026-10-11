@@ -5,7 +5,13 @@
 import { describeClientError } from '../../data/clientErrors'
 import { spcErrors } from '../../data/spcClient'
 import type { SpcOutlook } from '../../data/spcSchema'
+import type { LayerGroup } from './mapLayers'
 import { escapeHtml } from './popupHtml'
+
+export const SPC_SOURCE_ID = 'spc-outlook'
+export const SPC_FILL_LAYER_ID = 'spc-outlook-fill'
+export const SPC_LINE_LAYER_ID = 'spc-outlook-line'
+export const SPC_LAYER_IDS = [SPC_FILL_LAYER_ID, SPC_LINE_LAYER_ID]
 
 export interface SpcCategory {
   label: string
@@ -71,4 +77,28 @@ export function describeSpcFetchOutcome(err: unknown): string {
     network: 'Could not reach SPC, the outlook could not be loaded.',
     fallback: 'Something went wrong loading the outlook.',
   })
+}
+
+/** The outlook polygons, empty and hidden until the SPC node is selected. */
+export function spcOutlookLayers(): LayerGroup {
+  return {
+    sourceId: SPC_SOURCE_ID,
+    source: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+    layers: [
+      {
+        id: SPC_FILL_LAYER_ID,
+        type: 'fill',
+        source: SPC_SOURCE_ID,
+        layout: { visibility: 'none' },
+        paint: { 'fill-color': ['get', 'fill'], 'fill-opacity': SPC_FILL_OPACITY },
+      },
+      {
+        id: SPC_LINE_LAYER_ID,
+        type: 'line',
+        source: SPC_SOURCE_ID,
+        layout: { visibility: 'none' },
+        paint: { 'line-color': ['get', 'stroke'], 'line-width': 1.5 },
+      },
+    ],
+  }
 }

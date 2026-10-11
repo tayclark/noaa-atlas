@@ -7,6 +7,7 @@ import { describeClientError } from '../../data/clientErrors'
 import { arcgisErrors } from '../../data/arcgisClient'
 import type { ArcgisLegend, ArcgisLegendEntry } from '../../data/arcgisSchema'
 import type { LiveLayerKey } from './liveLayers'
+import type { LayerGroup } from './mapLayers'
 
 export const ARCGIS_TILE_SIZE = 256
 
@@ -129,4 +130,26 @@ export function describeArcgisFetchOutcome(err: unknown): string {
     network: 'Could not reach the map service, so the legend could not be loaded.',
     fallback: 'Something went wrong loading the legend.',
   })
+}
+
+/** One overlay's raster, hidden (so no tile is fetched) until a selection lights it. */
+export function arcgisOverlayLayers(overlay: ArcgisOverlay): LayerGroup {
+  return {
+    sourceId: overlay.sourceId,
+    source: {
+      type: 'raster',
+      tiles: [arcgisExportTileUrl(overlay.serviceUrl, overlay.layerIdsInService)],
+      tileSize: ARCGIS_TILE_SIZE,
+      attribution: overlay.attribution,
+    },
+    layers: [
+      {
+        id: overlay.layerId,
+        type: 'raster',
+        source: overlay.sourceId,
+        layout: { visibility: 'none' },
+        paint: { 'raster-opacity': overlay.opacity, 'raster-fade-duration': 0 },
+      },
+    ],
+  }
 }

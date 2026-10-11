@@ -3,7 +3,11 @@
 // nowCOAST keeps about 8 hours of 5-minute frames, so the image follows the storm slider inside
 // that window and shows the latest frame outside it (older history, or the forecast).
 
+import type { LayerGroup } from './mapLayers'
 import { parseWmsTimeFrames } from './radarTimes'
+
+export const GOES_SOURCE_ID = 'goes-satellite'
+export const GOES_LAYER_ID = 'goes-satellite-raster'
 
 export const GOES_TILE_SIZE = 256
 export const GOES_OPACITY = 0.85
@@ -61,4 +65,21 @@ export function describeGoesFrame(frames: readonly string[], frame: string | nul
   if (!shown) return null
   const clock = new Date(shown).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false })
   return frame ? `satellite ${clock} UTC` : `satellite latest, ${clock} UTC`
+}
+
+/** The satellite raster, hidden (so no tile is fetched) until the full storm view opens. */
+export function goesLayers(): LayerGroup {
+  return {
+    sourceId: GOES_SOURCE_ID,
+    source: { type: 'raster', tiles: [GOES_TILE_URL], tileSize: GOES_TILE_SIZE, attribution: GOES_ATTRIBUTION },
+    layers: [
+      {
+        id: GOES_LAYER_ID,
+        type: 'raster',
+        source: GOES_SOURCE_ID,
+        layout: { visibility: 'none' },
+        paint: { 'raster-opacity': GOES_OPACITY, 'raster-fade-duration': 0 },
+      },
+    ],
+  }
 }

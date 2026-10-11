@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { describe, expect, it, vi } from 'vitest'
-import { addPointerCursor, setLayersVisible } from './mapLayers'
+import { addLayerGroup, addPointerCursor, setLayersVisible } from './mapLayers'
 
 function stubMap(layers: string[]) {
   const handlers = new Map<string, () => void>()
@@ -37,5 +37,24 @@ describe('addPointerCursor', () => {
     expect(canvas.style.cursor).toBe('pointer')
     handlers.get('mouseleave:b')!()
     expect(canvas.style.cursor).toBe('')
+  })
+})
+
+describe('addLayerGroup', () => {
+  it('adds the source and then each layer in order, under the given layer', () => {
+    const calls: unknown[][] = []
+    const map = {
+      addSource: (...args: unknown[]) => calls.push(['addSource', ...args]),
+      addLayer: (...args: unknown[]) => calls.push(['addLayer', ...args]),
+    } as unknown as MapLibreMap
+    const source = { type: 'geojson' as const, data: { type: 'FeatureCollection' as const, features: [] } }
+    const a = { id: 'a', type: 'fill' as const, source: 's' }
+    const b = { id: 'b', type: 'line' as const, source: 's' }
+    addLayerGroup(map, { sourceId: 's', source, layers: [a, b] }, 'top')
+    expect(calls).toEqual([
+      ['addSource', 's', source],
+      ['addLayer', a, 'top'],
+      ['addLayer', b, 'top'],
+    ])
   })
 })

@@ -3,7 +3,11 @@ import { SwpcHttpError, SwpcParseError } from '../../data/swpcClient'
 import { parseOvation } from '../../data/swpcSchema'
 import { makeOvation } from '../../data/swpcFixtures'
 import {
+  AURORA_LAYER_ID,
+  AURORA_OPACITY,
+  AURORA_RASTER_COORDINATES,
   auroraAt,
+  auroraLayers,
   auroraColor,
   auroraRaster,
   describeSwpcFetchOutcome,
@@ -116,5 +120,21 @@ describe('popup and messages', () => {
     expect(describeSwpcFetchOutcome(new SwpcParseError('bad', null))).toMatch(/unexpected/)
     expect(describeSwpcFetchOutcome(new TypeError('Failed to fetch'))).toMatch(/Could not reach SWPC/)
     expect(describeSwpcFetchOutcome(new Error('canvas broke'))).toMatch(/Something went wrong/)
+  })
+})
+
+describe('auroraLayers', () => {
+  it('draws the canvas over the whole Mercator square at the resting opacity', () => {
+    const canvas = {} as HTMLCanvasElement
+    const group = auroraLayers(canvas)
+    expect(group.source).toEqual({ type: 'canvas', canvas, coordinates: AURORA_RASTER_COORDINATES, animate: false })
+    expect(group.layers).toEqual([
+      {
+        id: AURORA_LAYER_ID,
+        type: 'raster',
+        source: group.sourceId,
+        paint: { 'raster-opacity': AURORA_OPACITY, 'raster-resampling': 'linear', 'raster-fade-duration': 0 },
+      },
+    ])
   })
 })

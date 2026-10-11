@@ -7,6 +7,9 @@ import {
   describeSpcFetchOutcome,
   formatOutlookPopupHtml,
   isOutlookEmpty,
+  SPC_FILL_OPACITY,
+  SPC_LAYER_IDS,
+  spcOutlookLayers,
 } from './spcOutlookLayer'
 
 describe('categoriesInOutlook', () => {
@@ -46,5 +49,18 @@ describe('describeSpcFetchOutcome', () => {
     expect(describeSpcFetchOutcome(new SpcParseError('x', null))).toMatch(/unexpected/)
     expect(describeSpcFetchOutcome(new TypeError('Failed to fetch'))).toMatch(/Could not reach SPC/)
     expect(describeSpcFetchOutcome(new Error('boom'))).toMatch(/Something went wrong/)
+  })
+})
+
+describe('spcOutlookLayers', () => {
+  it('fills and outlines the polygons in the feed\'s own colours, empty and hidden until selected', () => {
+    const group = spcOutlookLayers()
+    expect(group.source).toEqual({ type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+    expect(group.layers.map((layer) => layer.id)).toEqual(SPC_LAYER_IDS)
+    expect(group.layers.map((layer) => ('layout' in layer ? layer.layout?.visibility : undefined))).toEqual(['none', 'none'])
+    expect(group.layers.map((layer) => layer.paint)).toEqual([
+      { 'fill-color': ['get', 'fill'], 'fill-opacity': SPC_FILL_OPACITY },
+      { 'line-color': ['get', 'stroke'], 'line-width': 1.5 },
+    ])
   })
 })
