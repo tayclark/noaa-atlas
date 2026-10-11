@@ -1,10 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { GraphSearch, type SearchResult } from './GraphSearch'
-
-afterEach(cleanup)
 
 const results: SearchResult[] = Array.from({ length: 8 }, (_, i) => ({ id: `n${i}`, name: `Service ${i}`, detail: 'Weather & forecast' }))
 

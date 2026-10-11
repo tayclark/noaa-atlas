@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import graphJson from '../../data/graph.json'
 import { buildGraph } from '../../data/buildGraph'
 import type { ServiceNode, ThemeNode } from '../../data/graphSchema'
@@ -24,8 +24,6 @@ beforeEach(() => {
   clearCompare()
   vi.mocked(getPoint).mockReset()
 })
-
-afterEach(cleanup)
 
 describe('NodeDetailPanel', () => {
   it('renders nothing when no node is selected', () => {

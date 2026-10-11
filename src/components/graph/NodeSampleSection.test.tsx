@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import graphJson from '../../data/graph.json'
 import type { ServiceNode } from '../../data/graphSchema'
 import { parseGraphFile } from '../../data/graphSchema'
@@ -28,8 +28,6 @@ beforeEach(() => {
   writeText.mockClear()
   Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
 })
-
-afterEach(cleanup)
 
 describe('graph.json samples', () => {
   it('gives every node a sample', () => {

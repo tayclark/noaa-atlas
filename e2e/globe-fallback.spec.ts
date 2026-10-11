@@ -5,6 +5,7 @@ import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
 import { disableWebGL } from './fixtures/webgl'
+import { selectByKeyboard } from './fixtures/graph'
 
 test.use({ reducedMotion: 'reduce' })
 
@@ -19,8 +20,7 @@ test('without WebGL the globe pane explains, and the graph, detail and Inspector
   await expect(status).toContainText('needs WebGL2')
   await expect(page.locator('.maplibregl-canvas')).toHaveCount(0)
 
-  await page.locator('.graph-node[data-node-id="nws-api"]').focus()
-  await page.keyboard.press('Enter')
+  await selectByKeyboard(page, 'nws-api')
   await expect(page.getByLabel('Node detail')).toBeVisible()
 
   await page.getByRole('tab', { name: /Inspector/ }).click()

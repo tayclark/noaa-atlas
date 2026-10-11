@@ -3,6 +3,7 @@
 import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
+import { selectByKeyboard } from './fixtures/graph'
 
 // Reduced motion lays the graph out in one go instead of animating the ~6.5 s settle, and these
 // specs assert the settled layout, not the animation.
@@ -33,8 +34,7 @@ test('the org view shows office hubs instead of theme hubs, and toggles back', a
   expect(await x('program-nws-ncep')).toBeLessThan(await x('nomads'))
 
   // Services stay selectable by keyboard in either view.
-  await page.locator('.graph-node[data-node-id="nws-api"]').focus()
-  await page.keyboard.press('Enter')
+  await selectByKeyboard(page, 'nws-api')
   await expect(page.getByRole('heading', { name: 'NWS API', exact: false }).first()).toBeVisible()
 
   const themeToggle = page.getByRole('button', { name: 'Theme view' })

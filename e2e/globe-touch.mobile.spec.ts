@@ -9,6 +9,7 @@ import { emptyAlertsFixture, mappableAlertsFixture, mockAlerts } from './fixture
 import { mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
 import { pinch, swipe } from './fixtures/touch'
+import { selectByKeyboard } from './fixtures/graph'
 
 // The graph is only used to pick a node here, so skip its ~6.5 s animated settle.
 test.use({ reducedMotion: 'reduce' })
@@ -130,8 +131,7 @@ test('a tap on the globe keeps the selected service\'s buoys on screen', async (
   await page.goto('/')
   await page.getByRole('tab', { name: /Graph/ }).tap()
   await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
-  await page.locator('.graph-node[data-node-id="ndbc-realtime"]').focus()
-  await page.keyboard.press('Enter')
+  await selectByKeyboard(page, 'ndbc-realtime')
 
   await page.getByRole('tab', { name: /Globe/ }).tap()
   await expect(page.locator(GLOBE)).toHaveAttribute('data-ndbc-stations', '1', { timeout: 20_000 })
@@ -143,8 +143,7 @@ test('a tap on the globe keeps the selected service\'s buoys on screen', async (
 
   // Choosing something else does take it away.
   await page.getByRole('tab', { name: /Graph/ }).tap()
-  await page.locator('.graph-node[data-node-id="nws-api"]').focus()
-  await page.keyboard.press('Enter')
+  await selectByKeyboard(page, 'nws-api')
   await page.getByRole('tab', { name: /Globe/ }).tap()
   await expect(page.locator(GLOBE)).toHaveAttribute('data-ndbc-stations', '0')
 })

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { GraphView } from './GraphView'
 import graphJson from '../../data/graph.json'
@@ -17,7 +17,6 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  cleanup()
   unmockNarrowLayout()
 })
 

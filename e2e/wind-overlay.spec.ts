@@ -1,21 +1,18 @@
 // The GFS wind overlay (#229): drawn only while the GFS (AWS) node is selected, against a mocked
 // bucket, and following the shared time slider.
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { mockGfs } from './fixtures/gfs'
 import { GLOBE, waitForGlobe } from './fixtures/globe'
+import { mockRadar } from './fixtures/nowcoast'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
 
 const NODE = 'gfs-aws-open-data'
-
-async function selectByKeyboard(page: Page, nodeId: string) {
-  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
-  await page.keyboard.press('Enter')
-}
 
 test.beforeEach(async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
@@ -24,9 +21,14 @@ test.beforeEach(async ({ page }) => {
 
 test('requests no wind data until the GFS node is selected', async ({ page }) => {
   const seen = await mockGfs(page)
+  const radar = await mockRadar(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await expect(page.locator(GLOBE)).toHaveAttribute('data-wind', 'hidden')
-  await page.waitForTimeout(1000)
+  // Rather than sleep and hope a stray request shows up: a wind fetch would start on mount, well
+  // before the map loads and another overlay's tiles are asked for.
+  await selectByKeyboard(page, 'nowcoast-map-services')
+  await expect.poll(() => radar.length).toBeGreaterThan(0)
   expect(seen).toHaveLength(0)
 })
 

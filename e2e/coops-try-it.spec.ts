@@ -1,40 +1,22 @@
 // CO-OPS try-its (#241): the Metadata and Derived Product nodes have no map layer, so Run sample
 // fetches one station's records and shows tables in the detail panel, with Inspector entries.
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
-import { makeHtfAnnual, makeSeaLevelTrend, makeStationMetadata } from '../src/data/coopsFixtures'
+import { mockCoopsTryIts } from './fixtures/coops'
+import { corsJson } from './fixtures/cors'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
-
-async function selectByKeyboard(page: Page, nodeId: string) {
-  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
-  await page.keyboard.press('Enter')
-}
-
-const json = (body: unknown, status = 200) => ({
-  status,
-  contentType: 'application/json',
-  headers: { 'access-control-allow-origin': '*' },
-  body: JSON.stringify(body),
-})
 
 test.beforeEach(async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await mockSwpc(page)
   await mockPointLookup(page)
-  await page.route(/^https:\/\/api\.tidesandcurrents\.noaa\.gov\/mdapi\/prod\/webapi\/stations\/8729108\.json/, (route) =>
-    route.fulfill(json(makeStationMetadata())),
-  )
-  await page.route(/^https:\/\/api\.tidesandcurrents\.noaa\.gov\/dpapi\/prod\/webapi\/product\/sealvltrends\.json/, (route) =>
-    route.fulfill(json(makeSeaLevelTrend())),
-  )
-  await page.route(/^https:\/\/api\.tidesandcurrents\.noaa\.gov\/dpapi\/prod\/webapi\/htf\/htf_annual\.json/, (route) =>
-    route.fulfill(json(makeHtfAnnual())),
-  )
+  await mockCoopsTryIts(page)
 })
 
 test('the metadata node shows the station and its datums as tables', async ({ page }) => {
@@ -59,7 +41,7 @@ test('the derived product node shows the sea level trend and flood days', async 
 
 test('a station the Metadata API does not know reports the 404', async ({ page }) => {
   await page.route(/^https:\/\/api\.tidesandcurrents\.noaa\.gov\/mdapi\//, (route) =>
-    route.fulfill(json({ errorMsg: 'No station was found for id 8729108', errorCode: 404 }, 404)),
+    route.fulfill(corsJson({ errorMsg: 'No station was found for id 8729108', errorCode: 404 }, { status: 404 })),
   )
   await page.goto('/')
   await selectByKeyboard(page, 'coops-metadata-api')

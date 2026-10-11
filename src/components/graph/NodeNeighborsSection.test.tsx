@@ -1,14 +1,12 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { clearSelection, getSelectionSnapshot } from '../../data/selectionStore'
 import { NodeNeighborsSection } from './NodeNeighborsSection'
 
 beforeEach(() => {
   clearSelection()
 })
-
-afterEach(cleanup)
 
 describe('NodeNeighborsSection', () => {
   it('lists data-flow neighbors with reasons and source links', () => {

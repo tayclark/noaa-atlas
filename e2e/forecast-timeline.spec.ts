@@ -7,6 +7,7 @@ import { mockRadar } from './fixtures/nowcoast'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockGridpointData, mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
@@ -81,8 +82,7 @@ test('only one time control plays at a time: starting the timeline stops the rad
   await mockGridpointData(page)
   await mockRadar(page)
   await page.goto('/')
-  await page.locator('.graph-node[data-node-id="nowcoast-map-services"]').focus()
-  await page.keyboard.press('Enter')
+  await selectByKeyboard(page, 'nowcoast-map-services')
   await expect(page.locator(GLOBE)).toHaveAttribute('data-nowcoast-radar', 'visible')
   await page.locator(GLOBE).click()
 
