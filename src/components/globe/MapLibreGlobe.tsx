@@ -318,12 +318,13 @@ function showPointLookup(map: MapLibreMap, lng: number, lat: number, ovation: Sw
         return getLatestObservation(nearest.properties.stationIdentifier).then((observation) => {
           const period = forecast.properties.periods[0]
           if (!period) throw new Error('No forecast periods returned for this location')
-          popup.setHTML(`${formatPointPopupHtml(describePointForPopup(period, observation))}<hr/>${coverageHtml}`)
+          // A popup closed meanwhile (another tap, Escape, the globe unmounting) is left closed (#354).
+          if (popup.isOpen()) popup.setHTML(`${formatPointPopupHtml(describePointForPopup(period, observation))}<hr/>${coverageHtml}`)
         })
       }),
     )
     .catch((err: unknown) => {
-      popup.setHTML(`${formatPointErrorHtml(describePointError(err))}<hr/>${coverageHtml}`)
+      if (popup.isOpen()) popup.setHTML(`${formatPointErrorHtml(describePointError(err))}<hr/>${coverageHtml}`)
     })
 }
 
@@ -336,7 +337,7 @@ function openStationPopup(map: MapLibreMap, feature: MapGeoJSONFeature) {
     const station = feature.properties as StationProperties
     const popup = showPopup(map, [lng, lat], formatStationLoadingHtml(station))
     void Promise.allSettled([getWaterLevel(station.id), getHiloPredictions(station.id)]).then(([water, tides]) => {
-      popup.setHTML(formatStationPopupHtml(station, water, tides))
+      if (popup.isOpen()) popup.setHTML(formatStationPopupHtml(station, water, tides))
     })
   } else if (feature.layer.id === DART_LAYER_ID) {
     showPopup(map, [lng, lat], formatDartPopupHtml(feature.properties as DartProperties))
@@ -478,6 +479,8 @@ export function MapLibreGlobe() {
     // An error before `load` (the style or its sources failing) means `load` may never come, so say
     // why the globe is empty. Later errors, such as a missing tile, keep being ignored.
     let loaded = false
+    // Set by the cleanup, so a response that lands after the map is removed draws nothing (#354).
+    let disposed = false
     map.on('error', (e) => {
       if (!loaded) setMapError(describeStyleError(e.error))
     })
@@ -810,6 +813,7 @@ export function MapLibreGlobe() {
       const loadAurora = () =>
         getOvationAurora().then(
           (ovation) => {
+            if (disposed) return
             ovationRef.current = ovation
             const raster = auroraRaster(ovation)
             if (!auroraCanvas) {
@@ -841,18 +845,19 @@ export function MapLibreGlobe() {
             setAuroraCells(raster.cells)
           },
           (err: unknown) => {
-            if (!auroraCanvas) setAuroraError(describeSwpcFetchOutcome(err))
+            if (!disposed && !auroraCanvas) setAuroraError(describeSwpcFetchOutcome(err))
           },
         )
 
       const loadKp = () =>
         getPlanetaryKp().then(
           (rows) => {
+            if (disposed) return
             kpLoaded = true
             setKp({ status: 'ok', readout: describeKp(rows) })
           },
           (err: unknown) => {
-            if (!kpLoaded) setKp({ status: 'error', message: describeSwpcFetchOutcome(err) })
+            if (!disposed && !kpLoaded) setKp({ status: 'error', message: describeSwpcFetchOutcome(err) })
           },
         )
 
@@ -867,6 +872,7 @@ export function MapLibreGlobe() {
       const loadAlerts = () =>
         getActiveAlerts()
         .then((alerts) => {
+          if (disposed) return
           const { mappable, zoneOnly } = splitAlertsByGeometry(alerts)
           setZoneOnlyAlerts(zoneOnly)
           setAlertPolygons(mappable.features.map((f) => ({ event: f.properties.event, geometry: f.geometry })))
@@ -908,7 +914,7 @@ export function MapLibreGlobe() {
         })
         .catch((err: unknown) => {
           // A failed refresh keeps the last good alerts on screen.
-          if (alertsLoaded) return
+          if (disposed || alertsLoaded) return
           setAlertsStatus('error')
           setAlertsErrorMessage(describeAlertsFetchOutcome(err))
         })
@@ -921,6 +927,7 @@ export function MapLibreGlobe() {
     })
 
     return () => {
+      disposed = true
       readyObserver.disconnect()
       unregisterDismisser()
       canvas.removeEventListener('keydown', onCanvasKeyDown)

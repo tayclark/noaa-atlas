@@ -178,6 +178,8 @@ async function answer(part: string, respond: () => Response | Error) {
   })
 }
 
+const SWPC = 'services.swpc.noaa.gov'
+const ALERTS = 'api.weather.gov/alerts'
 const SPC = 'www.spc.noaa.gov'
 const NHC = 'NHC_tropical_weather_summary'
 
@@ -222,7 +224,32 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+const clickGlobe = (map: StubMap) =>
+  act(() => map.fire('click', { originalEvent: { timeStamp: 1000 }, point: { x: 100, y: 100 }, lngLat: { lng: -95, lat: 38 } }))
+
 describe('MapLibreGlobe lifecycle (#354)', () => {
+  it('a space weather or alerts response after unmount touches no map', async () => {
+    const { map, unmount } = renderGlobe()
+    expect(fetched(SWPC)).toBeGreaterThan(0)
+    expect(fetched(ALERTS)).toBe(1)
+    unmount()
+    expect(map.removed).toBe(true)
+    const before = map.calls.length
+    await answer(SWPC, () => new Response('[]'))
+    await answer(ALERTS, () => new Response(JSON.stringify({ type: 'FeatureCollection', features: [] })))
+    expect(map.calls.slice(before)).toEqual([])
+  })
+
+  it('a point lookup that lands after its popup was closed leaves it alone', async () => {
+    const { map } = renderGlobe()
+    clickGlobe(map)
+    const popup = popups[popups.length - 1]!
+    const htmlCalls = popup.setHTML.mock.calls.length
+    act(() => void popup.remove())
+    await answer('api.weather.gov/points', () => new Error('offline'))
+    expect(popup.setHTML.mock.calls.length).toBe(htmlCalls)
+  })
+
   it.each([
     ['SPC outlook', 'spc-gis-data', SPC, SPC_REFRESH_MS],
     ['storm tracks', 'nhc-active-storms', NHC, NHC_REFRESH_MS],
