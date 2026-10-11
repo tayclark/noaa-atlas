@@ -25,6 +25,7 @@ import {
   getHighlightedNodeIds,
   getSelectedTaskPath,
   getSelectionSnapshot,
+  hasSelection,
   selectNode,
   subscribeSelection,
 } from '../../data/selectionStore'
@@ -257,10 +258,7 @@ export function GraphView() {
       const hit = nearestNodeWithin(hittable, { x: event.clientX - rect.left, y: event.clientY - rect.top }, zoomTransform(svgEl), TAP_REACH_PX)
       setLegendOpen(false)
       if (hit) selectNode(hit)
-      else {
-        const { selectedNodeId, selectedPoint, selectedTaskId } = getSelectionSnapshot()
-        if (selectedNodeId || selectedPoint || selectedTaskId) clearSelection()
-      }
+      else if (hasSelection()) clearSelection()
     }
     const cancel = () => {
       tap = null
