@@ -6,6 +6,7 @@ import { decodeWaveField, resetGribWorkerFactory, setGribWorkerFactoryForTests }
 import { fromWireError, toWireError, type DecodeReply, type DecodeRequest } from './gribWire'
 
 const waveBuffer = () => Uint8Array.from(atob(waveB64.trim()), (c) => c.charCodeAt(0)).buffer
+const notGrib = () => new ArrayBuffer(8)
 const field = (ni: number): GribField => ({ ni, nj: 1, lat1: 0, lon1: 0, di: 1, dj: 1, southToNorth: false, values: new Float32Array(ni) })
 
 /** A stand-in Worker: records requests and lets the test reply or fail it. */
@@ -46,9 +47,12 @@ describe('decodeWaveField', () => {
     expect([decoded.ni, decoded.nj]).toEqual([1440, 721])
   })
 
+  // The routing tests below decode a buffer the decoder rejects at once: the fake worker never
+  // replies, so a Grib2Error shows the job ran in-thread, without paying for a full JPEG 2000
+  // decode (seconds under coverage and load) in each of them. The test above decodes for real.
   it('decodes in-thread when there is no worker factory', async () => {
     setGribWorkerFactoryForTests(null)
-    expect((await decodeWaveField(waveBuffer())).ni).toBe(1440)
+    await expect(decodeWaveField(notGrib())).rejects.toBeInstanceOf(Grib2Error)
   })
 
   it('posts to one worker and matches concurrent replies by id', async () => {
@@ -83,26 +87,27 @@ describe('decodeWaveField', () => {
 
   it('falls back in-thread for pending and later requests when the worker fails to start', async () => {
     const { fake, factory } = useFakeWorker()
-    const pending = decodeWaveField(waveBuffer())
+    const pending = decodeWaveField(notGrib())
     fake.emit('error')
     expect(fake.terminated).toBe(true)
-    expect((await pending).ni).toBe(1440)
-    expect((await decodeWaveField(waveBuffer())).ni).toBe(1440)
+    await expect(pending).rejects.toBeInstanceOf(Grib2Error)
+    await expect(decodeWaveField(notGrib())).rejects.toBeInstanceOf(Grib2Error)
+    expect(fake.requests).toHaveLength(1)
     expect(factory).toHaveBeenCalledTimes(1)
   })
 
   it('falls back in-thread when a reply cannot be deserialised', async () => {
     const { fake } = useFakeWorker()
-    const pending = decodeWaveField(waveBuffer())
+    const pending = decodeWaveField(notGrib())
     fake.emit('messageerror')
-    expect((await pending).ni).toBe(1440)
+    await expect(pending).rejects.toBeInstanceOf(Grib2Error)
   })
 
   it('falls back in-thread when the worker constructor throws', async () => {
     setGribWorkerFactoryForTests(() => {
       throw new Error('SecurityError')
     })
-    expect((await decodeWaveField(waveBuffer())).ni).toBe(1440)
+    await expect(decodeWaveField(notGrib())).rejects.toBeInstanceOf(Grib2Error)
   })
 
   it('rejects a decode still waiting on the worker when the factory is swapped', async () => {
