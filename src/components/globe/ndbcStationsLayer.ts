@@ -2,7 +2,11 @@
 // GeoJSON and popup text are unit-testable, as with coopsStationsLayer.ts.
 
 import type { NdbcStation } from '../../data/ndbcStations'
+import type { LayerGroup } from './mapLayers'
 import { escapeHtml } from './popupHtml'
+
+export const NDBC_SOURCE_ID = 'ndbc-stations'
+export const NDBC_LAYER_ID = 'ndbc-stations-circle'
 
 export interface NdbcProperties {
   id: string
@@ -33,4 +37,26 @@ export function formatNdbcPopupHtml({ id, name }: NdbcProperties): string {
     `NDBC buoy ${escapeHtml(id)}`,
     `<a href="${page}" target="_blank" rel="noreferrer">NDBC station page</a>`,
   ].join('<br/>')
+}
+
+/** The buoy dots, empty and hidden until the NDBC node is selected and the list has loaded. */
+export function ndbcStationLayers(): LayerGroup {
+  return {
+    sourceId: NDBC_SOURCE_ID,
+    source: { type: 'geojson', data: ndbcStationsToGeoJSON([]) },
+    layers: [
+      {
+        id: NDBC_LAYER_ID,
+        type: 'circle',
+        source: NDBC_SOURCE_ID,
+        layout: { visibility: 'none' },
+        paint: {
+          'circle-color': '#0f766e',
+          'circle-radius': 4,
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 1,
+        },
+      },
+    ],
+  }
 }

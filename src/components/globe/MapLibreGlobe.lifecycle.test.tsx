@@ -9,8 +9,11 @@ import { clearSelection, selectNode } from '../../data/selectionStore'
 import { clearView, showView } from '../../data/viewStore'
 import { clearSpcCache, SPC_REFRESH_MS } from '../../data/spcClient'
 import { clearNhcCache, NHC_REFRESH_MS } from '../../data/nhcClient'
-import { clearSwpcCache } from '../../data/swpcClient'
+import { clearSwpcCache, SWPC_REFRESH_MS } from '../../data/swpcClient'
 import { clearNwsCache } from '../../data/nwsClient'
+import { makeAlertCollection } from '../../data/nwsFixtures'
+import { makeKp1m, makeOvation } from '../../data/swpcFixtures'
+import { ALERTS_REFRESH_MS, ALERTS_RETRY_MS } from './nwsAlertsLayer'
 import { loadDartStations } from '../../data/dartStations'
 import { loadNdbcStations } from '../../data/ndbcStations'
 
@@ -30,7 +33,13 @@ class StubMap {
   removed = false
   handlers = new Map<string, Handler[]>()
   sources = new Map<string, StubSource>()
+  /** Each source's spec as it was added, by id. */
+  sourceSpecs = new Map<string, Record<string, unknown>>()
   layers = new Set<string>()
+  /** The layers bottom to top, as MapLibre would stack them given each add's beforeId. */
+  order: string[] = []
+  /** Each layer's current visibility. */
+  visibility = new Map<string, string>()
   canvas = document.createElement('canvas')
   container: HTMLElement
   touchZoomRotate = { disableRotation: vi.fn() }
@@ -54,13 +63,18 @@ class StubMap {
     for (const handler of this.handlers.get(event) ?? []) handler(...args)
   }
   addControl = vi.fn()
-  addSource(id: string) {
+  addSource(id: string, spec: Record<string, unknown>) {
     this.record('addSource')
     this.sources.set(id, new StubSource())
+    this.sourceSpecs.set(id, spec)
   }
-  addLayer(layer: { id: string }) {
+  addLayer(layer: { id: string; layout?: { visibility?: string } }, beforeId?: string) {
     this.record('addLayer')
     this.layers.add(layer.id)
+    const at = beforeId === undefined ? -1 : this.order.indexOf(beforeId)
+    if (at === -1) this.order.push(layer.id)
+    else this.order.splice(at, 0, layer.id)
+    this.visibility.set(layer.id, layer.layout?.visibility ?? 'visible')
   }
   getSource(id: string) {
     return this.sources.get(id)
@@ -68,8 +82,9 @@ class StubMap {
   getLayer(id: string) {
     return this.layers.has(id) ? { id } : undefined
   }
-  setLayoutProperty() {
+  setLayoutProperty(id: string, name: string, value: string) {
     this.record('setLayoutProperty')
+    if (name === 'visibility') this.visibility.set(id, value)
   }
   setPaintProperty() {
     this.record('setPaintProperty')
@@ -334,5 +349,153 @@ describe('MapLibreGlobe lifecycle (#354)', () => {
       await act(async () => selectNode(node))
       expect(globe().getAttribute(attribute)).toBe('0')
     }
+  })
+
+  // The z-order every layer module's specs must keep (#354): bottom first, the overlays' canvases in
+  // their slots, and the alerts and aurora on top when they arrive.
+  const LOAD_ORDER = [
+    'selected-coverage-fill',
+    'selected-coverage-line',
+    'nowcoast-radar-raster',
+    'wind-shading-raster',
+    'wind-particles-raster',
+    'wave-shading-raster',
+    'spc-outlook-fill',
+    'spc-outlook-line',
+    'arcgis-charts-layer',
+    'arcgis-raster-layer',
+    'arcgis-vector-layer',
+    'arcgis-habitat-layer',
+    'goes-satellite-raster',
+    'gfs-reflectivity-raster',
+    'nhc-tracks-cone-fill',
+    'nhc-tracks-cone-line',
+    'nhc-tracks-past',
+    'nhc-tracks-forecast',
+    'nhc-tracks-trail-casing',
+    'nhc-tracks-trail',
+    'nhc-tracks-fix',
+    'nhc-tracks-marker',
+    'coops-stations-circle',
+    'dart-stations-circle',
+    'ndbc-stations-circle',
+  ]
+  const json = (body: unknown) => () => new Response(JSON.stringify(body))
+
+  it('stacks its layers in a fixed order, the aurora going under alerts that arrived first', async () => {
+    const { map } = renderGlobe()
+    expect(map.order).toEqual(LOAD_ORDER)
+    await answer(ALERTS, json(makeAlertCollection([])))
+    expect(map.order).toEqual([...LOAD_ORDER, 'nws-alerts-fill', 'nws-alerts-line'])
+    await answer('planetary_k_index', json(makeKp1m()))
+    await answer('ovation_aurora', json(makeOvation()))
+    expect(map.order).toEqual([...LOAD_ORDER, 'swpc-aurora-raster', 'nws-alerts-fill', 'nws-alerts-line'])
+  })
+
+  it('stacks alerts that arrive after the aurora on top of it', async () => {
+    const { map } = renderGlobe()
+    await answer('ovation_aurora', json(makeOvation()))
+    await answer(ALERTS, json(makeAlertCollection([])))
+    expect(map.order).toEqual([...LOAD_ORDER, 'swpc-aurora-raster', 'nws-alerts-fill', 'nws-alerts-line'])
+  })
+
+  it('shows a pointer over the stations and the alerts', async () => {
+    const { map } = renderGlobe()
+    await answer(ALERTS, json(makeAlertCollection([])))
+    for (const layer of ['coops-stations-circle', 'dart-stations-circle', 'ndbc-stations-circle', 'nws-alerts-fill']) {
+      map.fire(`mouseenter:${layer}`)
+      expect(map.canvas.style.cursor).toBe('pointer')
+      map.fire(`mouseleave:${layer}`)
+      expect(map.canvas.style.cursor).toBe('')
+    }
+  })
+
+  it.each([
+    ['nowcoast-map-services', ['nowcoast-radar-raster']],
+    ['spc-gis-data', ['spc-outlook-fill', 'spc-outlook-line']],
+    ['ndbc-dart-realtime', ['dart-stations-circle']],
+    ['ndbc-realtime', ['ndbc-stations-circle']],
+    ['nws-raster-map-services', ['arcgis-raster-layer']],
+    [
+      'nhc-active-storms',
+      [
+        'nhc-tracks-cone-fill',
+        'nhc-tracks-cone-line',
+        'nhc-tracks-past',
+        'nhc-tracks-forecast',
+        'nhc-tracks-trail-casing',
+        'nhc-tracks-trail',
+        'nhc-tracks-fix',
+        'nhc-tracks-marker',
+      ],
+    ],
+  ])('shows the layers of %s only while it is selected', async (node, layers) => {
+    vi.mocked(loadDartStations).mockResolvedValue([])
+    vi.mocked(loadNdbcStations).mockResolvedValue([])
+    const { map } = renderGlobe()
+    // Its siblings (the other ArcGIS overlays, say) stay hidden.
+    const shown = () => LOAD_ORDER.filter((id) => map.visibility.get(id) !== 'none' && id.startsWith(layers[0]!.split('-')[0]!))
+    for (const id of layers) expect(map.visibility.get(id)).toBe('none')
+    await act(async () => selectNode(node))
+    for (const id of layers) expect(map.visibility.get(id)).toBe('visible')
+    expect(shown()).toEqual(layers.filter((id) => !id.startsWith('selected-')))
+    await act(async () => selectNode('nws-api'))
+    for (const id of layers) expect(map.visibility.get(id)).toBe('none')
+  })
+
+  it('retries a failed first alerts load sooner, and keeps the alerts when a later refresh fails', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
+    vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
+    const { container } = renderGlobe()
+    const status = () => container.querySelector('[aria-label="Alerts status"]')?.textContent ?? null
+    await answer(ALERTS, () => new Response(null, { status: 503 }))
+    expect(status()).not.toBeNull()
+    expect(status()).not.toBe('No active alerts.')
+    act(() => vi.advanceTimersByTime(ALERTS_RETRY_MS))
+    expect(fetched(ALERTS)).toBe(2)
+    await answer(ALERTS, json(makeAlertCollection([])))
+    expect(status()).toBe('No active alerts.')
+    // No more fast retries once loaded; the normal refresh fails and the alerts stay.
+    clearNwsCache()
+    act(() => vi.advanceTimersByTime(ALERTS_RETRY_MS))
+    expect(fetched(ALERTS)).toBe(2)
+    act(() => vi.advanceTimersByTime(ALERTS_REFRESH_MS))
+    expect(fetched(ALERTS)).toBe(3)
+    await answer(ALERTS, () => new Response(null, { status: 503 }))
+    expect(status()).toBe('No active alerts.')
+  })
+
+  it('shows a space weather error only until the first good load, then keeps it through failed refreshes', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
+    vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
+    const { container, globe } = renderGlobe()
+    const readout = () => container.querySelector('[aria-label="Geomagnetic activity"]')?.textContent ?? null
+    expect(readout()).toBeNull()
+    await answer('planetary_k_index', () => new Response(null, { status: 503 }))
+    await answer('ovation_aurora', () => new Response(null, { status: 503 }))
+    expect(readout()).toContain('Aurora forecast:')
+    expect(globe().getAttribute('data-aurora-cells')).toBeNull()
+    clearSwpcCache()
+    act(() => vi.advanceTimersByTime(SWPC_REFRESH_MS))
+    await answer('planetary_k_index', json(makeKp1m()))
+    await answer('ovation_aurora', json(makeOvation()))
+    expect(readout()).toContain('Kp 3')
+    expect(readout()).not.toContain('Aurora forecast:')
+    expect(globe().getAttribute('data-aurora-cells')).toBe('2')
+    clearSwpcCache()
+    act(() => vi.advanceTimersByTime(SWPC_REFRESH_MS))
+    await answer(SWPC, () => new Response(null, { status: 503 }))
+    expect(readout()).toContain('Kp 3')
+    expect(readout()).not.toContain('Aurora forecast:')
+    expect(globe().getAttribute('data-aurora-cells')).toBe('2')
+  })
+
+  it('brightens the aurora while its node is selected', async () => {
+    const { map } = renderGlobe()
+    const paint = vi.spyOn(map, 'setPaintProperty')
+    await answer('ovation_aurora', json(makeOvation()))
+    expect(paint).toHaveBeenLastCalledWith('swpc-aurora-raster', 'raster-opacity', 0.75)
+    act(() => selectNode('swpc-ovation-aurora'))
+    expect(paint).toHaveBeenLastCalledWith('swpc-aurora-raster', 'raster-opacity', 1)
   })
 })

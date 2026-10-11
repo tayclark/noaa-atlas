@@ -4,10 +4,23 @@
 import { describeClientError } from '../../data/clientErrors'
 import { coopsErrors } from '../../data/coopsClient'
 import type { CoopsReading, CoopsResult, CoopsStation, CoopsTide } from '../../data/coopsSchema'
+import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec'
+import type { LayerGroup } from './mapLayers'
 import { escapeHtml } from './popupHtml'
 
 /** Below this zoom the ~300 stations would read as noise on the globe, so the layer stays hidden. */
 export const COOPS_MIN_ZOOM = 3
+
+export const COOPS_SOURCE_ID = 'coops-stations'
+export const COOPS_LAYER_ID = 'coops-stations-circle'
+/** [zoom, radius] stops for the dots, a little larger while the CO-OPS Data API node is selected. */
+export const COOPS_RADIUS: [number, number][] = [
+  [COOPS_MIN_ZOOM, 3],
+  [8, 6],
+]
+export const COOPS_RADIUS_SELECTED = COOPS_RADIUS.map(([zoom, radius]): [number, number] => [zoom, radius + 2])
+export const coopsRadius = (stops: [number, number][]) =>
+  ['interpolate', ['linear'], ['zoom'], ...stops.flat()] as ExpressionSpecification
 
 export interface StationProperties {
   id: string
@@ -97,3 +110,25 @@ export function formatStationPopupHtml(
 // CO-OPS's disclaimer: raw data hasn't had National Ocean Service quality control (see the README's
 // data terms).
 const PRELIMINARY_NOTE = '<br/><span style="opacity: 0.7">Preliminary data, not quality-controlled.</span>'
+
+/** The static station dots, drawn from regional zoom (COOPS_MIN_ZOOM); no fetch is needed. */
+export function coopsStationLayers(stations: readonly CoopsStation[]): LayerGroup {
+  return {
+    sourceId: COOPS_SOURCE_ID,
+    source: { type: 'geojson', data: stationsToGeoJSON(stations) },
+    layers: [
+      {
+        id: COOPS_LAYER_ID,
+        type: 'circle',
+        source: COOPS_SOURCE_ID,
+        minzoom: COOPS_MIN_ZOOM,
+        paint: {
+          'circle-color': '#0b6fb8',
+          'circle-radius': coopsRadius(COOPS_RADIUS),
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 1.5,
+        },
+      },
+    ],
+  }
+}

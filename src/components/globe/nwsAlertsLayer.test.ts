@@ -4,6 +4,9 @@ import { parseAlertCollection } from '../../data/nwsSchema'
 import { makeAlertCollection, makeAlertFeature } from '../../data/nwsFixtures'
 import {
   alertEmphasis,
+  alertLayers,
+  ALERTS_FILL_LAYER_ID,
+  ALERTS_LINE_LAYER_ID,
   ALERTS_REFRESH_MS,
   ALERTS_RETRY_MS,
   ALERT_SEVERITY_COLORS,
@@ -172,5 +175,19 @@ describe('alertEmphasis', () => {
 
   it('lets the alerts win when a task or hub lights both', () => {
     expect(alertEmphasis(['nhc-tracks', 'nws-alerts'], true).level).toBe('highlighted')
+  })
+})
+
+describe('alertLayers', () => {
+  it('fills and outlines the mapped alerts by severity, at the given emphasis', () => {
+    const mappable = { type: 'FeatureCollection' as const, features: [] }
+    const emphasis = alertEmphasis(['nws-alerts'], false)
+    const group = alertLayers(mappable, emphasis)
+    expect(group.source).toEqual({ type: 'geojson', data: mappable })
+    expect(group.layers.map((layer) => layer.id)).toEqual([ALERTS_FILL_LAYER_ID, ALERTS_LINE_LAYER_ID])
+    expect(group.layers.map((layer) => layer.paint)).toEqual([
+      { 'fill-color': alertSeverityColorExpression(), 'fill-opacity': emphasis.fillOpacity },
+      { 'line-color': alertSeverityColorExpression(), 'line-width': emphasis.lineWidth },
+    ])
   })
 })

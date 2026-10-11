@@ -1,4 +1,4 @@
-import { GeolocateControl, LngLat, Map as MapLibreMap, Marker, Popup, type CanvasSource, type ExpressionSpecification, type GeoJSONSource, type LngLatLike, type MapGeoJSONFeature, type MapMouseEvent, type PopupOptions, type RasterTileSource } from 'maplibre-gl'
+import { GeolocateControl, LngLat, Map as MapLibreMap, Marker, Popup, type CanvasSource, type GeoJSONSource, type LngLatLike, type MapGeoJSONFeature, type MapMouseEvent, type PopupOptions, type RasterTileSource } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import './GlobePane.css'
@@ -33,22 +33,21 @@ import {
 import { StormTrackControl } from './StormTrackControl'
 import {
   describeGoesFrame,
-  GOES_ATTRIBUTION,
   GOES_CAPABILITIES_URL,
   GOES_FRAMES_REFRESH_MS,
-  GOES_OPACITY,
-  GOES_TILE_SIZE,
+  GOES_LAYER_ID,
+  GOES_SOURCE_ID,
   GOES_TILE_URL,
   goesFrameForTime,
+  goesLayers,
   goesTileUrl,
   parseGoesFrames,
 } from './goesSatelliteLayer'
 import { getArcgisLegend } from '../../data/arcgisClient'
 import {
   ARCGIS_OVERLAYS,
-  ARCGIS_TILE_SIZE,
-  arcgisExportTileUrl,
   arcgisLegendSections,
+  arcgisOverlayLayers,
   arcgisOverlaysFor,
   describeArcgisFetchOutcome,
   legendEntriesFor,
@@ -62,38 +61,44 @@ import { loadNdbcStations } from '../../data/ndbcStations'
 import { getOvationAurora, getPlanetaryKp, SWPC_REFRESH_MS } from '../../data/swpcClient'
 import type { SwpcOvation } from '../../data/swpcSchema'
 import {
-  COOPS_MIN_ZOOM,
+  COOPS_LAYER_ID,
+  COOPS_RADIUS,
+  COOPS_RADIUS_SELECTED,
+  coopsRadius,
+  coopsStationLayers,
   formatStationLoadingHtml,
   formatStationPopupHtml,
-  stationsToGeoJSON,
   type StationProperties,
 } from './coopsStationsLayer'
-import { dartStationsToGeoJSON, formatDartPopupHtml, type DartProperties } from './dartStationsLayer'
+import { DART_LAYER_ID, DART_SOURCE_ID, dartStationLayers, dartStationsToGeoJSON, formatDartPopupHtml, type DartProperties } from './dartStationsLayer'
 import {
-  SPC_FILL_OPACITY,
+  SPC_FILL_LAYER_ID,
+  SPC_LAYER_IDS,
+  SPC_SOURCE_ID,
   categoriesInOutlook,
   describeSpcFetchOutcome,
   formatOutlookPopupHtml,
   isOutlookEmpty,
+  spcOutlookLayers,
   type SpcCategory,
 } from './spcOutlookLayer'
-import { ndbcStationsToGeoJSON, formatNdbcPopupHtml, type NdbcProperties } from './ndbcStationsLayer'
+import { NDBC_LAYER_ID, NDBC_SOURCE_ID, ndbcStationLayers, ndbcStationsToGeoJSON, formatNdbcPopupHtml, type NdbcProperties } from './ndbcStationsLayer'
+import { NHC_FIX_LAYER_ID, NHC_LAYER_IDS, NHC_SOURCE_ID, nhcTrackLayers } from './nhcTracksLayer'
+import { coverageLayers, COVERAGE_SOURCE_ID } from './coverageLayer'
 import {
-  AURORA_RASTER_COORDINATES,
+  AURORA_LAYER_ID,
+  AURORA_OPACITY,
+  AURORA_OPACITY_SELECTED,
+  AURORA_SOURCE_ID,
   auroraAt,
+  auroraLayers,
   auroraRaster,
   describeSwpcFetchOutcome,
   formatAuroraPopupHtml,
 } from './auroraLayer'
 import { prefersReducedMotion } from '../prefersReducedMotion'
 import { describeKp, type KpReadout } from './kpReadout'
-import {
-  NOWCOAST_RADAR_ATTRIBUTION,
-  NOWCOAST_RADAR_OPACITY,
-  NOWCOAST_RADAR_TILE_SIZE,
-  NOWCOAST_RADAR_TILE_URL,
-  radarTileUrl,
-} from './nowcoastRadarLayer'
+import { NOWCOAST_RADAR_TILE_URL, RADAR_LAYER_ID, RADAR_SOURCE_ID, radarLayers, radarTileUrl } from './nowcoastRadarLayer'
 import { RadarTimeControl } from './RadarTimeControl'
 import { createWaveOverlay, type WaveOverlay } from './waveOverlay'
 import { createCanvasShadingOverlay, type CanvasShadingOverlay } from './canvasShadingOverlay'
@@ -122,10 +127,13 @@ import {
   US_CENTER,
 } from './globeConfig'
 import {
+  ALERTS_FILL_LAYER_ID,
+  ALERTS_LINE_LAYER_ID,
   ALERTS_REFRESH_MS,
   ALERTS_RETRY_MS,
+  ALERTS_SOURCE_ID,
   alertEmphasis,
-  alertSeverityColorExpression,
+  alertLayers,
   describeAlertForPopup,
   describeAlertsFetchOutcome,
   formatAlertPopupHtml,
@@ -146,95 +154,24 @@ import { describeSelectionForGlobe, type GlobeViewContext } from './selectionGlo
 import { clearSelection, subscribeSelection, getSelectionSnapshot, selectPoint } from '../../data/selectionStore'
 import { getViewSnapshot, resolveView, subscribeView } from '../../data/viewStore'
 import { useNarrowLayout } from '../useNarrowLayout'
+import { addLayerGroup, addPointerCursor, setLayersVisible } from './mapLayers'
+import { failedWith, loadedWith, LOADING, type AsyncState } from './asyncState'
 
 // Beyond this many zone-only alerts, the overlay collapses the rest behind a "N more" toggle
 // rather than growing unbounded during a high-volume event (#106).
 const ZONE_ONLY_ALERTS_CAP = 5
 
-const ALERTS_SOURCE_ID = 'nws-alerts'
-const ALERTS_FILL_LAYER_ID = 'nws-alerts-fill'
-const ALERTS_LINE_LAYER_ID = 'nws-alerts-line'
-
-// The selection's coverage footprint (#149), drawn under the alerts in each service's theme colour.
-const COVERAGE_SOURCE_ID = 'selected-coverage'
-const COVERAGE_FILL_LAYER_ID = 'selected-coverage-fill'
-const COVERAGE_LINE_LAYER_ID = 'selected-coverage-line'
 // Matches the `@container globe (max-width: 480px)` rules in MapLibreGlobe.css (#159).
 const NARROW_GLOBE_WIDTH = 480
-// The US outlines are derived from Natural Earth (public domain) and the Marine Regions EEZ, and the
-// ocean basins from Marine Regions' Global Oceans and Seas; their CC BY 4.0 licence asks for credit
-// wherever they're shown (#163, #170).
-const COVERAGE_ATTRIBUTION =
-  'Coverage: <a href="https://www.naturalearthdata.com/">Natural Earth</a>, <a href="https://www.marineregions.org/">Marine Regions</a> (CC BY 4.0)'
-// The SWPC aurora forecast (#54, #158), a raster drawn under the alerts and brightened when selected.
-const AURORA_SOURCE_ID = 'swpc-aurora'
-const AURORA_LAYER_ID = 'swpc-aurora-raster'
-const AURORA_OPACITY = 0.75
-const AURORA_OPACITY_SELECTED = 1
 
-// The nowCOAST radar tiles (#56): a WMS raster that MapLibre fetches itself, hidden until the
-// nowCOAST node is selected so nothing is requested on load.
-const RADAR_SOURCE_ID = 'nowcoast-radar'
 const RADAR_FRAMES_REFRESH_MS = 5 * 60_000
+// Dragging a time slider doesn't refetch tiles for every frame it passes over.
 const RADAR_FRAME_DEBOUNCE_MS = 150
-const RADAR_LAYER_ID = 'nowcoast-radar-raster'
 
-// The CO-OPS tide stations (#51): static points from coopsStations.json, drawn from regional zoom
-// (COOPS_MIN_ZOOM) and enlarged when the CO-OPS Data API node is selected. Their water level and
-// predictions are fetched on click.
-const COOPS_SOURCE_ID = 'coops-stations'
-const COOPS_LAYER_ID = 'coops-stations-circle'
-const COOPS_RADIUS: [number, number][] = [
-  [COOPS_MIN_ZOOM, 3],
-  [8, 6],
-]
-const COOPS_RADIUS_SELECTED = COOPS_RADIUS.map(([zoom, radius]): [number, number] => [zoom, radius + 2])
-// The DART tsunami buoys (#80): a static snapshot, worldwide, drawn only while the NDBC DART node
-// is selected.
-// The SPC Day 1 convective outlook (#245): polygons coloured by the feed's own fill and stroke,
-// fetched and drawn only while the SPC node is selected.
-const SPC_SOURCE_ID = 'spc-outlook'
-const SPC_FILL_LAYER_ID = 'spc-outlook-fill'
-const SPC_LINE_LAYER_ID = 'spc-outlook-line'
-// The NHC storm tracks (#334): every active storm's cone, observed and forecast track, with a
-// marker the play control moves along the chosen storm. Fetched and drawn only while the NHC node is selected.
-const NHC_SOURCE_ID = 'nhc-tracks'
-// GOES infrared imagery under the tracks (#338), so a storm looks as it does on a satellite loop.
-const GOES_SOURCE_ID = 'goes-satellite'
-const GOES_LAYER_ID = 'goes-satellite-raster'
-const NHC_TRAIL_CASING_LAYER_ID = 'nhc-tracks-trail-casing'
-const NHC_CONE_FILL_LAYER_ID = 'nhc-tracks-cone-fill'
-const NHC_CONE_LINE_LAYER_ID = 'nhc-tracks-cone-line'
-const NHC_PAST_LAYER_ID = 'nhc-tracks-past'
-const NHC_FORECAST_LAYER_ID = 'nhc-tracks-forecast'
-const NHC_TRAIL_LAYER_ID = 'nhc-tracks-trail'
-const NHC_FIX_LAYER_ID = 'nhc-tracks-fix'
-const NHC_MARKER_LAYER_ID = 'nhc-tracks-marker'
 // GFS simulated radar along the forecast part of the storm slider (#340), where no satellite image exists yet.
 const REFC_SOURCE_ID = 'gfs-reflectivity'
 const REFC_LAYER_ID = 'gfs-reflectivity-raster'
-const NHC_LAYER_IDS = [
-  NHC_CONE_FILL_LAYER_ID,
-  NHC_CONE_LINE_LAYER_ID,
-  NHC_PAST_LAYER_ID,
-  NHC_FORECAST_LAYER_ID,
-  NHC_TRAIL_CASING_LAYER_ID,
-  NHC_TRAIL_LAYER_ID,
-  NHC_FIX_LAYER_ID,
-  NHC_MARKER_LAYER_ID,
-]
 const NO_STORMS: readonly StormTrack[] = []
-const nhcKind = (kind: string): ExpressionSpecification => ['==', ['get', 'kind'], kind]
-/** The chosen storm at full strength, the others faded. */
-const nhcSelected = (selected: number, other: number): ExpressionSpecification => ['case', ['get', 'selected'], selected, other]
-const DART_SOURCE_ID = 'dart-stations'
-const DART_LAYER_ID = 'dart-stations-circle'
-// The NDBC moored buoys: a static snapshot too, since NDBC sends no CORS headers. Drawn only while
-// the NDBC realtime node is selected.
-const NDBC_SOURCE_ID = 'ndbc-stations'
-const NDBC_LAYER_ID = 'ndbc-stations-circle'
-const coopsRadius = (stops: [number, number][]) =>
-  ['interpolate', ['linear'], ['zoom'], ...stops.flat()] as ExpressionSpecification
 
 // Worldwide coverage tints the whole globe, so the default view is kept rather than framing the world.
 const GLOBAL_VIEW_ZOOM = 1.5
@@ -366,12 +303,8 @@ export function MapLibreGlobe() {
   const [dartStations, setDartStations] = useState<number | 'error' | null>(null)
   const [ndbcStations, setNdbcStations] = useState<number | 'error' | null>(null)
   const [arcgisLegends, setArcgisLegends] = useState<Partial<Record<ArcgisOverlay['key'], ArcgisLegendState>>>({})
-  const [spc, setSpc] = useState<
-    { status: 'loading' } | { status: 'ok'; categories: SpcCategory[] } | { status: 'empty' } | { status: 'error'; message: string }
-  >({ status: 'loading' })
-  const [storms, setStorms] = useState<
-    { status: 'loading' } | { status: 'ok'; tracks: StormTrack[] } | { status: 'empty' } | { status: 'error'; message: string }
-  >({ status: 'loading' })
+  const [spc, setSpc] = useState<AsyncState<SpcCategory[]>>(LOADING)
+  const [storms, setStorms] = useState<AsyncState<StormTrack[]>>(LOADING)
   // The storm the track control drives, and its scrubbed time; null means the strongest storm and its latest advisory.
   const [stormBin, setStormBin] = useState<string | null>(null)
   const [stormTime, setStormTime] = useState<number | null>(null)
@@ -380,9 +313,7 @@ export function MapLibreGlobe() {
   // The impact prompt the reader closed, by point and storm, so it stays closed for that place.
   const [dismissedImpact, setDismissedImpact] = useState<string | null>(null)
   const [auroraError, setAuroraError] = useState<string | null>(null)
-  const [kp, setKp] = useState<{ status: 'loading' } | { status: 'ok'; readout: KpReadout } | { status: 'error'; message: string }>({
-    status: 'loading',
-  })
+  const [kp, setKp] = useState<AsyncState<KpReadout>>(LOADING)
   // The radar's chosen frame (#74) comes from the shared time (#228), so the radar and the point
   // forecast timeline scrub together; null follows the latest frame.
   const sharedTime = useSyncExternalStore(subscribeTime, getTimeSnapshot).time
@@ -526,81 +457,19 @@ export function MapLibreGlobe() {
       if (container && container.clientWidth <= NARROW_GLOBE_WIDTH) {
         container.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show')
       }
-      map.addSource(COVERAGE_SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: COVERAGE_ATTRIBUTION })
-      map.addLayer({
-        id: COVERAGE_FILL_LAYER_ID,
-        type: 'fill',
-        source: COVERAGE_SOURCE_ID,
-        paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.14 },
-      })
-      map.addLayer({
-        id: COVERAGE_LINE_LAYER_ID,
-        type: 'line',
-        source: COVERAGE_SOURCE_ID,
-        paint: { 'line-color': ['get', 'color'], 'line-width': 1.5 },
-      })
-      // Radar sits under the stations and the alerts. Hidden layers fetch no tiles.
-      map.addSource(RADAR_SOURCE_ID, {
-        type: 'raster',
-        tiles: [NOWCOAST_RADAR_TILE_URL],
-        tileSize: NOWCOAST_RADAR_TILE_SIZE,
-        attribution: NOWCOAST_RADAR_ATTRIBUTION,
-      })
-      map.addLayer({
-        id: RADAR_LAYER_ID,
-        type: 'raster',
-        source: RADAR_SOURCE_ID,
-        layout: { visibility: 'none' },
-        paint: { 'raster-opacity': NOWCOAST_RADAR_OPACITY, 'raster-fade-duration': 0 },
-      })
+      // Bottom first. The rasters sit under the storm tracks, the stations and then the alerts and
+      // aurora, which arrive later and go on top. Hidden layers fetch no tiles.
+      addLayerGroup(map, coverageLayers())
+      addLayerGroup(map, radarLayers())
       // The wind overlay (#229) draws over the radar and under the stations and alerts; it stays
       // hidden, and requests nothing, until the GFS node is selected.
       windRef.current = createWindOverlay(map, prefersReducedMotion())
       waveRef.current = createWaveOverlay(map)
-      // The SPC outlook (#245) sits over the wind and under the stations and alerts. It starts
-      // empty and hidden; the effect below fills it while the SPC node is selected.
-      map.addSource(SPC_SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
-      map.addLayer({
-        id: SPC_FILL_LAYER_ID,
-        type: 'fill',
-        source: SPC_SOURCE_ID,
-        layout: { visibility: 'none' },
-        paint: { 'fill-color': ['get', 'fill'], 'fill-opacity': SPC_FILL_OPACITY },
-      })
-      map.addLayer({
-        id: SPC_LINE_LAYER_ID,
-        type: 'line',
-        source: SPC_SOURCE_ID,
-        layout: { visibility: 'none' },
-        paint: { 'line-color': ['get', 'stroke'], 'line-width': 1.5 },
-      })
-      // ArcGIS overlays (#247) draw over the SPC outlook and under the stations and alerts. Hidden
-      // layers fetch no tiles, so nothing is requested until a node is selected.
-      for (const overlay of ARCGIS_OVERLAYS) {
-        map.addSource(overlay.sourceId, {
-          type: 'raster',
-          tiles: [arcgisExportTileUrl(overlay.serviceUrl, overlay.layerIdsInService)],
-          tileSize: ARCGIS_TILE_SIZE,
-          attribution: overlay.attribution,
-        })
-        map.addLayer({
-          id: overlay.layerId,
-          type: 'raster',
-          source: overlay.sourceId,
-          layout: { visibility: 'none' },
-          paint: { 'raster-opacity': overlay.opacity, 'raster-fade-duration': 0 },
-        })
-      }
-      // The storm tracks (#334) draw over the rasters and under the stations and alerts. Empty and
-      // hidden until the NHC node is selected.
-      map.addSource(GOES_SOURCE_ID, { type: 'raster', tiles: [GOES_TILE_URL], tileSize: GOES_TILE_SIZE, attribution: GOES_ATTRIBUTION })
-      map.addLayer({
-        id: GOES_LAYER_ID,
-        type: 'raster',
-        source: GOES_SOURCE_ID,
-        layout: { visibility: 'none' },
-        paint: { 'raster-opacity': GOES_OPACITY, 'raster-fade-duration': 0 },
-      })
+      // The SPC outlook (#245) over the wind, then the ArcGIS overlays (#247) in table order (#288).
+      addLayerGroup(map, spcOutlookLayers())
+      for (const overlay of ARCGIS_OVERLAYS) addLayerGroup(map, arcgisOverlayLayers(overlay))
+      // The storm view (#334, #338, #340): satellite or simulated radar under the tracks.
+      addLayerGroup(map, goesLayers())
       reflectivityRef.current = createCanvasShadingOverlay(map, {
         sourceId: REFC_SOURCE_ID,
         layerId: REFC_LAYER_ID,
@@ -608,139 +477,12 @@ export function MapLibreGlobe() {
         opacity: 0.9,
         render: renderReflectivity,
       })
-      map.addSource(NHC_SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
-      const nhcLayout = { visibility: 'none' as const }
-      map.addLayer({
-        id: NHC_CONE_FILL_LAYER_ID,
-        type: 'fill',
-        source: NHC_SOURCE_ID,
-        filter: nhcKind('cone'),
-        layout: nhcLayout,
-        paint: { 'fill-color': '#ffffff', 'fill-opacity': nhcSelected(0.22, 0.08) },
-      })
-      map.addLayer({
-        id: NHC_CONE_LINE_LAYER_ID,
-        type: 'line',
-        source: NHC_SOURCE_ID,
-        filter: nhcKind('cone'),
-        layout: nhcLayout,
-        paint: { 'line-color': '#ffffff', 'line-width': 1, 'line-opacity': nhcSelected(0.8, 0.3) },
-      })
-      map.addLayer({
-        id: NHC_PAST_LAYER_ID,
-        type: 'line',
-        source: NHC_SOURCE_ID,
-        filter: nhcKind('past'),
-        layout: { ...nhcLayout, 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-opacity': nhcSelected(0.6, 0.35) },
-      })
-      map.addLayer({
-        id: NHC_FORECAST_LAYER_ID,
-        type: 'line',
-        source: NHC_SOURCE_ID,
-        filter: nhcKind('forecast'),
-        layout: { ...nhcLayout, 'line-join': 'round' },
-        paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-dasharray': [2, 2], 'line-opacity': nhcSelected(0.6, 0.35) },
-      })
-      // A dark casing keeps the white trail readable over white cloud tops.
-      map.addLayer({
-        id: NHC_TRAIL_CASING_LAYER_ID,
-        type: 'line',
-        source: NHC_SOURCE_ID,
-        filter: nhcKind('trail'),
-        layout: { ...nhcLayout, 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#111827', 'line-width': 6, 'line-opacity': 0.8 },
-      })
-      map.addLayer({
-        id: NHC_TRAIL_LAYER_ID,
-        type: 'line',
-        source: NHC_SOURCE_ID,
-        filter: nhcKind('trail'),
-        layout: { ...nhcLayout, 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#ffffff', 'line-width': 3 },
-      })
-      map.addLayer({
-        id: NHC_FIX_LAYER_ID,
-        type: 'circle',
-        source: NHC_SOURCE_ID,
-        filter: nhcKind('fix'),
-        layout: nhcLayout,
-        paint: {
-          'circle-color': ['get', 'color'],
-          'circle-radius': nhcSelected(4, 3),
-          'circle-opacity': nhcSelected(1, 0.5),
-          'circle-stroke-color': '#111827',
-          'circle-stroke-width': 1,
-          'circle-stroke-opacity': nhcSelected(1, 0.5),
-        },
-      })
-      map.addLayer({
-        id: NHC_MARKER_LAYER_ID,
-        type: 'circle',
-        source: NHC_SOURCE_ID,
-        filter: nhcKind('marker'),
-        layout: nhcLayout,
-        // A ring, not a dot, so the eye on the satellite image shows through it.
-        paint: { 'circle-opacity': 0, 'circle-radius': 11, 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': 3 },
-      })
-      // Under the alerts, which are added later. Stations are static, so the layer needs no fetch.
-      map.addSource(COOPS_SOURCE_ID, { type: 'geojson', data: stationsToGeoJSON(COOPS_STATIONS) })
-      map.addLayer({
-        id: COOPS_LAYER_ID,
-        type: 'circle',
-        source: COOPS_SOURCE_ID,
-        minzoom: COOPS_MIN_ZOOM,
-        paint: {
-          'circle-color': '#0b6fb8',
-          'circle-radius': coopsRadius(COOPS_RADIUS),
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 1.5,
-        },
-      })
-      map.on('mouseenter', COOPS_LAYER_ID, () => {
-        map.getCanvas().style.cursor = 'pointer'
-      })
-      map.on('mouseleave', COOPS_LAYER_ID, () => {
-        map.getCanvas().style.cursor = ''
-      })
-      map.addSource(DART_SOURCE_ID, { type: 'geojson', data: dartStationsToGeoJSON([]) })
-      map.addLayer({
-        id: DART_LAYER_ID,
-        type: 'circle',
-        source: DART_SOURCE_ID,
-        layout: { visibility: 'none' },
-        paint: {
-          'circle-color': '#c2410c',
-          'circle-radius': 5,
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 1.5,
-        },
-      })
-      map.on('mouseenter', DART_LAYER_ID, () => {
-        map.getCanvas().style.cursor = 'pointer'
-      })
-      map.on('mouseleave', DART_LAYER_ID, () => {
-        map.getCanvas().style.cursor = ''
-      })
-      map.addSource(NDBC_SOURCE_ID, { type: 'geojson', data: ndbcStationsToGeoJSON([]) })
-      map.addLayer({
-        id: NDBC_LAYER_ID,
-        type: 'circle',
-        source: NDBC_SOURCE_ID,
-        layout: { visibility: 'none' },
-        paint: {
-          'circle-color': '#0f766e',
-          'circle-radius': 4,
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 1,
-        },
-      })
-      map.on('mouseenter', NDBC_LAYER_ID, () => {
-        map.getCanvas().style.cursor = 'pointer'
-      })
-      map.on('mouseleave', NDBC_LAYER_ID, () => {
-        map.getCanvas().style.cursor = ''
-      })
+      addLayerGroup(map, nhcTrackLayers())
+      // CO-OPS stations are static, so their layer needs no fetch; the buoys load when first shown.
+      addLayerGroup(map, coopsStationLayers(COOPS_STATIONS))
+      addLayerGroup(map, dartStationLayers())
+      addLayerGroup(map, ndbcStationLayers())
+      addPointerCursor(map, STATION_LAYER_IDS)
       setMapLoaded(true)
 
       // Every tap or click on the map (#39, #51, #78). One handler decides what it meant, so only one
@@ -821,17 +563,8 @@ export function MapLibreGlobe() {
               auroraCanvas.width = raster.width
               auroraCanvas.height = raster.height
               auroraCanvas.getContext('2d')?.putImageData(new ImageData(raster.data, raster.width, raster.height), 0, 0)
-              map.addSource(AURORA_SOURCE_ID, { type: 'canvas', canvas: auroraCanvas, coordinates: AURORA_RASTER_COORDINATES, animate: false })
               // Under the alerts if they're already drawn; if they arrive later they're added on top anyway.
-              map.addLayer(
-                {
-                  id: AURORA_LAYER_ID,
-                  type: 'raster',
-                  source: AURORA_SOURCE_ID,
-                  paint: { 'raster-opacity': AURORA_OPACITY, 'raster-resampling': 'linear', 'raster-fade-duration': 0 },
-                },
-                map.getLayer(ALERTS_FILL_LAYER_ID) ? ALERTS_FILL_LAYER_ID : undefined,
-              )
+              addLayerGroup(map, auroraLayers(auroraCanvas), map.getLayer(ALERTS_FILL_LAYER_ID) ? ALERTS_FILL_LAYER_ID : undefined)
             } else {
               auroraCanvas.getContext('2d')?.putImageData(new ImageData(raster.data, raster.width, raster.height), 0, 0)
               // A non-animated canvas source only uploads its texture on load; play() then pause()
@@ -854,10 +587,10 @@ export function MapLibreGlobe() {
           (rows) => {
             if (disposed) return
             kpLoaded = true
-            setKp({ status: 'ok', readout: describeKp(rows) })
+            setKp(loadedWith(describeKp(rows)))
           },
           (err: unknown) => {
-            if (!disposed && !kpLoaded) setKp({ status: 'error', message: describeSwpcFetchOutcome(err) })
+            if (!disposed && !kpLoaded) setKp(failedWith(describeSwpcFetchOutcome(err)))
           },
         )
 
@@ -885,32 +618,8 @@ export function MapLibreGlobe() {
           }
           alertsLoaded = true
 
-          map.addSource(ALERTS_SOURCE_ID, { type: 'geojson', data: mappable })
-          map.addLayer({
-            id: ALERTS_FILL_LAYER_ID,
-            type: 'fill',
-            source: ALERTS_SOURCE_ID,
-            paint: {
-              'fill-color': alertSeverityColorExpression(),
-              'fill-opacity': alertEmphasisRef.current.fillOpacity,
-            },
-          })
-          map.addLayer({
-            id: ALERTS_LINE_LAYER_ID,
-            type: 'line',
-            source: ALERTS_SOURCE_ID,
-            paint: {
-              'line-color': alertSeverityColorExpression(),
-              'line-width': alertEmphasisRef.current.lineWidth,
-            },
-          })
-
-          map.on('mouseenter', ALERTS_FILL_LAYER_ID, () => {
-            map.getCanvas().style.cursor = 'pointer'
-          })
-          map.on('mouseleave', ALERTS_FILL_LAYER_ID, () => {
-            map.getCanvas().style.cursor = ''
-          })
+          addLayerGroup(map, alertLayers(mappable, alertEmphasisRef.current))
+          addPointerCursor(map, [ALERTS_FILL_LAYER_ID])
         })
         .catch((err: unknown) => {
           // A failed refresh keeps the last good alerts on screen.
@@ -1058,8 +767,7 @@ export function MapLibreGlobe() {
   const radarShown = liveLayers.includes('nowcoast-radar')
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded || !map.getLayer(RADAR_LAYER_ID)) return
-    map.setLayoutProperty(RADAR_LAYER_ID, 'visibility', radarShown ? 'visible' : 'none')
+    if (map && mapLoaded) setLayersVisible(map, [RADAR_LAYER_ID], radarShown)
   }, [radarShown, mapLoaded])
 
   // The radar's frame list (#74) is fetched while the layer is shown, and refreshed as frames age
@@ -1137,8 +845,8 @@ export function MapLibreGlobe() {
   if (!dartShown && dartStations === 'error') setDartStations(null)
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded || !map.getLayer(DART_LAYER_ID)) return
-    map.setLayoutProperty(DART_LAYER_ID, 'visibility', dartShown ? 'visible' : 'none')
+    if (!map || !mapLoaded) return
+    setLayersVisible(map, [DART_LAYER_ID], dartShown)
     if (!dartShown || dartStations !== null) return
     let cancelled = false
     loadDartStations()
@@ -1163,10 +871,8 @@ export function MapLibreGlobe() {
   const spcAtRef = useRef(0)
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded || !map.getLayer(SPC_FILL_LAYER_ID)) return
-    const visibility = spcShown ? 'visible' : 'none'
-    map.setLayoutProperty(SPC_FILL_LAYER_ID, 'visibility', visibility)
-    map.setLayoutProperty(SPC_LINE_LAYER_ID, 'visibility', visibility)
+    if (!map || !mapLoaded) return
+    setLayersVisible(map, SPC_LAYER_IDS, spcShown)
     if (!spcShown) return
     let cancelled = false
     let loaded = false
@@ -1177,10 +883,10 @@ export function MapLibreGlobe() {
           if (cancelled) return
           loaded = true
           map.getSource<GeoJSONSource>(SPC_SOURCE_ID)?.setData(outlook)
-          setSpc(isOutlookEmpty(outlook) ? { status: 'empty' } : { status: 'ok', categories: categoriesInOutlook(outlook) })
+          setSpc(isOutlookEmpty(outlook) ? { status: 'empty' } : loadedWith(categoriesInOutlook(outlook)))
         })
         .catch((err: unknown) => {
-          if (!cancelled && !loaded) setSpc({ status: 'error', message: describeSpcFetchOutcome(err) })
+          if (!cancelled && !loaded) setSpc(failedWith(describeSpcFetchOutcome(err)))
         })
     }
     loadSpcRef.current()
@@ -1189,7 +895,7 @@ export function MapLibreGlobe() {
       loadSpcRef.current = () => {}
       // An unmounted globe has removed its map already.
       if (mapRef.current === map) map.getSource<GeoJSONSource>(SPC_SOURCE_ID)?.setData({ type: 'FeatureCollection', features: [] })
-      setSpc({ status: 'loading' })
+      setSpc(LOADING)
     }
   }, [spcShown, mapLoaded])
   useEffect(() => {
@@ -1205,8 +911,7 @@ export function MapLibreGlobe() {
   const stormsWanted = nhcShown || selection.selectedPoint !== null
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded || !map.getLayer(NHC_FIX_LAYER_ID)) return
-    for (const id of NHC_LAYER_IDS) map.setLayoutProperty(id, 'visibility', nhcShown ? 'visible' : 'none')
+    if (map && mapLoaded) setLayersVisible(map, NHC_LAYER_IDS, nhcShown)
   }, [nhcShown, mapLoaded])
   const loadStormsRef = useRef<() => void>(() => {})
   const stormsAtRef = useRef(0)
@@ -1221,17 +926,17 @@ export function MapLibreGlobe() {
           if (cancelled) return
           loaded = true
           const tracks = buildStormTracks(data)
-          setStorms(tracks.length === 0 ? { status: 'empty' } : { status: 'ok', tracks })
+          setStorms(tracks.length === 0 ? { status: 'empty' } : loadedWith(tracks))
         })
         .catch((err: unknown) => {
-          if (!cancelled && !loaded) setStorms({ status: 'error', message: describeNhcFetchOutcome(err) })
+          if (!cancelled && !loaded) setStorms(failedWith(describeNhcFetchOutcome(err)))
         })
     }
     loadStormsRef.current()
     return () => {
       cancelled = true
       loadStormsRef.current = () => {}
-      setStorms({ status: 'loading' })
+      setStorms(LOADING)
     }
   }, [stormsWanted])
   useEffect(() => {
@@ -1240,7 +945,7 @@ export function MapLibreGlobe() {
     return pollWhileVisible(() => loadStormsRef.current(), NHC_REFRESH_MS)
   }, [stormsWanted, active])
 
-  const stormTracks = storms.status === 'ok' ? storms.tracks : NO_STORMS
+  const stormTracks = storms.status === 'ok' ? storms.data : NO_STORMS
   const storm = stormTracks.find((track) => track.bin === stormBin) ?? stormTracks[0] ?? null
   const stormFrames = useMemo(() => (storm ? frameTimes(storm) : []), [storm])
   const stormAdvisoryIndex = storm ? advisoryFrameIndex(stormFrames, storm) : 0
@@ -1292,8 +997,8 @@ export function MapLibreGlobe() {
   const reflectivityPair = reflectivity.status === 'idle' ? null : reflectivity.field
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded || !map.getLayer(GOES_LAYER_ID)) return
-    map.setLayoutProperty(GOES_LAYER_ID, 'visibility', stormFull && !stormInForecast ? 'visible' : 'none')
+    if (!map || !mapLoaded) return
+    setLayersVisible(map, [GOES_LAYER_ID], stormFull && !stormInForecast)
     reflectivityRef.current?.setVisible(stormInForecast)
   }, [stormFull, stormInForecast, mapLoaded])
   useEffect(() => {
@@ -1357,9 +1062,7 @@ export function MapLibreGlobe() {
     if (!map || !mapLoaded) return
     const keys = arcgisKey.split(' ')
     const overlays = ARCGIS_OVERLAYS.filter((overlay) => keys.includes(overlay.key))
-    for (const overlay of ARCGIS_OVERLAYS) {
-      if (map.getLayer(overlay.layerId)) map.setLayoutProperty(overlay.layerId, 'visibility', overlays.includes(overlay) ? 'visible' : 'none')
-    }
+    for (const overlay of ARCGIS_OVERLAYS) setLayersVisible(map, [overlay.layerId], overlays.includes(overlay))
     let cancelled = false
     const settle = (key: ArcgisOverlay['key'], state: ArcgisLegendState) => {
       if (!cancelled) setArcgisLegends((prev) => ({ ...prev, [key]: state }))
@@ -1381,8 +1084,8 @@ export function MapLibreGlobe() {
   if (!ndbcShown && ndbcStations === 'error') setNdbcStations(null)
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded || !map.getLayer(NDBC_LAYER_ID)) return
-    map.setLayoutProperty(NDBC_LAYER_ID, 'visibility', ndbcShown ? 'visible' : 'none')
+    if (!map || !mapLoaded) return
+    setLayersVisible(map, [NDBC_LAYER_ID], ndbcShown)
     if (!ndbcShown || ndbcStations !== null) return
     let cancelled = false
     loadNdbcStations()
@@ -1545,7 +1248,7 @@ export function MapLibreGlobe() {
           <div className="zone-only-alerts spc-legend storm-legend" role="status" aria-label="Storm track legend">
             <strong>Storm intensity</strong>
             <ul>
-              {categoriesInTracks(storms.tracks).map((category) => (
+              {categoriesInTracks(storms.data).map((category) => (
                 <li key={category.key} title={category.name}>
                   <span className="spc-legend-swatch storm-legend-swatch" style={{ background: category.color }} aria-hidden="true" />
                   <span aria-hidden="true">{categoryLabel(category)}</span>
@@ -1577,7 +1280,7 @@ export function MapLibreGlobe() {
           <div className="zone-only-alerts spc-legend" role="status" aria-label="Convective outlook legend">
             <strong>Day 1 convective outlook</strong>
             <ul>
-              {spc.categories.map((category) => (
+              {spc.data.map((category) => (
                 <li key={category.label}>
                   <span className="spc-legend-swatch" style={{ background: category.color }} aria-hidden="true" />
                   {category.name}
@@ -1690,8 +1393,8 @@ export function MapLibreGlobe() {
           >
             {kp.status === 'ok' && (
               <p>
-                <strong>Kp {kp.readout.kp}</strong> · {kp.readout.gScale} {kp.readout.label}{' '}
-                <span className="space-weather-readout-time">{kp.readout.time}</span>
+                <strong>Kp {kp.data.kp}</strong> · {kp.data.gScale} {kp.data.label}{' '}
+                <span className="space-weather-readout-time">{kp.data.time}</span>
               </p>
             )}
             {kp.status === 'error' && <p className="space-weather-readout-error">{kp.message}</p>}

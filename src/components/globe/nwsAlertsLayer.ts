@@ -7,12 +7,17 @@ import { describeClientError } from '../../data/clientErrors'
 import { nwsErrors } from '../../data/nwsClient'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
 import type { LiveLayerKey } from './liveLayers'
+import type { LayerGroup } from './mapLayers'
 import { escapeHtml } from './popupHtml'
 
 // The alerts are refreshed this often while the globe is looked at, and a failed first load is
 // retried sooner (#222).
 export const ALERTS_REFRESH_MS = 5 * 60_000
 export const ALERTS_RETRY_MS = 30_000
+
+export const ALERTS_SOURCE_ID = 'nws-alerts'
+export const ALERTS_FILL_LAYER_ID = 'nws-alerts-fill'
+export const ALERTS_LINE_LAYER_ID = 'nws-alerts-line'
 
 // Matches the --color-alert-danger/--color-alert-warning tokens in index.css (this module is
 // plain TS, not a component, so it can't read CSS custom properties directly).
@@ -134,4 +139,26 @@ export function alertEmphasis(liveLayers: readonly LiveLayerKey[], stormImagery:
   if (liveLayers.includes('nws-alerts')) return { level: 'highlighted', fillOpacity: 0.6, lineWidth: 3 }
   if (stormImagery) return { level: 'dimmed', fillOpacity: 0.08, lineWidth: 1.5 }
   return { level: 'normal', fillOpacity: 0.35, lineWidth: 1.5 }
+}
+
+/** The alert polygons, coloured by severity, at the selection's current emphasis. Added on top of everything once loaded. */
+export function alertLayers(mappable: NwsAlertCollection, emphasis: AlertEmphasis): LayerGroup {
+  return {
+    sourceId: ALERTS_SOURCE_ID,
+    source: { type: 'geojson', data: mappable },
+    layers: [
+      {
+        id: ALERTS_FILL_LAYER_ID,
+        type: 'fill',
+        source: ALERTS_SOURCE_ID,
+        paint: { 'fill-color': alertSeverityColorExpression(), 'fill-opacity': emphasis.fillOpacity },
+      },
+      {
+        id: ALERTS_LINE_LAYER_ID,
+        type: 'line',
+        source: ALERTS_SOURCE_ID,
+        paint: { 'line-color': alertSeverityColorExpression(), 'line-width': emphasis.lineWidth },
+      },
+    ],
+  }
 }
