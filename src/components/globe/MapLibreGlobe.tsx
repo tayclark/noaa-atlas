@@ -107,6 +107,7 @@ import { useWindForecast } from './useWindForecast'
 import { WindControl, type ForecastLayer } from './WindControl'
 import { NOWCOAST_CAPABILITIES_URL, frameForTime, parseRadarFrames } from './radarTimes'
 import { ForecastTimeline } from './ForecastTimeline'
+import { useWmsFrames } from './useWmsFrames'
 import { getTimeSnapshot, setTime, stopPlayer, subscribeTime } from '../../data/timeStore'
 import { describeCoverageForPopup, formatCoveragePopupHtml } from './coveragePopup'
 import { hitBox, hitPadding, isOnGlobe, nearestCandidate } from './hitPick'
@@ -381,11 +382,9 @@ export function MapLibreGlobe() {
   const [kp, setKp] = useState<{ status: 'loading' } | { status: 'ok'; readout: KpReadout } | { status: 'error'; message: string }>({
     status: 'loading',
   })
-  // Radar time (#74): the frame list. The chosen frame comes from the shared time (#228), so the
-  // radar and the point forecast timeline scrub together; null follows the latest frame.
-  const [radarFrames, setRadarFrames] = useState<string[]>([])
+  // The radar's chosen frame (#74) comes from the shared time (#228), so the radar and the point
+  // forecast timeline scrub together; null follows the latest frame.
   const sharedTime = useSyncExternalStore(subscribeTime, getTimeSnapshot).time
-  const radarTime = useMemo(() => frameForTime(radarFrames, sharedTime), [radarFrames, sharedTime])
   const radarUrlRef = useRef(NOWCOAST_RADAR_TILE_URL)
   const windRef = useRef<WindOverlay | null>(null)
   // The alert polygons' current emphasis (#342), read when the alerts layer is first added.
@@ -1053,27 +1052,15 @@ export function MapLibreGlobe() {
   // out for as long as the globe is looked at (#78). A failed fetch leaves the latest-frame layer
   // without a slider. Leaving resets to latest (#286): the shared time returns to now and a radar
   // loop stops, so the point timeline and the wind also start from now after the radar goes.
-  const loadRadarFrames = useCallback((signal?: AbortSignal) => {
-    fetch(NOWCOAST_CAPABILITIES_URL, signal ? { signal } : undefined)
-      .then((res) => (res.ok ? res.text() : Promise.reject(new Error(String(res.status)))))
-      .then((xml) => setRadarFrames(parseRadarFrames(xml)))
-      .catch(() => {})
-  }, [])
+  const radarFrames = useWmsFrames(NOWCOAST_CAPABILITIES_URL, parseRadarFrames, radarShown, active, RADAR_FRAMES_REFRESH_MS)
+  const radarTime = useMemo(() => frameForTime(radarFrames, sharedTime), [radarFrames, sharedTime])
   useEffect(() => {
     if (!radarShown) return
-    const controller = new AbortController()
-    loadRadarFrames(controller.signal)
     return () => {
-      controller.abort()
-      setRadarFrames([])
       stopPlayer('radar')
       setTime(null)
     }
-  }, [radarShown, loadRadarFrames])
-  useEffect(() => {
-    if (!radarShown || !active) return
-    return pollWhileVisible(() => loadRadarFrames(), RADAR_FRAMES_REFRESH_MS)
-  }, [radarShown, active, loadRadarFrames])
+  }, [radarShown])
 
   // Seen again after being hidden: MapLibre's own resize observer is throttled, so say so at once.
   useEffect(() => {
@@ -1259,26 +1246,7 @@ export function MapLibreGlobe() {
   // The GOES frame list (#338) is read while the tracks are shown and refreshed as frames arrive. A
   // failed read leaves the latest image, which needs no list. The image follows the storm slider
   // inside the archive and is the latest one outside it; debounced like the radar.
-  const [goesFrames, setGoesFrames] = useState<string[]>([])
-  const loadGoesFrames = useCallback((signal?: AbortSignal) => {
-    fetch(GOES_CAPABILITIES_URL, signal ? { signal } : undefined)
-      .then((res) => (res.ok ? res.text() : Promise.reject(new Error(String(res.status)))))
-      .then((xml) => setGoesFrames(parseGoesFrames(xml)))
-      .catch(() => {})
-  }, [])
-  useEffect(() => {
-    if (!stormFull) return
-    const controller = new AbortController()
-    loadGoesFrames(controller.signal)
-    return () => {
-      controller.abort()
-      setGoesFrames([])
-    }
-  }, [stormFull, loadGoesFrames])
-  useEffect(() => {
-    if (!stormFull || !active) return
-    return pollWhileVisible(() => loadGoesFrames(), GOES_FRAMES_REFRESH_MS)
-  }, [stormFull, active, loadGoesFrames])
+  const goesFrames = useWmsFrames(GOES_CAPABILITIES_URL, parseGoesFrames, stormFull, active, GOES_FRAMES_REFRESH_MS)
   const goesFrame = goesFrameForTime(goesFrames, stormFrameTime)
   // Past the advisory there is no satellite image of the storm yet, so the GFS simulated radar takes
   // its place. The first forecast step is loaded while the slider is still before the advisory.
