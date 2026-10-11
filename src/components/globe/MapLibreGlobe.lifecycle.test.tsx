@@ -286,4 +286,32 @@ describe('MapLibreGlobe lifecycle (#354)', () => {
     act(() => vi.advanceTimersByTime(refreshMs * 3))
     expect(fetched(host)).toBe(hidden)
   })
+
+  it('a hidden SPC outlook forgets its polygons and status, so it shows as loading when shown again', async () => {
+    const { map, globe } = renderGlobe()
+    act(() => selectNode('spc-gis-data'))
+    await answer(SPC, () => new Response(JSON.stringify({ type: 'FeatureCollection', features: [] })))
+    expect(globe().getAttribute('data-spc-outlook')).toBe('empty')
+    act(() => selectNode('nws-api'))
+    expect(map.getSource('spc-outlook')!.setData).toHaveBeenLastCalledWith({ type: 'FeatureCollection', features: [] })
+    clearSpcCache()
+    act(() => selectNode('spc-gis-data'))
+    expect(globe().getAttribute('data-spc-outlook')).toBe('loading')
+    // With nothing drawn, a failed first load on this show is an error, not hidden behind old polygons.
+    await answer(SPC, () => new Response(null, { status: 503 }))
+    expect(globe().getAttribute('data-spc-outlook')).toBe('error')
+    act(() => selectNode('nws-api'))
+    act(() => selectNode('spc-gis-data'))
+    expect(globe().getAttribute('data-spc-outlook')).toBe('loading')
+  })
+
+  it('hidden storm tracks forget their failure, so they show as loading when shown again', async () => {
+    const { globe } = renderGlobe()
+    act(() => selectNode('nhc-active-storms'))
+    await answer(NHC, () => new Response(null, { status: 503 }))
+    expect(globe().getAttribute('data-nhc-tracks')).toBe('error')
+    act(() => selectNode('nws-api'))
+    act(() => selectNode('nhc-active-storms'))
+    expect(globe().getAttribute('data-nhc-tracks')).toBe('loading')
+  })
 })

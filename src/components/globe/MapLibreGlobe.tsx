@@ -1154,8 +1154,8 @@ export function MapLibreGlobe() {
   }, [dartShown, dartStations, mapLoaded])
 
   // The SPC outlook (#245) is fetched only while its node is selected, and refreshed while the globe
-  // is looked at, at once on return if it is stale (#354). A failed refresh keeps the polygons
-  // already drawn.
+  // is looked at, at once on return if it is stale. A failed refresh keeps the polygons already
+  // drawn. Hiding it clears them and its status, so the next show starts from loading (#354).
   const spcShown = liveLayers.includes('spc-outlook')
   const loadSpcRef = useRef<() => void>(() => {})
   const spcAtRef = useRef(0)
@@ -1185,6 +1185,9 @@ export function MapLibreGlobe() {
     return () => {
       cancelled = true
       loadSpcRef.current = () => {}
+      // An unmounted globe has removed its map already.
+      if (mapRef.current === map) map.getSource<GeoJSONSource>(SPC_SOURCE_ID)?.setData({ type: 'FeatureCollection', features: [] })
+      setSpc({ status: 'loading' })
     }
   }, [spcShown, mapLoaded])
   useEffect(() => {
@@ -1195,7 +1198,8 @@ export function MapLibreGlobe() {
 
   // The NHC storm tracks (#334), like the SPC outlook: fetched only while the node is selected, or
   // while a point is selected so the impact prompt can check it (#344), and refreshed while the globe
-  // is looked at (#354). A failed refresh keeps the tracks already drawn.
+  // is looked at. A failed refresh keeps the tracks already drawn; no longer wanted, they and their
+  // status are forgotten (#354).
   const stormsWanted = nhcShown || selection.selectedPoint !== null
   useEffect(() => {
     const map = mapRef.current
@@ -1225,6 +1229,7 @@ export function MapLibreGlobe() {
     return () => {
       cancelled = true
       loadStormsRef.current = () => {}
+      setStorms({ status: 'loading' })
     }
   }, [stormsWanted])
   useEffect(() => {
