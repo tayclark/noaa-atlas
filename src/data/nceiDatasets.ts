@@ -1,3 +1,5 @@
+import { createStore } from './createStore'
+import { loadOnce } from './loadOnce'
 import { parseNceiDatasets, type NceiDataset } from './nceiDatasetSchema'
 
 // The dataset rows (#62, #64, #68) load on demand (#269): they're about 44 kB gzip, and only the
@@ -15,9 +17,7 @@ export interface DatasetCatalog {
   forService: (serviceId: string) => NceiDataset[]
 }
 
-let catalog: DatasetCatalog | null = null
-let pending: Promise<DatasetCatalog> | null = null
-const listeners = new Set<() => void>()
+const store = createStore<DatasetCatalog | null>(null)
 
 function buildCatalog(ncei: NceiDataset[], onestop: NceiDataset[], aws: NceiDataset[]): DatasetCatalog {
   const byService = new Map<string, NceiDataset[]>()
@@ -26,27 +26,14 @@ function buildCatalog(ncei: NceiDataset[], onestop: NceiDataset[], aws: NceiData
 }
 
 /** Loads and validates the three snapshots once. A failed load is forgotten, so the next call retries. */
-export function loadDatasetCatalog(): Promise<DatasetCatalog> {
-  pending ??= Promise.all([import('./nceiDatasets.json'), import('./onestopDatasets.json'), import('./awsOpenDataDatasets.json')]).then(
-    ([ncei, onestop, aws]) => {
-      catalog = buildCatalog(parseNceiDatasets(ncei.default), parseNceiDatasets(onestop.default), parseNceiDatasets(aws.default))
-      for (const listener of listeners) listener()
-      return catalog
-    },
-    (err: unknown) => {
-      pending = null
-      throw err
-    },
-  )
-  return pending
-}
+export const loadDatasetCatalog = loadOnce(async () => {
+  const [ncei, onestop, aws] = await Promise.all([import('./nceiDatasets.json'), import('./onestopDatasets.json'), import('./awsOpenDataDatasets.json')])
+  const catalog = buildCatalog(parseNceiDatasets(ncei.default), parseNceiDatasets(onestop.default), parseNceiDatasets(aws.default))
+  store.set(catalog)
+  return catalog
+})
 
 /** The loaded catalog, or null until `loadDatasetCatalog` has settled. */
-export function getDatasetCatalog(): DatasetCatalog | null {
-  return catalog
-}
+export const getDatasetCatalogSnapshot = store.get
 
-export function subscribeDatasetCatalog(listener: () => void): () => void {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
+export const subscribeDatasetCatalog = store.subscribe

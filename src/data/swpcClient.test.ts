@@ -13,10 +13,7 @@ import {
   SwpcParseError,
 } from './swpcClient'
 import { makeAlerts, makeKp1m, makeOvation, makeScales, makeSolarWindMagRows, makeSolarWindRows, makeXrayRows } from './swpcFixtures'
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status })
-}
+import { jsonResponse } from '../test/http'
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn())

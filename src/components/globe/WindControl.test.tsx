@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { resetTime } from '../../data/timeStore'
+import { clearTime } from '../../data/timeStore'
 import { RadarTimeControl } from './RadarTimeControl'
 import { WindControl } from './WindControl'
 
@@ -10,7 +10,7 @@ const H = 3_600_000
 
 beforeEach(() => vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] }))
 afterEach(() => {
-  resetTime()
+  clearTime()
   vi.useRealTimers()
 })
 

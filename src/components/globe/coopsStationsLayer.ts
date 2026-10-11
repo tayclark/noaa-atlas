@@ -1,7 +1,8 @@
 // Pure helpers for the CO-OPS tide stations layer (#51). Kept out of MapLibreGlobe.tsx so the
 // GeoJSON, popup text and error messages are unit-testable, as with nwsAlertsLayer.ts.
 
-import { CoopsHttpError, CoopsParseError } from '../../data/coopsClient'
+import { describeClientError } from '../../data/clientErrors'
+import { coopsErrors } from '../../data/coopsClient'
 import type { CoopsReading, CoopsResult, CoopsStation, CoopsTide } from '../../data/coopsSchema'
 import { escapeHtml } from './popupHtml'
 
@@ -51,9 +52,11 @@ export type Fetched<T> = PromiseSettledResult<CoopsResult<T>>
 
 /** A short message for a failed CO-OPS request, shown in a station popup. */
 export function describeCoopsFetchOutcome(err: unknown): string {
-  if (err instanceof CoopsHttpError) return `CO-OPS is unavailable (${err.status}).`
-  if (err instanceof CoopsParseError) return 'CO-OPS returned an unexpected response.'
-  return 'Could not reach CO-OPS.'
+  return describeClientError(err, coopsErrors, {
+    http: (e) => `CO-OPS is unavailable (${e.status}).`,
+    parse: 'CO-OPS returned an unexpected response.',
+    fallback: 'Could not reach CO-OPS.',
+  })
 }
 
 /** The reason a half of the popup has no data: CO-OPS's own message, or why the request failed. */

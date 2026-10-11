@@ -3,6 +3,7 @@
 // server answers a browser origin with access-control-allow-origin, which NHC's own
 // CurrentStorms.json does not. Each layer is queried whole, as GeoJSON.
 
+import { makeClientErrors, type ClientHttpError, type ClientParseError } from './clientErrors'
 import { createLiveClient } from './liveRequest'
 import {
   parseNhcCones,
@@ -13,35 +14,21 @@ import {
   type NhcPastPoints,
 } from './nhcSchema'
 
-export class NhcHttpError extends Error {
-  readonly status: number
+export const nhcErrors = makeClientErrors('NHC', 'Nhc')
+export const NhcHttpError = nhcErrors.HttpError
+export type NhcHttpError = ClientHttpError
+export const NhcParseError = nhcErrors.ParseError
+export type NhcParseError = ClientParseError
 
-  constructor(status: number) {
-    super(`NHC request failed (${status}).`)
-    this.name = 'NhcHttpError'
-    this.status = status
-  }
-}
-
-export class NhcParseError extends Error {
-  readonly cause: unknown
-
-  constructor(message: string, cause: unknown) {
-    super(message)
-    this.name = 'NhcParseError'
-    this.cause = cause
-  }
-}
-
-const { request, clearCache } = createLiveClient({
+const { request, invalidate, clearCache } = createLiveClient({
   baseUrl: 'https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather_summary/MapServer',
   headers: {},
-  httpError: (res) => new NhcHttpError(res.status),
-  parseError: (path, cause) => new NhcParseError(`NHC response for ${path} did not match the expected shape`, cause),
+  httpError: nhcErrors.httpError,
+  parseError: nhcErrors.parseError,
 })
 
 /** The summary service's layer ids. */
-export const NHC_LAYERS = { forecastPoints: 5, cone: 7, pastPoints: 10 } as const
+const NHC_LAYERS = { forecastPoints: 5, cone: 7, pastPoints: 10 } as const
 
 /** How often the globe re-fetches the tracks while they are shown; advisories come every 3 to 6 hours. */
 export const NHC_REFRESH_MS = 10 * 60_000
@@ -57,12 +44,22 @@ export interface NhcStormData {
   cones: NhcCones
 }
 
-/** Every active storm's past fixes, forecast fixes and forecast cone. All empty when no storm is active. */
+/**
+ * Every active storm's past fixes, forecast fixes and forecast cone. All empty when no storm is
+ * active. The three layers are one picture, so when any of them fails the ones that loaded are
+ * dropped from the cache too: the next refresh fetches all three again rather than pairing a fresh
+ * layer with ones from an older advisory.
+ */
 export async function getActiveStorms(): Promise<NhcStormData> {
-  const [past, forecast, cones] = await Promise.all([
-    request(query(NHC_LAYERS.pastPoints), parseNhcPastPoints),
-    request(query(NHC_LAYERS.forecastPoints), parseNhcForecastPoints),
-    request(query(NHC_LAYERS.cone), parseNhcCones),
+  const paths = [query(NHC_LAYERS.pastPoints), query(NHC_LAYERS.forecastPoints), query(NHC_LAYERS.cone)]
+  const [past, forecast, cones] = await Promise.allSettled([
+    request(paths[0], parseNhcPastPoints),
+    request(paths[1], parseNhcForecastPoints),
+    request(paths[2], parseNhcCones),
   ])
-  return { past, forecast, cones }
+  if (past.status === 'fulfilled' && forecast.status === 'fulfilled' && cones.status === 'fulfilled') {
+    return { past: past.value, forecast: forecast.value, cones: cones.value }
+  }
+  for (const path of paths) invalidate(path)
+  throw [past, forecast, cones].find((r) => r.status === 'rejected')?.reason
 }

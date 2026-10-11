@@ -2,6 +2,8 @@
 // and, later, other time-aware layers read and write. Kept as a module-level store beside
 // selectionStore.ts; components read it via `useSyncExternalStore`.
 
+import { createStore } from './createStore'
+
 export interface TimeRange {
   /** Epoch ms. */
   start: number
@@ -22,14 +24,10 @@ export interface TimeState {
 
 const INITIAL: TimeState = { time: null, player: null, range: null }
 
-let state: TimeState = INITIAL
-const listeners = new Set<() => void>()
+const store = createStore<TimeState>(INITIAL, (a, b) => a.time === b.time && a.player === b.player && a.range === b.range)
 
 function update(next: Partial<TimeState>): void {
-  const merged = { ...state, ...next }
-  if (merged.time === state.time && merged.player === state.player && merged.range === state.range) return
-  state = merged
-  for (const listener of listeners) listener()
+  store.set({ ...store.get(), ...next })
 }
 
 /** Moves the shared time. Null returns to "now". */
@@ -44,29 +42,24 @@ export function startPlayer(player: PlayerId): void {
 
 /** Stops playback, but only if this control is the one playing: a scrub elsewhere must not cancel another loop. */
 export function stopPlayer(player: PlayerId): void {
-  if (state.player === player) update({ player: null })
+  if (store.get().player === player) update({ player: null })
 }
 
 /** Publishes the span the visible layers cover. Pass null when the last time-aware layer goes away. */
 export function setRange(range: TimeRange | null): void {
-  const same = range && state.range && range.start === state.range.start && range.end === state.range.end
-  if (same || range === state.range) return
+  const current = store.get().range
+  const same = range && current && range.start === current.start && range.end === current.end
+  if (same || range === current) return
   update({ range })
 }
 
 /** Restores the initial state. Also intended for test isolation between cases. */
-export function resetTime(): void {
+export function clearTime(): void {
   update(INITIAL)
 }
 
-export function subscribeTime(listener: () => void): () => void {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
-
-export function getTimeSnapshot(): TimeState {
-  return state
-}
+export const subscribeTime = store.subscribe
+export const getTimeSnapshot = store.get
 
 /** Clamps a time into a range. */
 export function clampToRange(time: number, range: TimeRange): number {

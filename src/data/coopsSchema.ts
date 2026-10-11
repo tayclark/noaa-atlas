@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { stationFields } from './schemaPrimitives'
 
 // Schemas for the CO-OPS Data API (api.tidesandcurrents.noaa.gov, #51). As in nwsSchema.ts these use
 // z.object, not z.strictObject: only the fields we consume are modelled. Times are requested with
@@ -65,13 +66,7 @@ export function parseHourlyPredictions(raw: unknown): CoopsResult<CoopsReading[]
 }
 
 // The station snapshot in coopsStations.json (scripts/coops-stations.mjs).
-export const stationSchema = z.strictObject({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  lat: z.number().min(-90).max(90),
-  lng: z.number().min(-180).max(180),
-  state: z.string(),
-})
+export const stationSchema = z.strictObject({ ...stationFields, state: z.string() })
 export type CoopsStation = z.infer<typeof stationSchema>
 
 export function parseStations(raw: unknown): CoopsStation[] {

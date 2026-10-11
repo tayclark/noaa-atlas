@@ -3,8 +3,8 @@
 
 import type { CoopsReading } from './coopsSchema'
 import type { NwsGridLayer, NwsGridpointData } from './nwsSchema'
-
-const HOUR_MS = 3_600_000
+import { HOUR_MS } from './time'
+import { MPH_PER_UNIT } from './units'
 
 export interface ForecastSample {
   /** Epoch ms, on the hour. */
@@ -22,11 +22,6 @@ export interface TideSample {
   metres: number
 }
 
-const MPH_PER_UNIT: Record<string, number> = {
-  'wmoUnit:km_h-1': 0.621371,
-  'wmoUnit:m_s-1': 2.23694,
-  'wmoUnit:kn': 1.15078,
-}
 const FEET_PER_METRE = 3.28084
 
 /** "PT1H", "P3DT12H" or "PT30M" in ms, or null when it is not a duration NWS sends. */

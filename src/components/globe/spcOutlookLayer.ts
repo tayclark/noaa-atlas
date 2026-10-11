@@ -2,7 +2,8 @@
 // the legend, popup text and error wording are unit-testable. Polygon colours come from the feed's
 // own `fill` and `stroke` properties; the legend repeats them for the six categories.
 
-import { SpcHttpError, SpcParseError } from '../../data/spcClient'
+import { describeClientError } from '../../data/clientErrors'
+import { spcErrors } from '../../data/spcClient'
 import type { SpcOutlook } from '../../data/spcSchema'
 import { escapeHtml } from './popupHtml'
 
@@ -64,8 +65,10 @@ export function formatOutlookPopupHtml(properties: SpcOutlook['features'][number
 
 /** A human-readable message for a failed outlook fetch, by error kind. */
 export function describeSpcFetchOutcome(err: unknown): string {
-  if (err instanceof SpcHttpError) return 'SPC service is unavailable, the outlook could not be loaded.'
-  if (err instanceof SpcParseError) return 'SPC returned an unexpected outlook response.'
-  if (err instanceof TypeError) return 'Could not reach SPC, the outlook could not be loaded.'
-  return 'Something went wrong loading the outlook.'
+  return describeClientError(err, spcErrors, {
+    http: 'SPC service is unavailable, the outlook could not be loaded.',
+    parse: 'SPC returned an unexpected outlook response.',
+    network: 'Could not reach SPC, the outlook could not be loaded.',
+    fallback: 'Something went wrong loading the outlook.',
+  })
 }

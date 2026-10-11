@@ -2,6 +2,7 @@
 // swpc-geomagnetic-indices nodes in graph.json). They're static files regenerated every few
 // minutes and served with access-control-allow-origin: *, so no special headers are needed.
 
+import { makeClientErrors, type ClientHttpError, type ClientParseError } from './clientErrors'
 import { createLiveClient } from './liveRequest'
 import {
   parseAlerts,
@@ -20,31 +21,17 @@ import {
   type SwpcXrays,
 } from './swpcSchema'
 
-export class SwpcHttpError extends Error {
-  readonly status: number
-
-  constructor(status: number) {
-    super(`SWPC request failed (${status}).`)
-    this.name = 'SwpcHttpError'
-    this.status = status
-  }
-}
-
-export class SwpcParseError extends Error {
-  readonly cause: unknown
-
-  constructor(message: string, cause: unknown) {
-    super(message)
-    this.name = 'SwpcParseError'
-    this.cause = cause
-  }
-}
+export const swpcErrors = makeClientErrors('SWPC', 'Swpc')
+export const SwpcHttpError = swpcErrors.HttpError
+export type SwpcHttpError = ClientHttpError
+export const SwpcParseError = swpcErrors.ParseError
+export type SwpcParseError = ClientParseError
 
 const { request, clearCache } = createLiveClient({
   baseUrl: 'https://services.swpc.noaa.gov',
   headers: {},
-  httpError: (res) => new SwpcHttpError(res.status),
-  parseError: (path, cause) => new SwpcParseError(`SWPC response for ${path} did not match the expected shape`, cause),
+  httpError: swpcErrors.httpError,
+  parseError: swpcErrors.parseError,
 })
 
 /** How often the globe re-fetches the aurora forecast and Kp; SWPC regenerates both every few minutes. */

@@ -2,10 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearRequestLog, getRequestLogSnapshot } from './requestLog'
 import { clearSpcCache, getDay1CategoricalOutlook, SpcHttpError, SpcParseError } from './spcClient'
 import { makeSpcOutlook } from './spcFixtures'
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status })
-}
+import { jsonResponse } from '../test/http'
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn())

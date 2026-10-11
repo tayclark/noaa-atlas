@@ -31,6 +31,6 @@ export function nearestTideStation<T extends Located>(stations: readonly T[], po
 }
 
 /** How far a tide curve is still a fair picture of the water at the point. */
-export const TIDE_STATION_MAX_KM = 40
+const TIDE_STATION_MAX_KM = 40
 
 export const tideStationFor = (point: LonLat) => nearestTideStation(COOPS_STATIONS, point, TIDE_STATION_MAX_KM)

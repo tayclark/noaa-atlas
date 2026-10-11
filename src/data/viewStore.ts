@@ -3,30 +3,21 @@
 // request: LeftPanel resolves it against the layout, so the same id means "the finder and graph
 // together" on a wide screen and one of its own tabs on a phone.
 
+import { createStore } from './createStore'
+
 export type ViewId = 'explore' | 'tasks' | 'graph' | 'globe' | 'compare' | 'inspector'
 
-let activeView: ViewId = 'explore'
-const listeners = new Set<() => void>()
+const store = createStore<ViewId>('explore')
 
-export function showView(view: ViewId): void {
-  if (view === activeView) return
-  activeView = view
-  for (const listener of listeners) listener()
-}
+export const showView = store.set
 
 /** Back to the first view. Also intended for test isolation between cases. */
-export function resetView(): void {
+export function clearView(): void {
   showView('explore')
 }
 
-export function subscribeView(listener: () => void): () => void {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
-
-export function getViewSnapshot(): ViewId {
-  return activeView
-}
+export const subscribeView = store.subscribe
+export const getViewSnapshot = store.get
 
 const COMPACT_VIEWS: ViewId[] = ['tasks', 'graph', 'globe', 'compare', 'inspector']
 const WIDE_VIEWS: ViewId[] = ['explore', 'compare', 'inspector']

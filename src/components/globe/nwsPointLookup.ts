@@ -3,7 +3,9 @@
 // MapLibreGlobe.tsx itself is excluded from coverage and verified manually in the browser
 // (see vite.config.ts).
 
-import { NwsHttpError, NwsParseError } from '../../data/nwsClient'
+import { describeClientError } from '../../data/clientErrors'
+import { nwsErrors } from '../../data/nwsClient'
+import { MPH_PER_UNIT } from '../../data/units'
 import type { NwsForecastPeriod, NwsObservation, NwsStation, NwsStationCollection } from '../../data/nwsSchema'
 import { escapeHtml } from './popupHtml'
 
@@ -51,12 +53,6 @@ function toFahrenheit(value: number | null, unitCode: string): number | null {
   return Math.round(value)
 }
 
-const MPH_PER_UNIT: Record<string, number> = {
-  'wmoUnit:km_h-1': 0.621371,
-  'wmoUnit:m_s-1': 2.23694,
-  'wmoUnit:kn': 1.15078,
-}
-
 /** Converts an NWS wind speed to mph, or null if the sensor reported no value. */
 function toMph(value: number | null, unitCode: string): number | null {
   if (value === null) return null
@@ -91,14 +87,16 @@ export function describePointForPopup(period: NwsForecastPeriod, observation: Nw
 
 /** Builds a human-readable message for a failed point lookup, based on the error kind. */
 export function describePointError(err: unknown): string {
-  if (err instanceof NwsHttpError) {
-    if (err.kind === 'rate-limited') return 'NWS rate limit exceeded — try again shortly.'
-    if (err.kind === 'server-error') return 'NWS service error — try again later.'
-    if (err.status === 404) return 'NWS forecasts cover the US and its territories only.'
-    return 'No NWS coverage at this location.'
-  }
-  if (err instanceof NwsParseError) return 'NWS returned an unexpected response for this location.'
-  return 'Something went wrong looking up this location.'
+  return describeClientError(err, nwsErrors, {
+    http: (e) => {
+      if (e.kind === 'rate-limited') return 'NWS rate limit exceeded — try again shortly.'
+      if (e.kind === 'server-error') return 'NWS service error — try again later.'
+      if (e.status === 404) return 'NWS forecasts cover the US and its territories only.'
+      return 'No NWS coverage at this location.'
+    },
+    parse: 'NWS returned an unexpected response for this location.',
+    fallback: 'Something went wrong looking up this location.',
+  })
 }
 
 export function formatPointLoadingHtml(): string {

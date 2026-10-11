@@ -3,6 +3,7 @@
 // access-control-allow-origin: *, so no special headers are needed. Station positions come from the
 // coopsStations.json snapshot rather than the Metadata API (see scripts/coops-stations.mjs).
 
+import { makeClientErrors, type ClientHttpError, type ClientParseError } from './clientErrors'
 import { createLiveClient } from './liveRequest'
 import {
   parseHourlyPredictions,
@@ -19,31 +20,17 @@ import {
   type CoopsTide,
 } from './coopsSchema'
 
-export class CoopsHttpError extends Error {
-  readonly status: number
-
-  constructor(status: number) {
-    super(`CO-OPS request failed (${status}).`)
-    this.name = 'CoopsHttpError'
-    this.status = status
-  }
-}
-
-export class CoopsParseError extends Error {
-  readonly cause: unknown
-
-  constructor(message: string, cause: unknown) {
-    super(message)
-    this.name = 'CoopsParseError'
-    this.cause = cause
-  }
-}
+export const coopsErrors = makeClientErrors('CO-OPS', 'Coops')
+export const CoopsHttpError = coopsErrors.HttpError
+export type CoopsHttpError = ClientHttpError
+export const CoopsParseError = coopsErrors.ParseError
+export type CoopsParseError = ClientParseError
 
 const { request, clearCache } = createLiveClient({
   baseUrl: 'https://api.tidesandcurrents.noaa.gov',
   headers: {},
-  httpError: (res) => new CoopsHttpError(res.status),
-  parseError: (path, cause) => new CoopsParseError(`CO-OPS response for ${path} did not match the expected shape`, cause),
+  httpError: coopsErrors.httpError,
+  parseError: coopsErrors.parseError,
 })
 
 /** Clears the in-memory response cache. Intended for test isolation between cases. */

@@ -3,7 +3,8 @@
 // is excluded from coverage and verified manually in the browser (see vite.config.ts).
 
 import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec'
-import { NwsHttpError, NwsParseError } from '../../data/nwsClient'
+import { describeClientError } from '../../data/clientErrors'
+import { nwsErrors } from '../../data/nwsClient'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
 import type { LiveLayerKey } from './liveLayers'
 import { escapeHtml } from './popupHtml'
@@ -107,13 +108,15 @@ export function zoneOnlyAlertsTitle(count: number): string {
 
 /** Builds a human-readable message for a failed alerts fetch, based on the error kind (#42 AC). */
 export function describeAlertsFetchOutcome(err: unknown): string {
-  if (err instanceof NwsHttpError) {
-    if (err.kind === 'rate-limited') return 'NWS rate limit exceeded — alerts unavailable, try again shortly.'
-    if (err.kind === 'server-error') return 'NWS service is unavailable — alerts could not be loaded.'
-    return 'Could not load NWS alerts right now.'
-  }
-  if (err instanceof NwsParseError) return 'NWS returned an unexpected alerts response.'
-  return 'Something went wrong loading alerts.'
+  return describeClientError(err, nwsErrors, {
+    http: (e) => {
+      if (e.kind === 'rate-limited') return 'NWS rate limit exceeded — alerts unavailable, try again shortly.'
+      if (e.kind === 'server-error') return 'NWS service is unavailable — alerts could not be loaded.'
+      return 'Could not load NWS alerts right now.'
+    },
+    parse: 'NWS returned an unexpected alerts response.',
+    fallback: 'Something went wrong loading alerts.',
+  })
 }
 
 export interface AlertEmphasis {

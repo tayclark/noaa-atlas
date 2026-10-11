@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import graph from './graph.json'
 import type { NceiDataset } from './nceiDatasetSchema'
 import { parseNceiDatasets } from './nceiDatasetSchema'
-import { getDatasetCatalog, loadDatasetCatalog, subscribeDatasetCatalog, type DatasetCatalog } from './nceiDatasets'
+import { getDatasetCatalogSnapshot, loadDatasetCatalog, subscribeDatasetCatalog, type DatasetCatalog } from './nceiDatasets'
 
 let NCEI_DATASETS: NceiDataset[]
 let ONESTOP_DATASETS: NceiDataset[]
@@ -11,7 +11,7 @@ let datasetsForService: DatasetCatalog['forService']
 
 describe('loadDatasetCatalog (#269)', () => {
   it('loads once, notifies subscribers and then serves the same catalog', async () => {
-    expect(getDatasetCatalog()).toBeNull()
+    expect(getDatasetCatalogSnapshot()).toBeNull()
     let notified = 0
     const unsubscribe = subscribeDatasetCatalog(() => notified++)
     const first = loadDatasetCatalog()
@@ -19,7 +19,7 @@ describe('loadDatasetCatalog (#269)', () => {
     const catalog = await first
     unsubscribe()
     expect(notified).toBe(1)
-    expect(getDatasetCatalog()).toBe(catalog)
+    expect(getDatasetCatalogSnapshot()).toBe(catalog)
     expect(await loadDatasetCatalog()).toBe(catalog)
   })
 })
