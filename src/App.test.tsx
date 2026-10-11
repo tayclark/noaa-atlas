@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { mockNarrowLayout, unmockNarrowLayout } from './components/narrowLayoutTestUtils'
@@ -70,7 +70,20 @@ describe('App', () => {
   it('marks the wide layout for the stylesheets, with no About dialog', () => {
     const { container } = render(<App />)
     expect(container.querySelector('.app')?.getAttribute('data-layout')).toBe('wide')
-    expect(screen.queryByRole('button', { name: 'About this data' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'About this app' })).toBeNull()
+  })
+
+  it('keeps the same globe when the window crosses into the compact layout and back (#352)', async () => {
+    const layout = mockNarrowLayout(false)
+    render(<App />)
+    const globe = await screen.findByRole('group', { name: 'Globe view of NOAA API coverage' })
+    act(() => layout.set(true))
+    fireEvent.click(screen.getByRole('tab', { name: 'Globe' }))
+    expect(screen.getByRole('group', { name: 'Globe view of NOAA API coverage' })).toBe(globe)
+    expect(globe.closest('[role="tabpanel"]')?.id).toBe('left-panel-globe')
+    act(() => layout.set(false))
+    expect(screen.getByRole('group', { name: 'Globe view of NOAA API coverage' })).toBe(globe)
+    expect(globe.closest('[role="tabpanel"]')).toBeNull()
   })
 
   describe('compact layout (a phone, #78)', () => {
@@ -115,7 +128,7 @@ describe('App', () => {
 
     it('opens the same dialog from the header', () => {
       render(<App />)
-      fireEvent.click(screen.getByRole('button', { name: 'About this data' }))
+      fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'About this app' }))
       expect(document.querySelector('dialog')?.hasAttribute('open')).toBe(true)
     })
   })

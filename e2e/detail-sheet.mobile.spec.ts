@@ -33,11 +33,11 @@ test('a node picked on the graph peeks, and opens from its grabber', async ({ pa
   await expect(nodeSheet(page).getByRole('button', { name: 'Compare' })).toBeVisible()
   await expectFolded(page)
 
-  await nodeSheet(page).getByRole('button', { name: 'Expand details' }).tap()
+  await nodeSheet(page).getByRole('button', { name: 'Details', exact: true, expanded: false }).tap()
   await expectOpen(page)
   await expect.poll(async () => (await height(panels)) - (await height(nodeSheet(page)))).toBeLessThan(80)
 
-  await nodeSheet(page).getByRole('button', { name: 'Collapse details' }).tap()
+  await nodeSheet(page).getByRole('button', { name: 'Details', exact: true, expanded: true }).tap()
   await expectFolded(page)
 })
 
@@ -145,7 +145,7 @@ test('Show on graph from a task page frames the whole path', async ({ page }) =>
   await page.locator('.finder-task-item').nth(1).tap()
   await page.locator('.finder-node-button').first().tap()
   // The step opened the detail over the page; fold it to reach the page's own buttons.
-  await nodeSheet(page).getByRole('button', { name: 'Collapse details' }).tap()
+  await nodeSheet(page).getByRole('button', { name: 'Details', exact: true, expanded: true }).tap()
   await page.getByRole('button', { name: 'Show on graph' }).tap()
   await expect(page.getByRole('tab', { name: /Graph/ })).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('.graph-node-highlighted').first()).toBeAttached()

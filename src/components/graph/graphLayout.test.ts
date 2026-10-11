@@ -6,6 +6,7 @@ import { buildAccessHierarchy } from '../../data/accessHierarchy'
 import { buildOrgHierarchy } from '../../data/orgHierarchy'
 import { parseGraphFile, ROOT_NODE_ID, THEMES, type GraphEdge, type ServiceNode, type ThemeNode } from '../../data/graphSchema'
 import {
+  selectionFraming,
   keyboardViewTransform,
   computeFitTransform,
   computeLabelledFitTransform,
@@ -531,5 +532,21 @@ describe('framingPadding (#78)', () => {
 
   it('never goes below a small floor', () => {
     expect(framingPadding(100, 20, 60)).toBe(16)
+  })
+})
+
+describe('selectionFraming', () => {
+  const neighborsOf = (id: string) => (id === 'a' ? ['b', 'c'] : [])
+
+  it('frames a single selection with its neighbours', () => {
+    expect(selectionFraming(['a'], neighborsOf)).toEqual({ onlyId: 'a', ids: ['a', 'b', 'c'] })
+  })
+
+  it('frames every highlighted node of a path, without their neighbours', () => {
+    expect(selectionFraming(['a', 'd'], neighborsOf)).toEqual({ onlyId: null, ids: ['a', 'd'] })
+  })
+
+  it('frames nothing without a selection', () => {
+    expect(selectionFraming([], neighborsOf)).toEqual({ onlyId: null, ids: [] })
   })
 })

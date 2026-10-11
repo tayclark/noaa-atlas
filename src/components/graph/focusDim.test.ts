@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { focusIds, isEdgeDimmed, neighborIds, nodeDim } from './focusDim'
+import { edgeClassName, focusIds, isEdgeDimmed, neighborIds, nodeClassName, nodeDim } from './focusDim'
 
 describe('focusIds', () => {
   it('is null with no search and no selection', () => {
@@ -74,5 +74,26 @@ describe('isEdgeDimmed', () => {
     expect(isEdgeDimmed(focus, matched, ['a'], 'm', 'n')).toBe(false)
     expect(isEdgeDimmed(focus, matched, ['a'], 'a', 'z')).toBe(true)
     expect(isEdgeDimmed(focus, matched, ['a'], 'm', 'z')).toBe(true)
+  })
+})
+
+describe('class names', () => {
+  it('builds an edge class list', () => {
+    expect(edgeClassName('graph-edge-theme', { hidden: false, dimmed: false })).toBe('graph-edge graph-edge-theme')
+    expect(edgeClassName('graph-edge-theme', { hidden: true, dimmed: true })).toBe('graph-edge graph-edge-theme graph-hidden graph-edge-dimmed')
+  })
+
+  const plain = { kind: 'service', hub: false, hidden: false, gated: false, highlighted: false, matched: false, dim: 'none' } as const
+
+  it('builds a node class list', () => {
+    expect(nodeClassName(plain)).toBe('graph-node graph-node-service')
+    expect(nodeClassName({ ...plain, hidden: true, gated: true, highlighted: true, matched: true, dim: 'near' })).toBe(
+      'graph-node graph-node-service graph-hidden graph-node-gated graph-node-highlighted graph-node-match graph-node-near',
+    )
+    expect(nodeClassName({ ...plain, dim: 'dim' })).toBe('graph-node graph-node-service graph-node-dimmed')
+  })
+
+  it('gives the org and access hubs their own class, not .graph-node', () => {
+    expect(nodeClassName({ ...plain, kind: 'office', hub: true })).toBe('graph-org-node graph-node-office')
   })
 })

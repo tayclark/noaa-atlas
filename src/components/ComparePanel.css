@@ -46,6 +46,6 @@
 .compare-table tbody th {
   position: sticky;
   left: 0;
-  z-index: 1;
+  z-index: var(--z-sticky);
   background: var(--color-surface);
 }

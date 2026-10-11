@@ -34,10 +34,19 @@ describe('NodeDetailPanel', () => {
   it('toggles the node in and out of the compare set', () => {
     selectNode('nws-api')
     render(panel)
-    fireEvent.click(screen.getByRole('button', { name: 'Add to compare' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Compare', pressed: false }))
     expect(getCompareSnapshot()).toEqual(['nws-api'])
-    fireEvent.click(screen.getByRole('button', { name: 'Remove from compare' }))
+    // The name stays "Compare"; the check mark is for the eye and aria-pressed carries the state (#352).
+    const compare = screen.getByRole('button', { name: 'Compare', pressed: true })
+    expect(compare.textContent).toBe('✓ Compare')
+    fireEvent.click(compare)
     expect(getCompareSnapshot()).toEqual([])
+  })
+
+  it('is a named region, like the phone sheet (#352)', () => {
+    selectNode('nws-api')
+    render(panel)
+    expect(screen.getByRole('region', { name: 'Node detail' }).tagName).toBe('SECTION')
   })
 
   it('renders the selected node\'s detail fields', () => {
@@ -155,14 +164,15 @@ describe('NodeDetailPanel', () => {
     let toggled = 0
     const { rerender } = render(<NodeDetailPanel collapsed={false} onToggleCollapsed={() => toggled++} />)
 
-    const collapse = screen.getByRole('button', { name: 'Collapse details' })
+    const collapse = screen.getByRole('button', { name: 'Details', expanded: true })
     expect(collapse.getAttribute('aria-expanded')).toBe('true')
+    expect(document.getElementById(collapse.getAttribute('aria-controls')!)?.textContent).toContain(node.baseUrl)
     fireEvent.click(collapse)
     expect(toggled).toBe(1)
 
     rerender(<NodeDetailPanel collapsed onToggleCollapsed={() => toggled++} />)
     expect(screen.getByText(node.name)).toBeTruthy()
     expect(screen.queryByText(node.baseUrl)).toBeNull()
-    expect(screen.getByRole('button', { name: 'Expand details' }).getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByRole('button', { name: 'Details', expanded: false }).getAttribute('aria-expanded')).toBe('false')
   })
 })

@@ -4,8 +4,8 @@
 import { graph as defaultGraph } from '../../data/graphData'
 import { THEME_DESCRIPTIONS, type Graph, type ThemeNode } from '../../data/graphSchema'
 import { selectNode } from '../../data/selectionStore'
-import { THEME_COLORS } from '../../data/themeColors'
 import { summarizeTheme } from '../../data/themeSummary'
+import { ThemeSwatch } from './ThemeSwatch'
 
 /** `graph` is only overridden by tests, to reach the empty-theme state. */
 export function ThemeDetailBody({ node, graph = defaultGraph }: { node: ThemeNode; graph?: Graph }) {
@@ -14,7 +14,7 @@ export function ThemeDetailBody({ node, graph = defaultGraph }: { node: ThemeNod
   return (
     <>
       <span className="node-detail-theme-tag">
-        <span className="node-detail-theme-swatch" style={{ background: THEME_COLORS[node.theme] }} aria-hidden="true" />
+        <ThemeSwatch theme={node.theme} />
         Theme
       </span>
       <p className="node-detail-theme-description">{THEME_DESCRIPTIONS[node.theme]}</p>

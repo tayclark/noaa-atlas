@@ -11,9 +11,16 @@
   --color-accent-muted: #1d4f7a;
   --color-alert-warning: #f5a524;
   --color-alert-danger: #ff3d7a;
+  /* "Live" badges. Their text is --color-surface-raised, like the "not live" badge's. */
+  --color-success: #3fb950;
+  /* The drop shadow of a sheet or popover floating over the view. */
+  --shadow-overlay-color: rgb(0 0 0 / 0.45);
 
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  /* The small print of the graph's detail card and legend: field names, section headings, samples. */
+  --font-size-3xs: 0.65rem;
+  --font-size-2xs: 0.7rem;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-md: 1rem;
@@ -28,6 +35,12 @@
 
   --radius-sm: 4px;
   --radius-md: 8px;
+
+  /* Stacking, lowest first. Each layer only has to beat the ones below it in the same container. */
+  --z-sticky: 1; /* sticky headers and row labels over their own scrolling content */
+  --z-sheet: 5; /* the phone's detail sheet over the view it covers */
+  --z-popover: 7; /* the search results list over the graph canvas */
+  --z-skip-link: 100; /* the skip link over everything */
 
   --divider-size: 6px;
   --header-height: 44px;
@@ -116,7 +129,7 @@ summary:active,
   position: absolute;
   top: var(--space-2);
   left: var(--space-2);
-  z-index: 100;
+  z-index: var(--z-skip-link);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--color-surface-raised);

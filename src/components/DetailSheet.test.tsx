@@ -60,43 +60,43 @@ describe('DetailSheet', () => {
   it('peeks by default, with the body out of reach, and opens from the grabber', () => {
     selectNode('nws-api')
     render(sheet())
-    const grabber = screen.getByRole('button', { name: 'Expand details' })
+    const grabber = screen.getByRole('button', { name: 'Details', expanded: false })
     expect(grabber.getAttribute('aria-expanded')).toBe('false')
     expect(body().hasAttribute('inert')).toBe(true)
     expect(getSheetBoxSnapshot()?.size).toBe(HEADER)
     expect(root().style.height).toBe(`${HEADER}px`)
 
     fireEvent.click(grabber)
-    expect(screen.getByRole('button', { name: 'Collapse details' }).getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Details', expanded: true }).getAttribute('aria-expanded')).toBe('true')
     expect(body().hasAttribute('inert')).toBe(false)
     expect(getSheetBoxSnapshot()?.size).toBe(AREA - 56)
     expect(root().style.height).toBe(`${AREA - 56}px`)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Collapse details' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Details', expanded: true }))
     expect(getSheetBoxSnapshot()?.size).toBe(HEADER)
   })
 
   it('starts open when asked to, as a finder step does', () => {
     selectNode('nws-api')
     render(sheet({ startOpen: true }))
-    expect(screen.getByRole('button', { name: 'Collapse details' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Details', expanded: true })).toBeTruthy()
     expect(getSheetBoxSnapshot()?.size).toBe(AREA - 56)
   })
 
   it('folds again when it moves to another view', () => {
     selectNode('nws-api')
     const { rerender } = render(sheet({ view: 'tasks', startOpen: true }))
-    expect(screen.getByRole('button', { name: 'Collapse details' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Details', expanded: true })).toBeTruthy()
     rerender(sheet({ view: 'graph', startOpen: true }))
-    expect(screen.getByRole('button', { name: 'Expand details' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Details', expanded: false })).toBeTruthy()
   })
 
   it('keeps its height when the selection moves to another node', () => {
     selectNode('nws-api')
     render(sheet())
-    fireEvent.click(screen.getByRole('button', { name: 'Expand details' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Details', expanded: false }))
     act(() => selectNode('coops-data-api'))
-    expect(screen.getByRole('button', { name: 'Collapse details' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Details', expanded: true })).toBeTruthy()
     expect(screen.getByRole('heading', { name: /CO-OPS/ })).toBeTruthy()
   })
 
@@ -140,9 +140,18 @@ describe('DetailSheet', () => {
     expect(compare.getAttribute('aria-pressed')).toBe('false')
     fireEvent.click(compare)
     expect(getCompareSnapshot()).toEqual(['nws-api'])
-    expect(screen.getByRole('button', { name: '✓ Compare' }).getAttribute('aria-pressed')).toBe('true')
-    fireEvent.click(screen.getByRole('button', { name: '✓ Compare' }))
+    expect(screen.getByRole('button', { name: 'Compare', pressed: true }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Compare', pressed: true }))
     expect(getCompareSnapshot()).toEqual([])
+  })
+
+  it('names the grabber for what it folds, with aria-expanded and aria-controls (#352)', () => {
+    selectNode('nws-api')
+    render(sheet())
+    const grabber = screen.getByRole('button', { name: 'Details', expanded: false })
+    expect(document.getElementById(grabber.getAttribute('aria-controls')!)).toBe(body())
+    fireEvent.click(grabber)
+    expect(screen.getByRole('button', { name: 'Details', expanded: true })).toBe(grabber)
   })
 
   it('switches to the globe from Show on globe', () => {
@@ -165,7 +174,7 @@ describe('DetailSheet', () => {
       selectNode('nws-api')
       const { container } = render(sheet({ side: true }))
       expect(container.querySelector('.detail-sheet-side')).not.toBeNull()
-      expect(screen.queryByRole('button', { name: /Expand details|Collapse details/ })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Details' })).toBeNull()
       expect(body().hasAttribute('inert')).toBe(false)
       expect(root().style.height).toBe('')
       expect(getSheetBoxSnapshot()?.edge).toBe('right')
@@ -200,7 +209,7 @@ describe('DetailSheet', () => {
       expect(root().style.height).toBe(`${HEADER + 500}px`)
       fireEvent.pointerUp(header(), { clientY: 200 })
       expect(root().className).not.toContain('detail-sheet-dragging')
-      expect(screen.getByRole('button', { name: 'Collapse details' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Details', expanded: true })).toBeTruthy()
     })
 
     it('stays at peek for a touch that does not move far enough to be a drag', () => {
@@ -210,7 +219,7 @@ describe('DetailSheet', () => {
       fireEvent.pointerMove(header(), { clientY: 697 })
       expect(root().className).not.toContain('detail-sheet-dragging')
       fireEvent.pointerUp(header(), { clientY: 697 })
-      expect(screen.getByRole('button', { name: 'Expand details' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Details', expanded: false })).toBeTruthy()
     })
 
     it('folds from open when pulled well down, without dismissing', () => {
@@ -219,7 +228,7 @@ describe('DetailSheet', () => {
       fireEvent.pointerDown(header(), { clientY: 100 })
       fireEvent.pointerMove(header(), { clientY: 700 })
       fireEvent.pointerUp(header(), { clientY: 700 })
-      expect(screen.getByRole('button', { name: 'Expand details' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Details', expanded: false })).toBeTruthy()
       expect(getSelectionSnapshot().selectedNodeId).toBe('nws-api')
     })
 
@@ -239,19 +248,35 @@ describe('DetailSheet', () => {
       fireEvent.pointerDown(close, { clientY: 500 })
       fireEvent.pointerMove(header(), { clientY: 100 })
       fireEvent.pointerUp(header(), { clientY: 100 })
-      expect(screen.getByRole('button', { name: 'Expand details' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Details', expanded: false })).toBeTruthy()
     })
 
     it('does not let the click that ends a drag toggle the sheet', () => {
       selectNode('nws-api')
       render(sheet())
-      const grabber = screen.getByRole('button', { name: 'Expand details' })
+      const grabber = screen.getByRole('button', { name: 'Details', expanded: false })
       fireEvent.pointerDown(grabber, { clientY: 700 })
       fireEvent.pointerMove(header(), { clientY: 200 })
       fireEvent.pointerUp(header(), { clientY: 200 })
-      expect(screen.getByRole('button', { name: 'Collapse details' })).toBeTruthy()
-      fireEvent.click(screen.getByRole('button', { name: 'Collapse details' }))
-      expect(screen.getByRole('button', { name: 'Collapse details' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Details', expanded: true })).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Details', expanded: true }))
+      expect(screen.getByRole('button', { name: 'Details', expanded: true })).toBeTruthy()
+    })
+
+    it('leaves no timer running once it unmounts after a drag', () => {
+      vi.useFakeTimers()
+      try {
+        selectNode('nws-api')
+        const { unmount } = render(sheet())
+        fireEvent.pointerDown(header(), { clientY: 700 })
+        fireEvent.pointerMove(header(), { clientY: 200 })
+        fireEvent.pointerUp(header(), { clientY: 200 })
+        expect(vi.getTimerCount()).toBeGreaterThan(0)
+        unmount()
+        expect(vi.getTimerCount()).toBe(0)
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('puts the sheet back when the browser takes the touch over', () => {
@@ -261,7 +286,7 @@ describe('DetailSheet', () => {
       fireEvent.pointerMove(header(), { clientY: 200 })
       fireEvent.pointerCancel(header())
       expect(root().className).not.toContain('detail-sheet-dragging')
-      expect(screen.getByRole('button', { name: 'Expand details' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Details', expanded: false })).toBeTruthy()
     })
   })
 })

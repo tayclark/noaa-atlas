@@ -16,9 +16,9 @@ test.beforeEach(async ({ page }) => {
 
 test('services added from the detail panel appear side by side in the Compare tab', async ({ page }) => {
   await selectByKeyboard(page, 'nws-api')
-  await page.getByLabel('Node detail').getByRole('button', { name: 'Add to compare' }).click()
+  await page.getByLabel('Node detail').getByRole('button', { name: 'Compare', exact: true }).click()
   await selectByKeyboard(page, 'swpc-ovation-aurora')
-  await page.getByLabel('Node detail').getByRole('button', { name: 'Add to compare' }).click()
+  await page.getByLabel('Node detail').getByRole('button', { name: 'Compare', exact: true }).click()
 
   const tab = page.getByRole('tab', { name: /Compare/ })
   await expect(tab).toContainText('2')

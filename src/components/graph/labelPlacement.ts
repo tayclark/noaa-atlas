@@ -28,6 +28,10 @@ export interface Bounds {
   height: number
 }
 
+/** Labels render at this size on screen at every zoom level (#138); overlaps are hidden instead. */
+export const LABEL_PX = 12
+/** The height of the box a label reserves, in screen pixels. */
+export const LABEL_HEIGHT = 13
 /** Gap between the node edge and its label, in screen pixels. */
 export const LABEL_GAP = 4
 /** A diagonal label's corner sits this fraction of (radius + gap) off the node centre on each axis. */
@@ -75,7 +79,8 @@ export function boxRelativeTo(rect: DOMRectReadOnly, origin: DOMRectReadOnly): B
 
 const intersects = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1
 
-function labelBox(item: LabelItem, side: LabelSide): Box {
+/** The screen box a label on `side` of `item` takes. */
+export function labelBox(item: LabelItem, side: LabelSide): Box {
   const offset = item.radius + LABEL_GAP
   if (side.includes('-')) {
     const d = offset * DIAGONAL_OFFSET
@@ -138,4 +143,88 @@ export function placeLabels(
   for (const item of ordered) place(item, strictDots)
   for (const item of ordered) if (result.get(item.id) === null) place(item, softDots)
   return result
+}
+
+// Where the text's baseline sits in its LABEL_HEIGHT box, in screen pixels, for LABEL_PX text: below
+// the centre of a box beside the node, below the top of one under it, above the bottom of one over it.
+const BASELINE_BELOW_CENTRE = 4
+const BASELINE_BELOW_TOP = 11
+const BASELINE_ABOVE_BOTTOM = 3
+
+export interface LabelAnchor {
+  x: number
+  y: number
+  anchor: 'start' | 'middle' | 'end'
+}
+
+/**
+ * The SVG text position (x, baseline y and text-anchor) for a label on `side` of a node of radius `r`,
+ * relative to the node's centre in world units at zoom `k`, so the text lands in the box `labelBox`
+ * reserved for it. A hidden label (null) keeps the default place, to the right.
+ */
+export function labelAnchor(side: LabelSide | null, r: number, k: number): LabelAnchor {
+  // Positions are in world units (the zoom layer scales them), so screen gaps divide by k.
+  const offset = r + LABEL_GAP / k
+  const belowCentre = BASELINE_BELOW_CENTRE / k
+  const belowTop = BASELINE_BELOW_TOP / k
+  const aboveBottom = BASELINE_ABOVE_BOTTOM / k
+  switch (side) {
+    case 'left':
+      return { x: -offset, y: belowCentre, anchor: 'end' }
+    case 'below':
+      return { x: 0, y: offset + belowTop, anchor: 'middle' }
+    case 'above':
+      return { x: 0, y: -(offset + aboveBottom), anchor: 'middle' }
+    case 'upper-right':
+    case 'upper-left':
+    case 'lower-right':
+    case 'lower-left': {
+      // Diagonal labels (#145) hang off a corner offset * DIAGONAL_OFFSET from the centre.
+      const d = offset * DIAGONAL_OFFSET
+      const right = side.endsWith('right')
+      return {
+        x: right ? d : -d,
+        y: side.startsWith('upper') ? -(d + aboveBottom) : d + belowTop,
+        anchor: right ? 'start' : 'end',
+      }
+    }
+    default:
+      return { x: offset, y: belowCentre, anchor: 'start' }
+  }
+}
+
+/**
+ * Label priority (#138): what the user asked for wins space first (the selection, task path or globe
+ * point, then search matches), then the hubs, then a single selected node's neighbours, then every
+ * other service. From `hub` up a label is exempt from the zoom budget and may cover other dots.
+ */
+export const LABEL_PRIORITY = {
+  service: 0,
+  neighbor: 1,
+  hub: BUDGET_EXEMPT_PRIORITY,
+  match: 4,
+  highlighted: 5,
+} as const
+
+/** The priority of a node `labelPriorities` didn't list. */
+export const defaultLabelPriority = (isService: boolean): number => (isService ? LABEL_PRIORITY.service : LABEL_PRIORITY.hub)
+
+/** Priorities by node id; a node in more than one group takes the highest. */
+export function labelPriorities({
+  highlightedIds,
+  matchedIds,
+  hubIds,
+  neighborIds,
+}: {
+  highlightedIds: Iterable<string>
+  matchedIds: Iterable<string> | null
+  hubIds: Iterable<string>
+  neighborIds: Iterable<string>
+}): Map<string, number> {
+  const priorities = new Map<string, number>()
+  for (const id of neighborIds) priorities.set(id, LABEL_PRIORITY.neighbor)
+  for (const id of hubIds) priorities.set(id, LABEL_PRIORITY.hub)
+  for (const id of matchedIds ?? []) priorities.set(id, LABEL_PRIORITY.match)
+  for (const id of highlightedIds) priorities.set(id, LABEL_PRIORITY.highlighted)
+  return priorities
 }

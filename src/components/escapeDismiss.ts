@@ -2,7 +2,7 @@
 // globe popup first, and then clears the selection, from wherever focus is (the graph, the detail
 // card, the globe). Fields keep Escape for themselves, and a modal dialog closes on its own.
 
-import { clearSelection, getSelectionSnapshot } from '../data/selectionStore'
+import { clearSelection, hasSelection } from '../data/selectionStore'
 
 /** Closes something if it is open, and says whether it did. */
 export type Dismisser = () => boolean
@@ -39,8 +39,7 @@ export function shouldHandleEscape(event: EscapeEventLike): boolean {
 /** Runs the first dismisser that closes something, or else clears the selection. Says whether anything happened. */
 export function handleEscape(): boolean {
   if (dismissers.some((dismiss) => dismiss())) return true
-  const { selectedNodeId, selectedPoint, selectedTaskId } = getSelectionSnapshot()
-  if (!selectedNodeId && !selectedPoint && !selectedTaskId) return false
+  if (!hasSelection()) return false
   clearSelection()
   return true
 }

@@ -34,8 +34,8 @@ describe('contrastRatio', () => {
 })
 
 describe('design token contrast (WCAG AA)', () => {
-  // Body-size text needs 4.5:1; the accent doubles as link/label text, the alert colours as text.
-  const TEXT = ['color-text', 'color-text-muted', 'color-accent', 'color-alert-warning', 'color-alert-danger'] as const
+  // Body-size text needs 4.5:1; the accent doubles as link/label text, the alert and success colours as text.
+  const TEXT = ['color-text', 'color-text-muted', 'color-accent', 'color-alert-warning', 'color-alert-danger', 'color-success'] as const
 
   for (const foreground of TEXT) {
     for (const surface of SURFACES) {
@@ -44,6 +44,11 @@ describe('design token contrast (WCAG AA)', () => {
       })
     }
   }
+
+  // The "Live" badge (#352): its text is the raised surface colour on a --color-success fill.
+  it('"Live" badge text (--color-surface-raised) on --color-success is at least 4.5:1', () => {
+    expect(contrastRatio(token('color-surface-raised'), token('color-success'))).toBeGreaterThanOrEqual(4.5)
+  })
 
   it('the focus ring (--color-accent) is at least 3:1 against every surface', () => {
     for (const surface of SURFACES) {

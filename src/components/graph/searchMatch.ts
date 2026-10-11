@@ -49,3 +49,26 @@ export function matchNodeIds(index: SearchIndex, query: string): Set<string> | n
   }
   return matches
 }
+
+/** A match, listed under the search box on a phone (#78). */
+export interface SearchResult {
+  id: string
+  name: string
+  detail: string
+}
+
+/**
+ * What a phone lists under the search box: the matches by name, with where each sits (#78).
+ * Services come first, since an API is what the reader is after; the theme hubs follow.
+ */
+export function searchResults(matchedIds: ReadonlySet<string> | null, findNode: (id: string) => GraphNode | undefined): SearchResult[] {
+  const found = [...(matchedIds ?? [])].flatMap((id) => {
+    const node = findNode(id)
+    return node ? [node] : []
+  })
+  return [...found.filter((node) => node.kind === 'service'), ...found.filter((node) => node.kind !== 'service')].map((node) => ({
+    id: node.id,
+    name: node.name,
+    detail: node.kind === 'service' ? THEME_LABELS[node.theme] : node.kind === 'theme' ? 'Theme' : 'NOAA',
+  }))
+}

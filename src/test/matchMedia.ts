@@ -12,14 +12,16 @@ export function mockMatchMedia(initial: boolean, query?: string) {
     get matches() {
       return matches
     },
-    addEventListener: (_: string, listener: () => void) => listeners.add(listener),
-    removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
+    addEventListener: vi.fn((_: string, listener: () => void) => listeners.add(listener)),
+    removeEventListener: vi.fn((_: string, listener: () => void) => listeners.delete(listener)),
   }
   const otherQuery = { matches: false, addEventListener: () => {}, removeEventListener: () => {} }
   const matchMedia = vi.fn((asked: string) => (query === undefined || asked === query ? list : otherQuery))
   Object.defineProperty(window, 'matchMedia', { value: matchMedia, configurable: true, writable: true })
   return {
     matchMedia,
+    /** The list `query` answers with, whose listener calls a test can count. */
+    list,
     /** Flips the answer and tells the listeners. */
     set(next: boolean) {
       matches = next

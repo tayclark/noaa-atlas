@@ -43,3 +43,32 @@ export function isEdgeDimmed(
   if (matchedIds) return true
   return !(highlightedIds.includes(source) || highlightedIds.includes(target))
 }
+
+const DIM_CLASS: Record<NodeDim, string> = { none: '', near: ' graph-node-near', dim: ' graph-node-dimmed' }
+
+/** An edge's class list: its type's class, then whether the layout hides it or the focus dims it. */
+export function edgeClassName(typeClass: string, { hidden, dimmed }: { hidden: boolean; dimmed: boolean }): string {
+  return `graph-edge ${typeClass}${hidden ? ' graph-hidden' : ''}${dimmed ? ' graph-edge-dimmed' : ''}`
+}
+
+/** A node's class list. Org and access hubs are `graph-org-node`, so the selectable `.graph-node` selectors skip them. */
+export function nodeClassName({
+  kind,
+  hub,
+  hidden,
+  gated,
+  highlighted,
+  matched,
+  dim,
+}: {
+  kind: string
+  hub: boolean
+  hidden: boolean
+  /** A token-gated service, ringed in the access view (#60). */
+  gated: boolean
+  highlighted: boolean
+  matched: boolean
+  dim: NodeDim
+}): string {
+  return `${hub ? 'graph-org-node' : 'graph-node'} graph-node-${kind}${hidden ? ' graph-hidden' : ''}${gated ? ' graph-node-gated' : ''}${highlighted ? ' graph-node-highlighted' : ''}${matched ? ' graph-node-match' : ''}${DIM_CLASS[dim]}`
+}

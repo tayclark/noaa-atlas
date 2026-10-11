@@ -9,7 +9,7 @@
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   line-height: 1.4;
   color: var(--color-text);
 }
@@ -52,14 +52,14 @@
   margin-bottom: var(--space-1);
   padding: 1px 6px;
   border-radius: var(--radius-sm);
-  font-size: 0.65rem;
+  font-size: var(--font-size-3xs);
   font-weight: 600;
   text-transform: uppercase;
 }
 
 .node-detail-live {
   background: var(--color-success);
-  color: #fff;
+  color: var(--color-surface-raised);
 }
 
 .node-detail-not-live {
@@ -79,7 +79,7 @@
 
 .node-detail-row dt {
   color: var(--color-text-muted);
-  font-size: 0.65rem;
+  font-size: var(--font-size-3xs);
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -96,7 +96,7 @@
 .node-sample h4 {
   margin: 0 0 var(--space-1);
   color: var(--color-text-muted);
-  font-size: 0.65rem;
+  font-size: var(--font-size-3xs);
   text-transform: uppercase;
 }
 
@@ -104,7 +104,7 @@
   display: block;
   margin-bottom: var(--space-1);
   overflow-wrap: anywhere;
-  font-size: 0.7rem;
+  font-size: var(--font-size-2xs);
 }
 
 .node-sample-actions {
@@ -130,12 +130,12 @@
 
 .node-sample-error {
   margin: 0 0 var(--space-1);
-  color: var(--color-danger, #e5484d);
+  color: var(--color-alert-danger);
 }
 
 .node-sample-label {
   color: var(--color-text-muted);
-  font-size: 0.65rem;
+  font-size: var(--font-size-3xs);
 }
 
 .node-sample-body {
@@ -145,7 +145,7 @@
   overflow: auto;
   background: var(--color-bg);
   border-radius: var(--radius-sm);
-  font-size: 0.65rem;
+  font-size: var(--font-size-3xs);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -161,7 +161,7 @@
 .node-sample-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.65rem;
+  font-size: var(--font-size-3xs);
 }
 
 .node-sample-table caption {
@@ -190,7 +190,7 @@
 .node-detail-theme-services h4 {
   margin: 0 0 2px;
   color: var(--color-text-muted);
-  font-size: 0.65rem;
+  font-size: var(--font-size-3xs);
   text-transform: uppercase;
 }
 
@@ -237,7 +237,7 @@
 
 .node-datasets summary {
   color: var(--color-text-muted);
-  font-size: 0.65rem;
+  font-size: var(--font-size-3xs);
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -287,7 +287,7 @@
   gap: 4px;
   margin-bottom: var(--space-1);
   color: var(--color-text-muted);
-  font-size: 0.65rem;
+  font-size: var(--font-size-3xs);
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -313,7 +313,7 @@
   padding: 0 4px;
   border-radius: var(--radius-sm);
   background: var(--color-success);
-  color: #fff;
+  color: var(--color-surface-raised);
   font-size: 0.6rem;
   font-weight: 600;
   text-transform: uppercase;

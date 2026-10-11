@@ -5,7 +5,7 @@
 }
 
 .copy-button-failed {
-  color: var(--color-danger, #e5484d);
+  color: var(--color-alert-danger);
 }
 
 /* Full width and ordered last, so it wraps under the whole row of buttons. */
