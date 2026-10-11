@@ -155,6 +155,7 @@ import { clearSelection, subscribeSelection, getSelectionSnapshot, selectPoint }
 import { getViewSnapshot, resolveView, subscribeView } from '../../data/viewStore'
 import { useNarrowLayout } from '../useNarrowLayout'
 import { addLayerGroup, addPointerCursor, setLayersVisible } from './mapLayers'
+import { failedWith, loadedWith, LOADING, type AsyncState } from './asyncState'
 
 // Beyond this many zone-only alerts, the overlay collapses the rest behind a "N more" toggle
 // rather than growing unbounded during a high-volume event (#106).
@@ -302,12 +303,8 @@ export function MapLibreGlobe() {
   const [dartStations, setDartStations] = useState<number | 'error' | null>(null)
   const [ndbcStations, setNdbcStations] = useState<number | 'error' | null>(null)
   const [arcgisLegends, setArcgisLegends] = useState<Partial<Record<ArcgisOverlay['key'], ArcgisLegendState>>>({})
-  const [spc, setSpc] = useState<
-    { status: 'loading' } | { status: 'ok'; categories: SpcCategory[] } | { status: 'empty' } | { status: 'error'; message: string }
-  >({ status: 'loading' })
-  const [storms, setStorms] = useState<
-    { status: 'loading' } | { status: 'ok'; tracks: StormTrack[] } | { status: 'empty' } | { status: 'error'; message: string }
-  >({ status: 'loading' })
+  const [spc, setSpc] = useState<AsyncState<SpcCategory[]>>(LOADING)
+  const [storms, setStorms] = useState<AsyncState<StormTrack[]>>(LOADING)
   // The storm the track control drives, and its scrubbed time; null means the strongest storm and its latest advisory.
   const [stormBin, setStormBin] = useState<string | null>(null)
   const [stormTime, setStormTime] = useState<number | null>(null)
@@ -316,9 +313,7 @@ export function MapLibreGlobe() {
   // The impact prompt the reader closed, by point and storm, so it stays closed for that place.
   const [dismissedImpact, setDismissedImpact] = useState<string | null>(null)
   const [auroraError, setAuroraError] = useState<string | null>(null)
-  const [kp, setKp] = useState<{ status: 'loading' } | { status: 'ok'; readout: KpReadout } | { status: 'error'; message: string }>({
-    status: 'loading',
-  })
+  const [kp, setKp] = useState<AsyncState<KpReadout>>(LOADING)
   // The radar's chosen frame (#74) comes from the shared time (#228), so the radar and the point
   // forecast timeline scrub together; null follows the latest frame.
   const sharedTime = useSyncExternalStore(subscribeTime, getTimeSnapshot).time
@@ -592,10 +587,10 @@ export function MapLibreGlobe() {
           (rows) => {
             if (disposed) return
             kpLoaded = true
-            setKp({ status: 'ok', readout: describeKp(rows) })
+            setKp(loadedWith(describeKp(rows)))
           },
           (err: unknown) => {
-            if (!disposed && !kpLoaded) setKp({ status: 'error', message: describeSwpcFetchOutcome(err) })
+            if (!disposed && !kpLoaded) setKp(failedWith(describeSwpcFetchOutcome(err)))
           },
         )
 
@@ -888,10 +883,10 @@ export function MapLibreGlobe() {
           if (cancelled) return
           loaded = true
           map.getSource<GeoJSONSource>(SPC_SOURCE_ID)?.setData(outlook)
-          setSpc(isOutlookEmpty(outlook) ? { status: 'empty' } : { status: 'ok', categories: categoriesInOutlook(outlook) })
+          setSpc(isOutlookEmpty(outlook) ? { status: 'empty' } : loadedWith(categoriesInOutlook(outlook)))
         })
         .catch((err: unknown) => {
-          if (!cancelled && !loaded) setSpc({ status: 'error', message: describeSpcFetchOutcome(err) })
+          if (!cancelled && !loaded) setSpc(failedWith(describeSpcFetchOutcome(err)))
         })
     }
     loadSpcRef.current()
@@ -900,7 +895,7 @@ export function MapLibreGlobe() {
       loadSpcRef.current = () => {}
       // An unmounted globe has removed its map already.
       if (mapRef.current === map) map.getSource<GeoJSONSource>(SPC_SOURCE_ID)?.setData({ type: 'FeatureCollection', features: [] })
-      setSpc({ status: 'loading' })
+      setSpc(LOADING)
     }
   }, [spcShown, mapLoaded])
   useEffect(() => {
@@ -931,17 +926,17 @@ export function MapLibreGlobe() {
           if (cancelled) return
           loaded = true
           const tracks = buildStormTracks(data)
-          setStorms(tracks.length === 0 ? { status: 'empty' } : { status: 'ok', tracks })
+          setStorms(tracks.length === 0 ? { status: 'empty' } : loadedWith(tracks))
         })
         .catch((err: unknown) => {
-          if (!cancelled && !loaded) setStorms({ status: 'error', message: describeNhcFetchOutcome(err) })
+          if (!cancelled && !loaded) setStorms(failedWith(describeNhcFetchOutcome(err)))
         })
     }
     loadStormsRef.current()
     return () => {
       cancelled = true
       loadStormsRef.current = () => {}
-      setStorms({ status: 'loading' })
+      setStorms(LOADING)
     }
   }, [stormsWanted])
   useEffect(() => {
@@ -950,7 +945,7 @@ export function MapLibreGlobe() {
     return pollWhileVisible(() => loadStormsRef.current(), NHC_REFRESH_MS)
   }, [stormsWanted, active])
 
-  const stormTracks = storms.status === 'ok' ? storms.tracks : NO_STORMS
+  const stormTracks = storms.status === 'ok' ? storms.data : NO_STORMS
   const storm = stormTracks.find((track) => track.bin === stormBin) ?? stormTracks[0] ?? null
   const stormFrames = useMemo(() => (storm ? frameTimes(storm) : []), [storm])
   const stormAdvisoryIndex = storm ? advisoryFrameIndex(stormFrames, storm) : 0
@@ -1253,7 +1248,7 @@ export function MapLibreGlobe() {
           <div className="zone-only-alerts spc-legend storm-legend" role="status" aria-label="Storm track legend">
             <strong>Storm intensity</strong>
             <ul>
-              {categoriesInTracks(storms.tracks).map((category) => (
+              {categoriesInTracks(storms.data).map((category) => (
                 <li key={category.key} title={category.name}>
                   <span className="spc-legend-swatch storm-legend-swatch" style={{ background: category.color }} aria-hidden="true" />
                   <span aria-hidden="true">{categoryLabel(category)}</span>
@@ -1285,7 +1280,7 @@ export function MapLibreGlobe() {
           <div className="zone-only-alerts spc-legend" role="status" aria-label="Convective outlook legend">
             <strong>Day 1 convective outlook</strong>
             <ul>
-              {spc.categories.map((category) => (
+              {spc.data.map((category) => (
                 <li key={category.label}>
                   <span className="spc-legend-swatch" style={{ background: category.color }} aria-hidden="true" />
                   {category.name}
@@ -1398,8 +1393,8 @@ export function MapLibreGlobe() {
           >
             {kp.status === 'ok' && (
               <p>
-                <strong>Kp {kp.readout.kp}</strong> · {kp.readout.gScale} {kp.readout.label}{' '}
-                <span className="space-weather-readout-time">{kp.readout.time}</span>
+                <strong>Kp {kp.data.kp}</strong> · {kp.data.gScale} {kp.data.label}{' '}
+                <span className="space-weather-readout-time">{kp.data.time}</span>
               </p>
             )}
             {kp.status === 'error' && <p className="space-weather-readout-error">{kp.message}</p>}
