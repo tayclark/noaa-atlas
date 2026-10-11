@@ -240,6 +240,19 @@ describe('MapLibreGlobe lifecycle (#354)', () => {
     expect(map.calls.slice(before)).toEqual([])
   })
 
+  it('unmounting closes the open popup, and a lookup that lands later leaves it closed', async () => {
+    const { map, unmount } = renderGlobe()
+    clickGlobe(map)
+    const popup = popups[popups.length - 1]!
+    expect(popup.isOpen()).toBe(true)
+    const htmlCalls = popup.setHTML.mock.calls.length
+    unmount()
+    expect(popup.remove).toHaveBeenCalled()
+    expect(popup.isOpen()).toBe(false)
+    await answer('api.weather.gov/points', () => new Error('offline'))
+    expect(popup.setHTML.mock.calls.length).toBe(htmlCalls)
+  })
+
   it('a point lookup that lands after its popup was closed leaves it alone', async () => {
     const { map } = renderGlobe()
     clickGlobe(map)

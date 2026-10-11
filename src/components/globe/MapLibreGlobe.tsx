@@ -937,6 +937,13 @@ export function MapLibreGlobe() {
       geolocateRef.current = null
       windRef.current?.dispose()
       windRef.current = null
+      waveRef.current?.dispose()
+      waveRef.current = null
+      reflectivityRef.current?.dispose()
+      reflectivityRef.current = null
+      // The popup is module-level, so it would outlive the map, and Escape would still find it (#354).
+      openPopup?.remove()
+      openPopup = null
       map.remove()
     }
   }, [])
