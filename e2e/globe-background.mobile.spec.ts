@@ -4,6 +4,7 @@
 
 import { expect, test, type Page } from '@playwright/test'
 import { GLOBE, waitForGlobe } from './fixtures/globe'
+import { selectByKeyboard, showGraphTab } from './fixtures/graph'
 import { RADAR_FRAMES, mockRadar } from './fixtures/nowcoast'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc, mockSwpcRefresh } from './fixtures/swpc'
@@ -13,19 +14,13 @@ test.use({ reducedMotion: 'reduce' })
 
 const NOWCOAST = 'nowcoast-map-services'
 
-async function selectNowcoast(page: Page) {
-  await page.getByRole('tab', { name: /Graph/ }).tap()
-  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
-  await page.locator(`.graph-node[data-node-id="${NOWCOAST}"]`).focus()
-  await page.keyboard.press('Enter')
-}
-
 async function openRadar(page: Page) {
   await mockAlerts(page, emptyAlertsFixture())
   await mockSwpc(page)
   await mockRadar(page)
   await page.goto('/')
-  await selectNowcoast(page)
+  await showGraphTab(page)
+  await selectByKeyboard(page, NOWCOAST)
   await page.getByRole('tab', { name: /Globe/ }).tap()
   await expect(page.getByRole('slider', { name: 'Radar frame' })).toBeVisible({ timeout: 20_000 })
 }
@@ -38,7 +33,8 @@ test('the radar loop stops while another tab shows, and goes on when the globe i
   await expect.poll(() => radarTime(page)).not.toBe('latest')
 
   await page.getByRole('tab', { name: /Graph/ }).tap()
-  // Let a tick that was already due go by, then see that no more arrive.
+  // Let a tick that was already due go by, then see that no more arrive. Sleeps on purpose: a
+  // paused loop has no event to wait for, so the second one spans a few of its ticks.
   await page.waitForTimeout(900)
   const held = await radarTime(page)
   await page.waitForTimeout(2300)

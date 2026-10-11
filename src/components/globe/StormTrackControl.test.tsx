@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeNhcStormData } from '../../data/nhcFixtures'
 import { clearTime, startPlayer } from '../../data/timeStore'
@@ -31,7 +31,6 @@ function renderControl(props: Partial<Parameters<typeof StormTrackControl>[0]> =
 
 beforeEach(() => vi.useFakeTimers())
 afterEach(() => {
-  cleanup()
   clearTime()
   vi.useRealTimers()
 })

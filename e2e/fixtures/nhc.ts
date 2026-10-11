@@ -5,6 +5,7 @@
 import type { Page } from '@playwright/test'
 import type { NhcStormData } from '../../src/data/nhcClient'
 import { makeNhcStormData } from '../../src/data/nhcFixtures'
+import { corsJson } from './cors'
 import { TRANSPARENT_PNG } from './nowcoast'
 
 export const NHC_URL = /NHC_tropical_weather_summary\/MapServer\/\d+\/query/
@@ -16,11 +17,7 @@ export async function mockNhcStorms(page: Page, data: NhcStormData = makeNhcStor
     const layer = /MapServer\/(\d+)\/query/.exec(route.request().url())?.[1] ?? ''
     const part = LAYER_PARTS[layer]
     if (!part) return route.fulfill({ status: 404, body: '' })
-    return route.fulfill({
-      contentType: 'application/geo+json',
-      headers: { 'access-control-allow-origin': '*' },
-      body: JSON.stringify(data[part]),
-    })
+    return route.fulfill(corsJson(data[part], { contentType: 'application/geo+json' }))
   })
 }
 

@@ -11,6 +11,7 @@ import { GOES_FRAMES, mockGoesSatellite, mockNhcStorms, NHC_URL } from './fixtur
 import { emptyAlertsFixture, mappableAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
@@ -26,11 +27,6 @@ async function openStormView(page: Page) {
   const prompt = page.getByRole('region', { name: 'Storm may affect this location' })
   await prompt.getByRole('button', { name: 'Show storm track' }).click()
   await expect(page.locator(GLOBE)).toHaveAttribute('data-nhc-view', 'full')
-}
-
-async function selectByKeyboard(page: Page, nodeId: string) {
-  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
-  await page.keyboard.press('Enter')
 }
 
 test.beforeEach(async ({ page }) => {

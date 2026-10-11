@@ -2,22 +2,18 @@
 // sample shows a station's recent daily summaries or the archive's latest files as a table in the
 // detail panel, with Inspector entries.
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
 import { makeDailySummaries, makeGoesListingHtml } from '../src/data/nceiFixtures'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
 
 const ADS = /^https:\/\/www\.ncei\.noaa\.gov\/access\/services\/data\/v1\?/
 const GOES_ARCHIVE = /^https:\/\/data\.ngdc\.noaa\.gov\/platforms\/solar-space-observing-satellites\/goes\/goes19\//
-
-async function selectByKeyboard(page: Page, nodeId: string) {
-  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
-  await page.keyboard.press('Enter')
-}
 
 const reply = (body: string, contentType: string, status = 200) => ({
   status,

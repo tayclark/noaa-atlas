@@ -4,6 +4,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { overlapping, switchView, visibleLabels, waitForSettledLayout } from './fixtures/graphLabels'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
+import { selectByKeyboard } from './fixtures/graph'
 
 // Reduced motion lays the graph out in one go instead of animating the ~6.5 s settle, and these
 // specs assert the settled layout, not the animation.
@@ -62,11 +63,6 @@ test('hovering a node reveals its hidden label', async ({ page }) => {
 
 // #141: a selection is framed beside the detail panel, so its neighbours (and their labels)
 // aren't hidden under it, and the panel can collapse to its title bar.
-async function selectByKeyboard(page: Page, nodeId: string) {
-  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
-  await page.keyboard.press('Enter')
-}
-
 test('a selected node and its neighbours are framed clear of the detail panel, labels visible', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await page.goto('/')

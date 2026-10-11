@@ -1,20 +1,16 @@
 // SWPC live layer (#54): the aurora layer, its click readout and the Kp corner, against mocked
 // SWPC files, plus one `@live` smoke test against the real ones.
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
 import { AURORA_BAND_VALUE, AURORA_FIXTURE_CELLS, mockSwpc, mockSwpcRefresh } from './fixtures/swpc'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
 
 const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
-
-async function selectByKeyboard(page: Page, nodeId: string) {
-  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
-  await page.keyboard.press('Enter')
-}
 
 test('draws the aurora, reads it back on click and shows Kp', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())

@@ -6,10 +6,12 @@
 import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
 
-const GRIB = Buffer.from(readFileSync('src/data/fixtures/gfs-ugrd10m-f012.grib2.b64', 'utf8').trim(), 'base64')
-const IDX = readFileSync('src/data/fixtures/gfs-1p00-f012.idx', 'utf8')
-const WAVE_GRIB = Buffer.from(readFileSync('src/data/fixtures/gfswave-htsgw-f024.grib2.b64', 'utf8').trim(), 'base64')
-const WAVE_IDX = readFileSync('src/data/fixtures/gfswave-0p25-f024.idx', 'utf8')
+// Resolved from this file, not the working directory, so Playwright can be run from anywhere.
+const fixture = (name: string) => readFileSync(new URL(`../../src/data/fixtures/${name}`, import.meta.url), 'utf8')
+const GRIB = Buffer.from(fixture('gfs-ugrd10m-f012.grib2.b64').trim(), 'base64')
+const IDX = fixture('gfs-1p00-f012.idx')
+const WAVE_GRIB = Buffer.from(fixture('gfswave-htsgw-f024.grib2.b64').trim(), 'base64')
+const WAVE_IDX = fixture('gfswave-0p25-f024.idx')
 
 export interface GfsRequest {
   url: string

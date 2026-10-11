@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { useEffect } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { GlobeErrorBoundary } from './GlobeErrorBoundary'
@@ -14,7 +14,6 @@ function ThrowsOnMount({ name }: { name: string }) {
 }
 
 afterEach(() => {
-  cleanup()
   vi.restoreAllMocks()
 })
 

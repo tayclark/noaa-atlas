@@ -1,10 +1,8 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { act, render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import { loadDatasetCatalog } from '../../data/nceiDatasets'
 import { NodeDatasetsSection } from './NodeDatasetsSection'
-
-afterEach(cleanup)
 
 describe('NodeDatasetsSection', () => {
   // Runs first, while the module's catalog is still unloaded.

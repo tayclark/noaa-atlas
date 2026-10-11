@@ -8,6 +8,7 @@ import { parseGraphFile } from '../src/data/graphSchema'
 import { US_CENTER } from '../src/components/globe/globeConfig'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
@@ -108,8 +109,7 @@ test('clicking the space around the globe clears the selection instead of pickin
 test('a coverage that crosses the antimeridian reads as the smaller arc (#80)', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await page.goto('/')
-  await page.locator('.graph-node[data-node-id="goes-aws-open-data"]').focus()
-  await page.keyboard.press('Enter')
+  await selectByKeyboard(page, 'goes-aws-open-data')
   const coverage = page.getByText('Coverage', { exact: true }).locator('xpath=following-sibling::dd')
   await expect(coverage).toBeVisible()
   await expect(coverage).not.toContainText('180°W–180°E')

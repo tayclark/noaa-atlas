@@ -41,7 +41,6 @@ beforeEach(() => {
   vi.setSystemTime(NOW)
 })
 afterEach(() => {
-  cleanup()
   clearTime()
   vi.useRealTimers()
   vi.clearAllMocks()
