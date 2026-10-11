@@ -1139,9 +1139,12 @@ export function MapLibreGlobe() {
     }
   }, [dartShown, dartStations, mapLoaded])
 
-  // The SPC outlook (#245) is fetched only while its node is selected, and refreshed while the tab
-  // is visible. A failed refresh keeps the polygons already drawn.
+  // The SPC outlook (#245) is fetched only while its node is selected, and refreshed while the globe
+  // is looked at, at once on return if it is stale (#354). A failed refresh keeps the polygons
+  // already drawn.
   const spcShown = liveLayers.includes('spc-outlook')
+  const loadSpcRef = useRef<() => void>(() => {})
+  const spcAtRef = useRef(0)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(SPC_FILL_LAYER_ID)) return
@@ -1151,7 +1154,8 @@ export function MapLibreGlobe() {
     if (!spcShown) return
     let cancelled = false
     let loaded = false
-    const load = () => {
+    loadSpcRef.current = () => {
+      spcAtRef.current = Date.now()
       getDay1CategoricalOutlook()
         .then((outlook) => {
           if (cancelled) return
@@ -1163,28 +1167,35 @@ export function MapLibreGlobe() {
           if (!cancelled && !loaded) setSpc({ status: 'error', message: describeSpcFetchOutcome(err) })
         })
     }
-    load()
-    const stop = pollWhileVisible(load, SPC_REFRESH_MS)
+    loadSpcRef.current()
     return () => {
       cancelled = true
-      stop()
+      loadSpcRef.current = () => {}
     }
   }, [spcShown, mapLoaded])
+  useEffect(() => {
+    if (!mapLoaded || !spcShown || !active) return
+    if (Date.now() - spcAtRef.current >= SPC_REFRESH_MS) loadSpcRef.current()
+    return pollWhileVisible(() => loadSpcRef.current(), SPC_REFRESH_MS)
+  }, [spcShown, mapLoaded, active])
 
   // The NHC storm tracks (#334), like the SPC outlook: fetched only while the node is selected, or
-  // while a point is selected so the impact prompt can check it (#344), and refreshed while the tab is
-  // visible. A failed refresh keeps the tracks already drawn.
+  // while a point is selected so the impact prompt can check it (#344), and refreshed while the globe
+  // is looked at (#354). A failed refresh keeps the tracks already drawn.
   const stormsWanted = nhcShown || selection.selectedPoint !== null
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded || !map.getLayer(NHC_FIX_LAYER_ID)) return
     for (const id of NHC_LAYER_IDS) map.setLayoutProperty(id, 'visibility', nhcShown ? 'visible' : 'none')
   }, [nhcShown, mapLoaded])
+  const loadStormsRef = useRef<() => void>(() => {})
+  const stormsAtRef = useRef(0)
   useEffect(() => {
     if (!stormsWanted) return
     let cancelled = false
     let loaded = false
-    const load = () => {
+    loadStormsRef.current = () => {
+      stormsAtRef.current = Date.now()
       getActiveStorms()
         .then((data) => {
           if (cancelled) return
@@ -1196,13 +1207,17 @@ export function MapLibreGlobe() {
           if (!cancelled && !loaded) setStorms({ status: 'error', message: describeNhcFetchOutcome(err) })
         })
     }
-    load()
-    const stop = pollWhileVisible(load, NHC_REFRESH_MS)
+    loadStormsRef.current()
     return () => {
       cancelled = true
-      stop()
+      loadStormsRef.current = () => {}
     }
   }, [stormsWanted])
+  useEffect(() => {
+    if (!stormsWanted || !active) return
+    if (Date.now() - stormsAtRef.current >= NHC_REFRESH_MS) loadStormsRef.current()
+    return pollWhileVisible(() => loadStormsRef.current(), NHC_REFRESH_MS)
+  }, [stormsWanted, active])
 
   const stormTracks = storms.status === 'ok' ? storms.tracks : NO_STORMS
   const storm = stormTracks.find((track) => track.bin === stormBin) ?? stormTracks[0] ?? null
