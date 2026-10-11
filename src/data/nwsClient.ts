@@ -21,48 +21,27 @@ import {
   type NwsPoint,
   type NwsStationCollection,
 } from './nwsSchema'
+import { makeClientErrors, type ClientHttpError, type ClientParseError, type HttpErrorKind } from './clientErrors'
 import { createLiveClient } from './liveRequest'
 
-export class NwsHttpError extends Error {
-  readonly status: number
-  readonly kind: 'forbidden' | 'rate-limited' | 'server-error' | 'unknown'
-
-  constructor(status: number, kind: 'forbidden' | 'rate-limited' | 'server-error' | 'unknown', message: string) {
-    super(message)
-    this.name = 'NwsHttpError'
-    this.status = status
-    this.kind = kind
-  }
+function nwsMessage(status: number, kind: HttpErrorKind): string {
+  if (kind === 'forbidden') return 'NWS rejected this request (403) — it may be rate-limited or blocked; try again shortly.'
+  if (kind === 'rate-limited') return 'NWS rate limit exceeded — retry in a few seconds.'
+  if (kind === 'server-error') return `NWS service error (${status}) — try again later.`
+  return `NWS request failed (${status}).`
 }
 
-export class NwsParseError extends Error {
-  readonly cause: unknown
-
-  constructor(message: string, cause: unknown) {
-    super(message)
-    this.name = 'NwsParseError'
-    this.cause = cause
-  }
-}
-
-function classifyError(res: Response): NwsHttpError {
-  if (res.status === 403) {
-    return new NwsHttpError(403, 'forbidden', 'NWS rejected this request (403) — it may be rate-limited or blocked; try again shortly.')
-  }
-  if (res.status === 429) {
-    return new NwsHttpError(429, 'rate-limited', 'NWS rate limit exceeded — retry in a few seconds.')
-  }
-  if (res.status >= 500) {
-    return new NwsHttpError(res.status, 'server-error', `NWS service error (${res.status}) — try again later.`)
-  }
-  return new NwsHttpError(res.status, 'unknown', `NWS request failed (${res.status}).`)
-}
+export const nwsErrors = makeClientErrors('NWS', 'Nws', nwsMessage)
+export const NwsHttpError = nwsErrors.HttpError
+export type NwsHttpError = ClientHttpError
+export const NwsParseError = nwsErrors.ParseError
+export type NwsParseError = ClientParseError
 
 const { request, clearCache } = createLiveClient({
   baseUrl: 'https://api.weather.gov',
   headers: { Accept: 'application/geo+json' },
-  httpError: classifyError,
-  parseError: (path, cause) => new NwsParseError(`NWS response for ${path} did not match the expected shape`, cause),
+  httpError: nwsErrors.httpError,
+  parseError: nwsErrors.parseError,
 })
 
 /** Clears the in-memory response cache. Intended for test isolation between cases. */

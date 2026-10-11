@@ -18,7 +18,7 @@ import './GraphView.css'
 import { buildAccessHierarchy } from '../../data/accessHierarchy'
 import { buildOrgHierarchy } from '../../data/orgHierarchy'
 import { graph, graphFile, tasks } from '../../data/graphData'
-import { getDatasetCatalog, loadDatasetCatalog, subscribeDatasetCatalog } from '../../data/nceiDatasets'
+import { getDatasetCatalogSnapshot, loadDatasetCatalog, subscribeDatasetCatalog } from '../../data/nceiDatasets'
 import { getNeighbors } from '../../data/neighbors'
 import {
   clearSelection,
@@ -28,7 +28,7 @@ import {
   selectNode,
   subscribeSelection,
 } from '../../data/selectionStore'
-import { getSheetBox, subscribeSheetBox, type SheetBox } from '../../data/sheetStore'
+import { getSheetBoxSnapshot, subscribeSheetBox, type SheetBox } from '../../data/sheetStore'
 import { nodeColor } from '../../data/themeColors'
 import { prefersReducedMotion } from '../prefersReducedMotion'
 import { edgeClassName, focusIds, isEdgeDimmed, neighborIds, nodeClassName, nodeDim } from './focusDim'
@@ -202,7 +202,7 @@ export function GraphView() {
   // A phone has no floating card: its detail is a bottom sheet, which publishes its height (#78).
   const compact = useNarrowLayout()
   const [panelCollapsed, setPanelCollapsed] = useState(false)
-  const sheet = useSyncExternalStore(subscribeSheetBox, getSheetBox)
+  const sheet = useSyncExternalStore(subscribeSheetBox, getSheetBoxSnapshot)
   // Read by placeLabelsRef, which runs outside React renders (zoom, ticks), so it's a ref. It is
   // kept up to date by the first effect below, which runs ahead of the ones that place labels.
   const sheetRef = useRef(sheet)
@@ -214,7 +214,7 @@ export function GraphView() {
   const announcement = selectionAnnouncement(selection, nodeNameById, taskLabelById, highlightedIds.length)
   const [query, setQuery] = useState('')
   // The dataset rows load on the search box's first focus (#269); the index gains their words then.
-  const datasetCatalog = useSyncExternalStore(subscribeDatasetCatalog, getDatasetCatalog)
+  const datasetCatalog = useSyncExternalStore(subscribeDatasetCatalog, getDatasetCatalogSnapshot)
   const searchIndex = useMemo(() => buildSearchIndex(graph.nodes, tasks, datasetCatalog), [datasetCatalog])
   const matchedIds = useMemo(() => matchNodeIds(searchIndex, query), [searchIndex, query])
   const focus = focusIds(matchedIds, highlightedIds)

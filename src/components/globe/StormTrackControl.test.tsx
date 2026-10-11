@@ -2,7 +2,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeNhcStormData } from '../../data/nhcFixtures'
-import { resetTime, startPlayer } from '../../data/timeStore'
+import { clearTime, startPlayer } from '../../data/timeStore'
 import { advisoryFrameIndex, buildStormTracks, frameTimes, type StormTrack } from './stormTrack'
 import { StormTrackControl } from './StormTrackControl'
 
@@ -31,7 +31,7 @@ function renderControl(props: Partial<Parameters<typeof StormTrackControl>[0]> =
 
 beforeEach(() => vi.useFakeTimers())
 afterEach(() => {
-  resetTime()
+  clearTime()
   vi.useRealTimers()
 })
 

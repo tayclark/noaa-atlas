@@ -2,7 +2,8 @@
 // resampling, colouring and click lookup are unit-testable, as with nwsAlertsLayer.ts.
 
 import type { SwpcOvation } from '../../data/swpcSchema'
-import { SwpcHttpError, SwpcParseError } from '../../data/swpcClient'
+import { describeClientError } from '../../data/clientErrors'
+import { swpcErrors } from '../../data/swpcClient'
 
 /** Cells below this probability (%) are left out of the click popup and the drawn-cell count. */
 export const AURORA_MIN_VALUE = 1
@@ -127,8 +128,10 @@ export function formatAuroraPopupHtml(value: number, forecastTime: string): stri
 
 /** A short message for a failed OVATION or Kp fetch, shown in the space weather readout. */
 export function describeSwpcFetchOutcome(err: unknown): string {
-  if (err instanceof SwpcHttpError) return `SWPC is unavailable (${err.status}) — space weather could not be loaded.`
-  if (err instanceof SwpcParseError) return 'SWPC returned an unexpected response.'
-  if (err instanceof TypeError) return 'Could not reach SWPC for space weather.'
-  return 'Something went wrong loading space weather.'
+  return describeClientError(err, swpcErrors, {
+    http: (e) => `SWPC is unavailable (${e.status}) — space weather could not be loaded.`,
+    parse: 'SWPC returned an unexpected response.',
+    network: 'Could not reach SWPC for space weather.',
+    fallback: 'Something went wrong loading space weather.',
+  })
 }

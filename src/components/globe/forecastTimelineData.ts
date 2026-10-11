@@ -12,6 +12,7 @@ import {
 } from '../../data/forecastSeries'
 import { tideStationFor } from '../../data/nearestTideStation'
 import { getGridpointData, getPoint } from '../../data/nwsClient'
+import { HOUR_MS } from '../../data/time'
 
 export interface ForecastTimelineData {
   series: ForecastSample[]
@@ -21,8 +22,6 @@ export interface ForecastTimelineData {
   /** Why a nearby station gave no curve; the wind and waves still show. */
   tideMessage: string | null
 }
-
-const HOUR_MS = 3_600_000
 
 /** UTC "YYYYMMDD" as CO-OPS wants it. */
 export function coopsDate(time: number): string {

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { slug as lowercaseSlug } from './schemaPrimitives.ts'
 
 /** One entry per graph theme; also the source of the generated theme hub nodes. */
 export const THEMES = [
@@ -97,9 +98,7 @@ export const coverageSchema = z.discriminatedUnion('type', [
 ])
 export type Coverage = z.infer<typeof coverageSchema>
 
-const slug = z
-  .string()
-  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'must be a lowercase slug (a-z, 0-9, hyphens)')
+const slug = lowercaseSlug
   .refine((id) => !id.startsWith(THEME_ID_PREFIX), `ids starting with "${THEME_ID_PREFIX}" are reserved for theme hubs`)
   .refine((id) => !id.startsWith(OFFICE_ID_PREFIX), `ids starting with "${OFFICE_ID_PREFIX}" are reserved for office hubs`)
   .refine((id) => !id.startsWith(PROGRAM_ID_PREFIX), `ids starting with "${PROGRAM_ID_PREFIX}" are reserved for program hubs`)
@@ -151,16 +150,15 @@ export const serviceNodeSchema = z
 export type ServiceNode = z.infer<typeof serviceNodeSchema>
 
 /** Theme edges are derived by buildGraph(), so only these types are authored. */
-export const authoredEdgeSchema = z.strictObject({
+const authoredEdgeSchema = z.strictObject({
   source: slug,
   target: slug,
   type: z.enum(['shared-id', 'data-flow']),
   label: nonEmpty,
   sourceUrl: z.url(),
 })
-export type AuthoredEdge = z.infer<typeof authoredEdgeSchema>
 
-export const graphFileSchema = z
+const graphFileSchema = z
   .strictObject({
     version: z.literal(1),
     nodes: z.array(serviceNodeSchema),

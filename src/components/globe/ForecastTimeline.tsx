@@ -5,8 +5,8 @@ import { usePlayer } from './usePlayer'
 import { getTimeSnapshot, setRange, setTime, subscribeTime } from '../../data/timeStore'
 import { compassPoint, linePath, niceMax, scaleLinear, stepPath, timeToX, type Point } from './forecastChart'
 import { loadForecastTimeline, type ForecastTimelineData } from './forecastTimelineData'
+import { HOUR_MS } from '../../data/time'
 
-const HOUR_MS = 3_600_000
 const PLAY_INTERVAL_MS = 500
 
 const W = 600

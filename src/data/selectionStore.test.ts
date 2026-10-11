@@ -8,6 +8,7 @@ import {
   getHighlightedNodeIds,
   getSelectedTaskPath,
   getSelectionSnapshot,
+  hasSelection,
   selectNode,
   selectPoint,
   selectTask,
@@ -100,6 +101,20 @@ describe('clearSelection', () => {
 })
 
 describe('subscribeSelection', () => {
+  it('does not notify, or change the snapshot, when the selection is the same', () => {
+    selectPoint(kansas)
+    const before = getSelectionSnapshot()
+    const listener = vi.fn()
+    subscribeSelection(listener)
+    selectPoint([kansas[0], kansas[1]])
+    expect(getSelectionSnapshot()).toBe(before)
+    selectNode('nws-api')
+    selectNode('nws-api')
+    clearSelection()
+    clearSelection()
+    expect(listener).toHaveBeenCalledTimes(2)
+  })
+
   it('stops notifying after unsubscribe', () => {
     const listener = vi.fn()
     const unsubscribe = subscribeSelection(listener)
@@ -179,5 +194,19 @@ describe('getSelectedTaskPath', () => {
       expect(path).toEqual(t.nodes.map((n) => n.nodeId))
       for (const id of path) expect(nodes.some((n) => n.id === id)).toBe(true)
     }
+  })
+})
+
+describe('hasSelection', () => {
+  it('is true while a node, point or task is selected', () => {
+    expect(hasSelection()).toBe(false)
+    selectNode('nws-api')
+    expect(hasSelection()).toBe(true)
+    selectPoint(kansas)
+    expect(hasSelection()).toBe(true)
+    selectTask(task.id)
+    expect(hasSelection()).toBe(true)
+    clearSelection()
+    expect(hasSelection()).toBe(false)
   })
 })

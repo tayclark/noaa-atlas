@@ -77,12 +77,17 @@ export function decodeWaveField(data: ArrayBuffer): Promise<GribField> {
   })
 }
 
-/** Swaps the worker factory (`null` means no worker) and forgets the current worker. For tests. */
+/**
+ * Swaps the worker factory (`null` means no worker) and forgets the current worker. A decode still
+ * waiting on that worker is rejected, so a test never leaves a promise hanging. For tests.
+ */
 export function setGribWorkerFactoryForTests(next: WorkerFactory | null): void {
   worker?.terminate()
   worker = null
   broken = false
+  const dropped = [...pending.values()]
   pending.clear()
+  for (const job of dropped) job.reject(new Error('The GRIB decode worker was replaced'))
   factory = next
 }
 

@@ -3,28 +3,15 @@
 // so only this JSON call reaches the Inspector. The hosts echo the request Origin, so no special
 // headers are needed.
 
+import { makeClientErrors, type ClientHttpError, type ClientParseError } from './clientErrors'
 import { createLiveClient } from './liveRequest'
 import { parseArcgisLegend, type ArcgisLegend } from './arcgisSchema'
 
-export class ArcgisHttpError extends Error {
-  readonly status: number
-
-  constructor(status: number) {
-    super(`ArcGIS request failed (${status}).`)
-    this.name = 'ArcgisHttpError'
-    this.status = status
-  }
-}
-
-export class ArcgisParseError extends Error {
-  readonly cause: unknown
-
-  constructor(message: string, cause: unknown) {
-    super(message)
-    this.name = 'ArcgisParseError'
-    this.cause = cause
-  }
-}
+export const arcgisErrors = makeClientErrors('ArcGIS', 'Arcgis')
+export const ArcgisHttpError = arcgisErrors.HttpError
+export type ArcgisHttpError = ClientHttpError
+export const ArcgisParseError = arcgisErrors.ParseError
+export type ArcgisParseError = ClientParseError
 
 // One client per host, so the Inspector shows a short path (/raster/rest/services/...) like the other clients.
 const clients = new Map<string, ReturnType<typeof createLiveClient>>()
@@ -35,8 +22,8 @@ function clientFor(origin: string) {
     client = createLiveClient({
       baseUrl: origin,
       headers: {},
-      httpError: (res) => new ArcgisHttpError(res.status),
-      parseError: (path, cause) => new ArcgisParseError(`ArcGIS response for ${path} did not match the expected shape`, cause),
+      httpError: arcgisErrors.httpError,
+      parseError: arcgisErrors.parseError,
     })
     clients.set(origin, client)
   }

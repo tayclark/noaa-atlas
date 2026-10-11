@@ -1,12 +1,13 @@
 import { z } from 'zod'
+import { feedPosition, feedRing } from './schemaPrimitives'
 
 // Schema for the NHC tropical weather summary MapServer queries (#334; see the nhc-active-storms
 // node in graph.json), asked for as `f=geojson`. As in spcSchema.ts this uses z.object, not
 // z.strictObject: it's a third-party feed and only the fields the storm track consumes are modelled.
 // `binnumber` (AT1-AT5, EP1-EP5, CP1-CP5) is the key that ties a storm's points and cone together.
 
-const position = z.tuple([z.number(), z.number()]).rest(z.number())
-const ring = z.array(position)
+const position = feedPosition
+const ring = feedRing
 
 const pointGeometry = z.object({ type: z.literal('Point'), coordinates: position })
 const polygonGeometry = z.object({ type: z.literal('Polygon'), coordinates: z.array(ring) })

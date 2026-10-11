@@ -2,12 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearNhcCache, getActiveStorms, NhcHttpError, NhcParseError } from './nhcClient'
 import { emptyNhcStormData, makeNhcStormData } from './nhcFixtures'
 import { clearRequestLog, getRequestLogSnapshot } from './requestLog'
+import { jsonResponse } from '../test/http'
 
 const BASE = 'https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather_summary/MapServer'
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status })
-}
 
 /** Answers each layer query with its part of the given data. */
 function serve(data = makeNhcStormData()) {
@@ -64,5 +61,19 @@ describe('getActiveStorms', () => {
   it('wraps a malformed response as a parse error', async () => {
     vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse({ type: 'FeatureCollection', features: [{ type: 'Feature' }] })))
     await expect(getActiveStorms()).rejects.toBeInstanceOf(NhcParseError)
+  })
+
+  it('fails as a whole when one layer fails, and refetches every layer next time', async () => {
+    const data = makeNhcStormData()
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/7/query')) return Promise.resolve(new Response(null, { status: 503 }))
+      return Promise.resolve(jsonResponse(url.includes('/10/query') ? data.past : data.forecast))
+    })
+    await expect(getActiveStorms()).rejects.toBeInstanceOf(NhcHttpError)
+    vi.mocked(fetch).mockClear()
+    serve()
+    expect((await getActiveStorms()).cones.features).toHaveLength(data.cones.features.length)
+    expect(fetch).toHaveBeenCalledTimes(3)
   })
 })

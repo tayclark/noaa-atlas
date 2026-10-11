@@ -1,11 +1,12 @@
 import { z } from 'zod'
+import { lonLatPosition } from './schemaPrimitives'
 
 // Schemas for api.weather.gov responses. Unlike graphSchema.ts (which validates our own
 // authored data with z.strictObject), these use z.object: the NWS payloads are a third-party,
 // evolving API and we only model the fields we actually consume — unrelated fields it adds
 // later should not fail validation.
 
-const position = z.tuple([z.number(), z.number()])
+const position = lonLatPosition
 const ring = z.array(position)
 const polygonCoordinates = z.array(ring)
 
@@ -37,7 +38,7 @@ export const alertCollectionSchema = z.object({
 })
 export type NwsAlertCollection = z.infer<typeof alertCollectionSchema>
 
-export const pointSchema = z.object({
+const pointSchema = z.object({
   properties: z.object({
     gridId: z.string(),
     gridX: z.number(),
@@ -67,7 +68,7 @@ const forecastPeriodSchema = z.object({
 })
 export type NwsForecastPeriod = z.infer<typeof forecastPeriodSchema>
 
-export const gridpointForecastSchema = z.object({
+const gridpointForecastSchema = z.object({
   properties: z.object({
     // NWS omits `updated` entirely for some gridpoints in practice, despite documenting it as
     // a required timestamp — nullish here so a real, valid forecast response doesn't fail to
@@ -84,7 +85,7 @@ const stationSchema = z.object({
 })
 export type NwsStation = z.infer<typeof stationSchema>
 
-export const stationCollectionSchema = z.object({
+const stationCollectionSchema = z.object({
   type: z.literal('FeatureCollection'),
   features: z.array(stationSchema),
 })
@@ -98,7 +99,7 @@ const measurementSchema = z.object({
   unitCode: z.string(),
 })
 
-export const observationSchema = z.object({
+const observationSchema = z.object({
   properties: z.object({
     timestamp: z.iso.datetime({ offset: true }),
     textDescription: z.string(),

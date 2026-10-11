@@ -4,7 +4,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import App from './App'
 import { mockNarrowLayout, unmockNarrowLayout } from './components/narrowLayoutTestUtils'
 import { clearSelection, getSelectionSnapshot, selectNode } from './data/selectionStore'
-import { resetView } from './data/viewStore'
+import { clearView } from './data/viewStore'
 
 vi.mock('maplibre-gl', () => ({
   Map: class {
@@ -27,7 +27,7 @@ vi.mock('maplibre-gl', () => ({
 // 5 s test timeout on CI, and the graph's simulation would tick into d3-zoom, which jsdom can't run.
 beforeAll(() => import('./components/globe/MapLibreGlobe'), 60_000)
 
-beforeEach(resetView)
+beforeEach(clearView)
 
 afterEach(() => {
   unmockNarrowLayout()

@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { clearCompare, getCompareSnapshot } from '../../data/compareStore'
 import { clearSelection, getHighlightedNodeIds, getSelectionSnapshot, selectNode, selectTask } from '../../data/selectionStore'
-import { getViewSnapshot, resetView } from '../../data/viewStore'
+import { getViewSnapshot, clearView } from '../../data/viewStore'
 import { mockNarrowLayout, unmockNarrowLayout } from '../narrowLayoutTestUtils'
 import tasksJson from '../../data/tasks.json'
 import { parseTasksFile } from '../../data/taskSchema'
@@ -14,7 +14,7 @@ const tasks = parseTasksFile(tasksJson).tasks
 beforeEach(() => {
   clearSelection()
   clearCompare()
-  resetView()
+  clearView()
 })
 
 afterEach(() => {

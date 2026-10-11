@@ -6,13 +6,13 @@ import { mockNarrowLayout, unmockNarrowLayout } from './narrowLayoutTestUtils'
 import { addCompare, clearCompare } from '../data/compareStore'
 import { clearRequestLog, pushLogEntry } from '../data/requestLog'
 import { clearSelection, selectNode } from '../data/selectionStore'
-import { resetView, showView } from '../data/viewStore'
+import { clearView, showView } from '../data/viewStore'
 
 beforeEach(() => {
   clearRequestLog()
   clearSelection()
   clearCompare()
-  resetView()
+  clearView()
 })
 
 afterEach(() => {

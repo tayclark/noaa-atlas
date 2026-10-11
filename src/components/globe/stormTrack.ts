@@ -3,12 +3,12 @@
 // through and the drawn features are unit-tested. A storm is keyed by its NHC bin (AT1-5, EP1-5, CP1-5).
 
 import { smallestLonArc, wrapLon } from '../../data/lonArc'
-import { NhcHttpError, NhcParseError, type NhcStormData } from '../../data/nhcClient'
+import { describeClientError } from '../../data/clientErrors'
+import { nhcErrors, type NhcStormData } from '../../data/nhcClient'
 import type { NhcForecastPoint, NhcPastPoint } from '../../data/nhcSchema'
 import type { Bounds } from './coverageFlyTarget'
 import { escapeHtml } from './popupHtml'
-
-const HOUR_MS = 3_600_000
+import { HOUR_MS } from '../../data/time'
 
 // Declared here rather than imported from 'geojson', as in selectionGlobeView.ts: @types/geojson
 // would tighten maplibre-gl's own GeoJSON typings.
@@ -370,8 +370,10 @@ export function categoriesInTracks(tracks: readonly StormTrack[]): StormCategory
 
 /** A human-readable message for a failed fetch, by error kind. */
 export function describeNhcFetchOutcome(err: unknown): string {
-  if (err instanceof NhcHttpError) return 'The NHC map service is unavailable, the storm tracks could not be loaded.'
-  if (err instanceof NhcParseError) return 'The NHC map service returned an unexpected response.'
-  if (err instanceof TypeError) return 'Could not reach the NHC map service, the storm tracks could not be loaded.'
-  return 'Something went wrong loading the storm tracks.'
+  return describeClientError(err, nhcErrors, {
+    http: 'The NHC map service is unavailable, the storm tracks could not be loaded.',
+    parse: 'The NHC map service returned an unexpected response.',
+    network: 'Could not reach the NHC map service, the storm tracks could not be loaded.',
+    fallback: 'Something went wrong loading the storm tracks.',
+  })
 }

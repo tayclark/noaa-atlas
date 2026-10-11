@@ -4,7 +4,7 @@ import grib from './fixtures/gfs-ugrd10m-f012.grib2.b64?raw'
 import waveIdx from './fixtures/gfswave-0p25-f024.idx?raw'
 import waveGrib from './fixtures/gfswave-htsgw-f024.grib2.b64?raw'
 import { clearGfsCache, cycleAtOrBefore, cycleCandidates, forecastHourFor, getLatestCycle, getReflectivityField, getWaveField, getWindField, GfsHttpError } from './gfsClient'
-import { getRequestLogSnapshot } from './requestLog'
+import { clearRequestLog, getRequestLogSnapshot } from './requestLog'
 
 const bytes = Uint8Array.from(atob(grib.trim()), (c) => c.charCodeAt(0))
 const T = (iso: string) => Date.parse(iso)
@@ -83,6 +83,20 @@ describe('gfs client', () => {
     expect(getRequestLogSnapshot()[0]).toMatchObject({ status: 'success', httpStatus: 200 })
   })
 
+  it('logs each request with its Range, a summary body and the size read', async () => {
+    serve()
+    clearRequestLog()
+    await getWindField(T('2026-10-01T00:00:00Z'), 12)
+    const log = getRequestLogSnapshot()
+    expect(log).toHaveLength(3)
+    expect(log.at(-1)).toMatchObject({ path: '/gfs.20261001/00/atmos/gfs.t00z.pgrb2.1p00.f012.idx', responseSize: idx.length })
+    expect(log[0]).toMatchObject({
+      requestHeaders: { Range: expect.stringMatching(/^bytes=/) },
+      responseBody: { name: expect.stringMatching(/^[UV]GRD$/), bytes: bytes.byteLength },
+      responseSize: bytes.byteLength,
+    })
+  })
+
   it('fetches only the composite reflectivity message for the simulated radar, and caches it', async () => {
     serve()
     const cycle = T('2026-10-01T00:00:00Z')
@@ -91,6 +105,31 @@ describe('gfs client', () => {
     expect(fetchMock.mock.calls[1][1].headers.Range).toBe('bytes=290933-364723')
     expect(await getReflectivityField(cycle, 12)).toBe(field)
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('reads the index once for the wind and reflectivity fields of the same file', async () => {
+    serve()
+    const cycle = T('2026-10-01T00:00:00Z')
+    await Promise.all([getWindField(cycle, 12), getReflectivityField(cycle, 12)])
+    const idxCalls = fetchMock.mock.calls.filter((c) => (c[0] as string).endsWith('.idx'))
+    expect(idxCalls).toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+  })
+
+  it('keeps a newer load when an evicted one fails late', async () => {
+    let failFirst: (err: Error) => void = () => {}
+    fetchMock.mockImplementationOnce(() => new Promise((_resolve, reject) => (failFirst = reject)))
+    const cycle = T('2026-10-01T00:00:00Z')
+    const first = getWindField(cycle, 0)
+    serve()
+    // Nine more paths push hour 0 out of the eight-entry cache, then hour 0 loads again.
+    await Promise.all([3, 6, 9, 12, 15, 18, 21, 24, 27].map((hour) => getWindField(cycle, hour)))
+    const second = getWindField(cycle, 0)
+    expect(second).not.toBe(first)
+    failFirst(new TypeError('Failed to fetch'))
+    await expect(first).rejects.toBeInstanceOf(TypeError)
+    expect(getWindField(cycle, 0)).toBe(second)
+    await second
   })
 
   it('reports an index without reflectivity, and does not cache the failure', async () => {
