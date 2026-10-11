@@ -1,28 +1,15 @@
 // Accessibility baseline (#47): axe finds no serious or critical WCAG A/AA violations, the skip
 // link and tabs work from the keyboard, and "reduce motion" settles the graph without animating.
 
-import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mappableAlertsFixture, mockAlerts, zoneOnlyAlertsFixture } from './fixtures/nwsAlerts'
+import { openApp, seriousViolations } from './fixtures/axe'
 import { mockRadar } from './fixtures/nowcoast'
 import { mockSwpc } from './fixtures/swpc'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
-
-async function openApp(page: Page) {
-  await mockAlerts(page, emptyAlertsFixture())
-  await mockSwpc(page)
-  await page.goto('/')
-  await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
-}
-
-async function seriousViolations(page: Page) {
-  const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
-  return violations
-    .filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')
-    .map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`)
-}
 
 test('the initial view has no serious axe violations', async ({ page }) => {
   await openApp(page)
@@ -31,8 +18,7 @@ test('the initial view has no serious axe violations', async ({ page }) => {
 
 test('a selected node and its detail panel have no serious axe violations', async ({ page }) => {
   await openApp(page)
-  await page.locator('.graph-node[data-node-id="nws-api"]').focus()
-  await page.keyboard.press('Enter')
+  await selectByKeyboard(page, 'nws-api')
   await expect(page.getByLabel('Node detail')).toBeVisible()
   expect(await seriousViolations(page)).toEqual([])
 })
@@ -157,6 +143,7 @@ test('with reduced motion the graph is laid out before the first frame settles',
   const positions = () =>
     page.locator('.graph-node').evaluateAll((els) => els.map((el) => el.getAttribute('transform')))
   const first = await positions()
+  // A sleep on purpose: "nothing moves" has no event to wait for, so give an animation time to show.
   await page.waitForTimeout(500)
   expect(await positions()).toEqual(first)
 })
@@ -188,8 +175,7 @@ test('the phone layout has no serious axe violations on the Tasks, Graph and Glo
 
 test('a selection is announced and the focused graph pans and zooms from the keyboard', async ({ page }) => {
   await openApp(page)
-  await page.locator('.graph-node[data-node-id="nws-api"]').focus()
-  await page.keyboard.press('Enter')
+  await selectByKeyboard(page, 'nws-api')
   await expect(page.getByTestId('selection-announcement')).toHaveText(/^Selected /)
 
   const layer = page.locator('.graph-canvas svg > g').first()
@@ -233,8 +219,7 @@ test('the expanded zone-only alerts overlay has no serious axe violations (#86)'
 test('the radar time slider has no serious axe violations (#74)', async ({ page }) => {
   await mockRadar(page)
   await openApp(page)
-  await page.locator('.graph-node[data-node-id="nowcoast-map-services"]').focus()
-  await page.keyboard.press('Enter')
+  await selectByKeyboard(page, 'nowcoast-map-services')
   await expect(page.getByRole('slider', { name: 'Radar frame' })).toBeVisible()
   expect(await seriousViolations(page)).toEqual([])
 })

@@ -3,35 +3,23 @@
 // what switches on the finger-sized control sizes in index.css, so this is the one place they are
 // checked. Each view is added here as its touch work lands.
 
-import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { emptyAlertsFixture, mockAlerts, zoneOnlyAlertsFixture } from './fixtures/nwsAlerts'
+import { openApp, seriousViolations } from './fixtures/axe'
+import { mockAlerts, zoneOnlyAlertsFixture } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
 
 // The graph is only used to pick a node here, so skip its ~6.5 s animated settle.
 test.use({ reducedMotion: 'reduce' })
 
-async function openApp(page: Page) {
-  await mockAlerts(page, emptyAlertsFixture())
-  await mockSwpc(page)
-  await page.goto('/')
-  // A phone lands on Graph (#349); these checks start from the finder.
-  await expect(page.getByRole('tab', { name: 'Graph', selected: true })).toBeVisible()
+// A phone lands on Graph (#349); these checks start from the finder.
+async function openTasks(page: Page) {
+  await openApp(page)
   await page.getByRole('tab', { name: 'Tasks' }).tap()
 }
 
-async function seriousViolations(page: Page) {
-  const { violations } = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
-    .analyze()
-  return violations
-    .filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')
-    .map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`)
-}
-
 test('the Tasks tab, empty and with a task picked, has no serious violations', async ({ page }) => {
-  await openApp(page)
+  await openTasks(page)
   expect(await seriousViolations(page)).toEqual([])
   await page.getByRole('button', { name: 'See severe thunderstorm or tornado risk' }).tap()
   await expect(page.locator('.finder-node-button').first()).toBeVisible()
@@ -39,7 +27,7 @@ test('the Tasks tab, empty and with a task picked, has no serious violations', a
 })
 
 test('the Compare tab, empty and filled, has no serious violations', async ({ page }) => {
-  await openApp(page)
+  await openTasks(page)
   await page.getByRole('tab', { name: 'Compare' }).tap()
   expect(await seriousViolations(page)).toEqual([])
   await page.getByRole('tab', { name: 'Tasks' }).tap()
@@ -51,20 +39,20 @@ test('the Compare tab, empty and filled, has no serious violations', async ({ pa
 })
 
 test('the Inspector tab has no serious violations', async ({ page }) => {
-  await openApp(page)
+  await openTasks(page)
   await page.getByRole('tab', { name: 'Inspector' }).tap()
   expect(await seriousViolations(page)).toEqual([])
 })
 
 test('the About dialog has no serious violations', async ({ page }) => {
-  await openApp(page)
+  await openTasks(page)
   await page.getByRole('button', { name: 'About this app' }).tap()
   await expect(page.getByRole('dialog', { name: 'About NOAA Atlas' })).toBeVisible()
   expect(await seriousViolations(page)).toEqual([])
 })
 
 test('the detail sheet, open and folded, has no serious violations', async ({ page }) => {
-  await openApp(page)
+  await openTasks(page)
   await page.getByRole('button', { name: 'See severe thunderstorm or tornado risk' }).tap()
   await page.locator('.finder-node-button').first().tap()
   const sheet = page.getByLabel('Node detail')
@@ -77,7 +65,7 @@ test('the detail sheet, open and folded, has no serious violations', async ({ pa
 })
 
 test('the Graph tab, with the search results and the legend open, has no serious violations', async ({ page }) => {
-  await openApp(page)
+  await openTasks(page)
   await page.getByRole('tab', { name: 'Graph' }).tap()
   await expect(page.locator('.graph-canvas svg[data-layout-settled]')).toBeAttached({ timeout: 20_000 })
   expect(await seriousViolations(page)).toEqual([])

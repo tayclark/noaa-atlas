@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetTime } from '../../data/timeStore'
 import { RadarTimeControl } from './RadarTimeControl'
@@ -8,7 +8,6 @@ const FRAMES = ['2026-10-01T02:40:00.000Z', '2026-10-01T02:50:00.000Z', '2026-10
 
 beforeEach(() => vi.useFakeTimers())
 afterEach(() => {
-  cleanup()
   resetTime()
   vi.useRealTimers()
 })

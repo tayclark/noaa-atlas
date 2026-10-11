@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { InspectorPanel } from './InspectorPanel'
 import { clearRequestLog, pushLogEntry, type RequestLogEntry } from '../../data/requestLog'
 
@@ -23,8 +23,6 @@ function entry(overrides: Partial<RequestLogEntry> = {}): RequestLogEntry {
 beforeEach(() => {
   clearRequestLog()
 })
-
-afterEach(cleanup)
 
 describe('InspectorPanel', () => {
   it('shows an empty state with no requests', () => {

@@ -1,11 +1,12 @@
 // The GFS-Wave height shading (#229): chosen with the Wind / Waves toggle once the GFS (AWS) node is
 // selected, against a mocked bucket, and following the same time slider as the wind.
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { mockGfs } from './fixtures/gfs'
 import { GLOBE, waitForGlobe } from './fixtures/globe'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
+import { selectByKeyboard } from './fixtures/graph'
 
 test.use({ reducedMotion: 'reduce' })
 
@@ -13,11 +14,6 @@ test.use({ reducedMotion: 'reduce' })
 const LOADED = { timeout: 30_000 }
 
 const NODE = 'gfs-aws-open-data'
-
-async function selectByKeyboard(page: Page, nodeId: string) {
-  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
-  await page.keyboard.press('Enter')
-}
 
 test.beforeEach(async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())

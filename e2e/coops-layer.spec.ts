@@ -1,22 +1,18 @@
 // CO-OPS tide stations layer (#51): the station dots, their click popup and the linked selection,
 // against mocked CO-OPS responses, plus one `@live` smoke test against the real Data API.
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { mockCoops, mockCoopsStations } from './fixtures/coops'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
 import { mockSwpc } from './fixtures/swpc'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
 
 const GLOBE = '[aria-label="Globe view of NOAA API coverage"]'
 const POPUP = '.maplibregl-popup-content'
-
-async function selectByKeyboard(page: Page, nodeId: string) {
-  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
-  await page.keyboard.press('Enter')
-}
 
 test.beforeEach(async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())

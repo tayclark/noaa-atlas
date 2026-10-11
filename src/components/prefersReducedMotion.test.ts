@@ -1,16 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
+import { mockMatchMedia, unmockMatchMedia } from '../test/matchMedia'
 import { prefersReducedMotion, REDUCED_MOTION_QUERY } from './prefersReducedMotion'
 
-afterEach(() => {
-  delete (window as { matchMedia?: unknown }).matchMedia
-})
-
-const stubMatchMedia = (matches: boolean) => {
-  const matchMedia = vi.fn(() => ({ matches }))
-  Object.defineProperty(window, 'matchMedia', { value: matchMedia, configurable: true, writable: true })
-  return matchMedia
-}
+afterEach(unmockMatchMedia)
 
 describe('prefersReducedMotion', () => {
   it('is false where there is no matchMedia (jsdom)', () => {
@@ -18,10 +11,10 @@ describe('prefersReducedMotion', () => {
   })
 
   it('reflects the prefers-reduced-motion media query', () => {
-    const matchMedia = stubMatchMedia(true)
+    const media = mockMatchMedia(true)
     expect(prefersReducedMotion()).toBe(true)
-    expect(matchMedia).toHaveBeenCalledWith(REDUCED_MOTION_QUERY)
-    stubMatchMedia(false)
+    expect(media.matchMedia).toHaveBeenCalledWith(REDUCED_MOTION_QUERY)
+    media.set(false)
     expect(prefersReducedMotion()).toBe(false)
   })
 })

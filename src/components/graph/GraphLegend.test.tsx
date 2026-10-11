@@ -1,12 +1,10 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import { THEME_LABELS, THEMES } from '../../data/graphSchema'
 import { THEME_COLORS } from '../../data/themeColors'
 import { GraphLegend } from './GraphLegend'
 import { EDGE_CLASS, EDGE_TYPE_LABELS } from './graphLayout'
-
-afterEach(cleanup)
 
 describe('GraphLegend', () => {
   it('renders a labeled swatch for every theme', () => {

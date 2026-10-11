@@ -1,19 +1,15 @@
 // Node sample call (#31): static sample for non-live nodes, runnable sample for the live NWS node.
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockPointLookup } from './fixtures/nwsPoint'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
 
 // Keyboard activation avoids geometry: the graph re-frames after each selection, so a later node
 // can end up under the globe pane.
-async function selectByKeyboard(page: Page, nodeId: string) {
-  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
-  await page.keyboard.press('Enter')
-}
-
 test('non-live node shows a static sample; live node can run it', async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
   await mockPointLookup(page)

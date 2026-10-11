@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { ComparePanel } from './ComparePanel'
 import { addCompare, clearCompare, getCompareSnapshot } from '../data/compareStore'
 import graphJson from '../data/graph.json'
@@ -9,8 +9,6 @@ import { parseGraphFile } from '../data/graphSchema'
 const services = parseGraphFile(graphJson).nodes.filter((n) => n.kind === 'service')
 
 beforeEach(clearCompare)
-afterEach(cleanup)
-
 describe('ComparePanel', () => {
   it('asks for at least two services until there are two', () => {
     render(<ComparePanel />)

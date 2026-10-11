@@ -1,7 +1,7 @@
 // ArcGIS MapServer overlays (#247): drawn only while their node is selected, against mocked export
 // tiles and legend, plus `@live` checks that the real services draw (#287).
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import {
   BLANK_TILE_MAX_BYTES,
   collectArcgisTiles,
@@ -13,18 +13,15 @@ import {
   type LiveTile,
 } from './fixtures/arcgis'
 import { GLOBE, waitForGlobe } from './fixtures/globe'
+import { mockRadar } from './fixtures/nowcoast'
 import { emptyAlertsFixture, mockAlerts } from './fixtures/nwsAlerts'
 import { mockSwpc } from './fixtures/swpc'
+import { selectByKeyboard } from './fixtures/graph'
 
 // These specs don't measure the graph layout, so skip its settling animation (the slow part of every load).
 test.use({ reducedMotion: 'reduce' })
 
 const NODE = 'nws-raster-map-services'
-
-async function selectByKeyboard(page: Page, nodeId: string) {
-  await page.locator(`.graph-node[data-node-id="${nodeId}"]`).focus()
-  await page.keyboard.press('Enter')
-}
 
 test.beforeEach(async ({ page }) => {
   await mockAlerts(page, emptyAlertsFixture())
@@ -33,10 +30,14 @@ test.beforeEach(async ({ page }) => {
 
 test('requests no overlay tiles or legend until the node is selected', async ({ page }) => {
   const tiles = await mockArcgisRaster(page)
+  const radar = await mockRadar(page)
   await page.goto('/')
+  await waitForGlobe(page)
   await expect(page.locator(GLOBE)).toHaveAttribute('data-arcgis-overlay', 'hidden')
-  // Give a stray request time to show up before asserting that none did.
-  await page.waitForTimeout(1000)
+  // Rather than sleep and hope a stray request shows up: once another overlay's tiles are asked for,
+  // the loaded map has rendered with every source it has, so this one's would have been asked for too.
+  await selectByKeyboard(page, 'nowcoast-map-services')
+  await expect.poll(() => radar.length).toBeGreaterThan(0)
   expect(tiles).toHaveLength(0)
 })
 

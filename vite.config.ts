@@ -61,6 +61,11 @@ export default defineConfig({
     // Vitest blanks CSS by default; contrast.test.ts reads the design tokens out of index.css.
     css: { include: /src\/index\.css/ },
     include: ['src/**/*.test.{ts,tsx}'],
+    // Registers Testing Library's cleanup for the jsdom files. `list` runs a file's afterEach hooks in
+    // the order they are defined, so that cleanup unmounts before the file's own hook resets a store;
+    // in the default `stack` order the reset would re-render a tree that is still mounted.
+    setupFiles: ['src/test/setup.ts'],
+    sequence: { hooks: 'list' },
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
@@ -70,6 +75,9 @@ export default defineConfig({
         'src/components/globe/windOverlay.ts',
         'src/components/graph/GraphView.tsx',
         'src/data/jpx/**',
+        // Test data and helpers, not code under test.
+        'src/data/*Fixtures.ts',
+        'src/test/**',
         'src/**/*.test.{ts,tsx}',
         'src/**/*.d.ts',
       ],
