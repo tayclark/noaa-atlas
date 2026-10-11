@@ -146,6 +146,7 @@ import { describeSelectionForGlobe, type GlobeViewContext } from './selectionGlo
 import { clearSelection, subscribeSelection, getSelectionSnapshot, selectPoint } from '../../data/selectionStore'
 import { getViewSnapshot, resolveView, subscribeView } from '../../data/viewStore'
 import { useNarrowLayout } from '../useNarrowLayout'
+import { addPointerCursor, setLayersVisible } from './mapLayers'
 
 // Beyond this many zone-only alerts, the overlay collapses the rest behind a "N more" toggle
 // rather than growing unbounded during a high-volume event (#106).
@@ -697,12 +698,6 @@ export function MapLibreGlobe() {
           'circle-stroke-width': 1.5,
         },
       })
-      map.on('mouseenter', COOPS_LAYER_ID, () => {
-        map.getCanvas().style.cursor = 'pointer'
-      })
-      map.on('mouseleave', COOPS_LAYER_ID, () => {
-        map.getCanvas().style.cursor = ''
-      })
       map.addSource(DART_SOURCE_ID, { type: 'geojson', data: dartStationsToGeoJSON([]) })
       map.addLayer({
         id: DART_LAYER_ID,
@@ -715,12 +710,6 @@ export function MapLibreGlobe() {
           'circle-stroke-color': '#ffffff',
           'circle-stroke-width': 1.5,
         },
-      })
-      map.on('mouseenter', DART_LAYER_ID, () => {
-        map.getCanvas().style.cursor = 'pointer'
-      })
-      map.on('mouseleave', DART_LAYER_ID, () => {
-        map.getCanvas().style.cursor = ''
       })
       map.addSource(NDBC_SOURCE_ID, { type: 'geojson', data: ndbcStationsToGeoJSON([]) })
       map.addLayer({
@@ -735,12 +724,7 @@ export function MapLibreGlobe() {
           'circle-stroke-width': 1,
         },
       })
-      map.on('mouseenter', NDBC_LAYER_ID, () => {
-        map.getCanvas().style.cursor = 'pointer'
-      })
-      map.on('mouseleave', NDBC_LAYER_ID, () => {
-        map.getCanvas().style.cursor = ''
-      })
+      addPointerCursor(map, STATION_LAYER_IDS)
       setMapLoaded(true)
 
       // Every tap or click on the map (#39, #51, #78). One handler decides what it meant, so only one
@@ -904,13 +888,7 @@ export function MapLibreGlobe() {
               'line-width': alertEmphasisRef.current.lineWidth,
             },
           })
-
-          map.on('mouseenter', ALERTS_FILL_LAYER_ID, () => {
-            map.getCanvas().style.cursor = 'pointer'
-          })
-          map.on('mouseleave', ALERTS_FILL_LAYER_ID, () => {
-            map.getCanvas().style.cursor = ''
-          })
+          addPointerCursor(map, [ALERTS_FILL_LAYER_ID])
         })
         .catch((err: unknown) => {
           // A failed refresh keeps the last good alerts on screen.
@@ -1058,8 +1036,7 @@ export function MapLibreGlobe() {
   const radarShown = liveLayers.includes('nowcoast-radar')
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded || !map.getLayer(RADAR_LAYER_ID)) return
-    map.setLayoutProperty(RADAR_LAYER_ID, 'visibility', radarShown ? 'visible' : 'none')
+    if (map && mapLoaded) setLayersVisible(map, [RADAR_LAYER_ID], radarShown)
   }, [radarShown, mapLoaded])
 
   // The radar's frame list (#74) is fetched while the layer is shown, and refreshed as frames age
@@ -1137,8 +1114,8 @@ export function MapLibreGlobe() {
   if (!dartShown && dartStations === 'error') setDartStations(null)
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded || !map.getLayer(DART_LAYER_ID)) return
-    map.setLayoutProperty(DART_LAYER_ID, 'visibility', dartShown ? 'visible' : 'none')
+    if (!map || !mapLoaded) return
+    setLayersVisible(map, [DART_LAYER_ID], dartShown)
     if (!dartShown || dartStations !== null) return
     let cancelled = false
     loadDartStations()
@@ -1163,10 +1140,8 @@ export function MapLibreGlobe() {
   const spcAtRef = useRef(0)
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded || !map.getLayer(SPC_FILL_LAYER_ID)) return
-    const visibility = spcShown ? 'visible' : 'none'
-    map.setLayoutProperty(SPC_FILL_LAYER_ID, 'visibility', visibility)
-    map.setLayoutProperty(SPC_LINE_LAYER_ID, 'visibility', visibility)
+    if (!map || !mapLoaded) return
+    setLayersVisible(map, [SPC_FILL_LAYER_ID, SPC_LINE_LAYER_ID], spcShown)
     if (!spcShown) return
     let cancelled = false
     let loaded = false
@@ -1205,8 +1180,7 @@ export function MapLibreGlobe() {
   const stormsWanted = nhcShown || selection.selectedPoint !== null
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded || !map.getLayer(NHC_FIX_LAYER_ID)) return
-    for (const id of NHC_LAYER_IDS) map.setLayoutProperty(id, 'visibility', nhcShown ? 'visible' : 'none')
+    if (map && mapLoaded) setLayersVisible(map, NHC_LAYER_IDS, nhcShown)
   }, [nhcShown, mapLoaded])
   const loadStormsRef = useRef<() => void>(() => {})
   const stormsAtRef = useRef(0)
@@ -1292,8 +1266,8 @@ export function MapLibreGlobe() {
   const reflectivityPair = reflectivity.status === 'idle' ? null : reflectivity.field
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded || !map.getLayer(GOES_LAYER_ID)) return
-    map.setLayoutProperty(GOES_LAYER_ID, 'visibility', stormFull && !stormInForecast ? 'visible' : 'none')
+    if (!map || !mapLoaded) return
+    setLayersVisible(map, [GOES_LAYER_ID], stormFull && !stormInForecast)
     reflectivityRef.current?.setVisible(stormInForecast)
   }, [stormFull, stormInForecast, mapLoaded])
   useEffect(() => {
@@ -1357,9 +1331,7 @@ export function MapLibreGlobe() {
     if (!map || !mapLoaded) return
     const keys = arcgisKey.split(' ')
     const overlays = ARCGIS_OVERLAYS.filter((overlay) => keys.includes(overlay.key))
-    for (const overlay of ARCGIS_OVERLAYS) {
-      if (map.getLayer(overlay.layerId)) map.setLayoutProperty(overlay.layerId, 'visibility', overlays.includes(overlay) ? 'visible' : 'none')
-    }
+    for (const overlay of ARCGIS_OVERLAYS) setLayersVisible(map, [overlay.layerId], overlays.includes(overlay))
     let cancelled = false
     const settle = (key: ArcgisOverlay['key'], state: ArcgisLegendState) => {
       if (!cancelled) setArcgisLegends((prev) => ({ ...prev, [key]: state }))
@@ -1381,8 +1353,8 @@ export function MapLibreGlobe() {
   if (!ndbcShown && ndbcStations === 'error') setNdbcStations(null)
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded || !map.getLayer(NDBC_LAYER_ID)) return
-    map.setLayoutProperty(NDBC_LAYER_ID, 'visibility', ndbcShown ? 'visible' : 'none')
+    if (!map || !mapLoaded) return
+    setLayersVisible(map, [NDBC_LAYER_ID], ndbcShown)
     if (!ndbcShown || ndbcStations !== null) return
     let cancelled = false
     loadNdbcStations()
