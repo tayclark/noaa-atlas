@@ -15,7 +15,6 @@ import { selectNode } from '../../data/selectionStore'
 import type { ServiceNode } from '../../data/graphSchema'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
 import type { SpcOutlook } from '../../data/spcSchema'
-import { pollWhileVisible } from '../../data/pollWhileVisible'
 import { getDay1CategoricalOutlook, SPC_REFRESH_MS } from '../../data/spcClient'
 import { getActiveStorms, NHC_REFRESH_MS } from '../../data/nhcClient'
 import {
@@ -98,7 +97,7 @@ import {
   formatAuroraPopupHtml,
 } from './auroraLayer'
 import { prefersReducedMotion } from '../prefersReducedMotion'
-import { describeKp, type KpReadout } from './kpReadout'
+import { describeKp } from './kpReadout'
 import { NOWCOAST_RADAR_TILE_URL, RADAR_LAYER_ID, RADAR_SOURCE_ID, radarLayers, radarTileUrl } from './nowcoastRadarLayer'
 import { RadarTimeControl } from './RadarTimeControl'
 import { createWaveOverlay, type WaveOverlay } from './waveOverlay'
@@ -156,13 +155,14 @@ import { clearSelection, subscribeSelection, getSelectionSnapshot, selectPoint }
 import { getViewSnapshot, resolveView, subscribeView } from '../../data/viewStore'
 import { useNarrowLayout } from '../useNarrowLayout'
 import { addLayerGroup, addPointerCursor, setLayersVisible } from './mapLayers'
-import { dataOf, errorOf, failedWith, loadedWith, LOADING, withEmpty, type AsyncState } from './asyncState'
+import { dataOf, errorOf, loadedWith, withEmpty, type AsyncState } from './asyncState'
 import { usePolledResource } from './usePolledResource'
 
 const spcCategories = (state: AsyncState<SpcOutlook>): AsyncState<SpcCategory[]> =>
   state.status !== 'ok' ? state : isOutlookEmpty(state.data) ? { status: 'empty' } : loadedWith(categoriesInOutlook(state.data))
 const NO_ZONE_ALERTS: NwsAlertCollection['features'] = []
 const NO_ALERT_POLYGONS: ImpactAlert[] = []
+const getPlanetaryKpReadout = () => getPlanetaryKp().then(describeKp)
 const isNoStorms = (tracks: StormTrack[]) => tracks.length === 0
 const fetchStormTracks = () => getActiveStorms().then(buildStormTracks)
 
@@ -304,7 +304,6 @@ export function MapLibreGlobe() {
   // Space weather (#54). The grid is kept for click lookups; the cell count also tells the
   // selection effect the aurora layer now exists.
   const ovationRef = useRef<SwpcOvation | null>(null)
-  const [auroraCells, setAuroraCells] = useState<number | null>(null)
   // The buoy lists load the first time their layer is shown (#269): the count once drawn, or 'error'.
   const [dartStations, setDartStations] = useState<number | 'error' | null>(null)
   const [ndbcStations, setNdbcStations] = useState<number | 'error' | null>(null)
@@ -315,8 +314,6 @@ export function MapLibreGlobe() {
   // The mapped alert polygons, for the hurricane impact check (#344).
   // The impact prompt the reader closed, by point and storm, so it stays closed for that place.
   const [dismissedImpact, setDismissedImpact] = useState<string | null>(null)
-  const [auroraError, setAuroraError] = useState<string | null>(null)
-  const [kp, setKp] = useState<AsyncState<KpReadout>>(LOADING)
   // The radar's chosen frame (#74) comes from the shared time (#228), so the radar and the point
   // forecast timeline scrub together; null follows the latest frame.
   const sharedTime = useSyncExternalStore(subscribeTime, getTimeSnapshot).time
@@ -353,8 +350,6 @@ export function MapLibreGlobe() {
   // selection made while it was hidden, but is not snapped back over where the reader has panned.
   const framedViewRef = useRef<typeof view | null>(null)
   // Space weather is refreshed while the globe is looked at, and at once on return if it is stale.
-  const refreshSpaceWeatherRef = useRef<() => void>(() => {})
-  const spaceWeatherAtRef = useRef(0)
   // MapLibre enables its own button once it knows the browser can geolocate; ours waits for that.
   const [locateReady, setLocateReady] = useState(false)
   // Set when the basemap fails before `load`, which then never fires and leaves no layers (#260).
@@ -412,7 +407,6 @@ export function MapLibreGlobe() {
     // why the globe is empty. Later errors, such as a missing tile, keep being ignored.
     let loaded = false
     // Set by the cleanup, so a response that lands after the map is removed draws nothing (#354).
-    let disposed = false
     map.on('error', (e) => {
       if (!loaded) setMapError(describeStyleError(e.error))
     })
@@ -547,65 +541,9 @@ export function MapLibreGlobe() {
         showPointLookup(map, e.lngLat.lng, e.lngLat.lat, ovationRef.current)
       })
 
-      // Both files are re-fetched every few minutes while the globe is looked at (see the effect
-      // below). A failed refresh keeps what is already on screen; only a failed first load shows
-      // an error.
-      let auroraCanvas: HTMLCanvasElement | null = null
-      let kpLoaded = false
-
-      const loadAurora = () =>
-        getOvationAurora().then(
-          (ovation) => {
-            if (disposed) return
-            ovationRef.current = ovation
-            const raster = auroraRaster(ovation)
-            if (!auroraCanvas) {
-              auroraCanvas = document.createElement('canvas')
-              auroraCanvas.width = raster.width
-              auroraCanvas.height = raster.height
-              auroraCanvas.getContext('2d')?.putImageData(new ImageData(raster.data, raster.width, raster.height), 0, 0)
-              // Under the alerts if they're already drawn; if they arrive later they're added on top anyway.
-              addLayerGroup(map, auroraLayers(auroraCanvas), map.getLayer(ALERTS_FILL_LAYER_ID) ? ALERTS_FILL_LAYER_ID : undefined)
-            } else {
-              auroraCanvas.getContext('2d')?.putImageData(new ImageData(raster.data, raster.width, raster.height), 0, 0)
-              // A non-animated canvas source only uploads its texture on load; play() then pause()
-              // uploads the redrawn canvas once.
-              const source = map.getSource(AURORA_SOURCE_ID) as CanvasSource | undefined
-              source?.play()
-              source?.pause()
-              map.triggerRepaint()
-            }
-            setAuroraError(null)
-            setAuroraCells(raster.cells)
-          },
-          (err: unknown) => {
-            if (!disposed && !auroraCanvas) setAuroraError(describeSwpcFetchOutcome(err))
-          },
-        )
-
-      const loadKp = () =>
-        getPlanetaryKp().then(
-          (rows) => {
-            if (disposed) return
-            kpLoaded = true
-            setKp(loadedWith(describeKp(rows)))
-          },
-          (err: unknown) => {
-            if (!disposed && !kpLoaded) setKp(failedWith(describeSwpcFetchOutcome(err)))
-          },
-        )
-
-      refreshSpaceWeatherRef.current = () => {
-        spaceWeatherAtRef.current = Date.now()
-        void loadAurora()
-        void loadKp()
-      }
-      refreshSpaceWeatherRef.current()
-
     })
 
     return () => {
-      disposed = true
       readyObserver.disconnect()
       unregisterDismisser()
       canvas.removeEventListener('keydown', onCanvasKeyDown)
@@ -688,6 +626,42 @@ export function MapLibreGlobe() {
     showPointLookup(map, point[0], point[1], ovationRef.current)
   }, [selection.selectedPoint, mapLoaded, active])
 
+  // The aurora forecast and Kp are re-fetched every few minutes while the globe is looked at, and at
+  // once on return when stale (#78). A failed refresh keeps what is on screen; only a failed first
+  // load shows an error.
+  const swpcOptions = { describeError: describeSwpcFetchOutcome }
+  const polledAurora = usePolledResource(mapLoaded, active, getOvationAurora, SWPC_REFRESH_MS, swpcOptions)
+  const polledKp = usePolledResource(mapLoaded, active, getPlanetaryKpReadout, SWPC_REFRESH_MS, swpcOptions)
+  const kp = polledKp
+  const auroraError = errorOf(polledAurora)
+  const ovation = dataOf(polledAurora)
+  const auroraRasterData = useMemo(() => (ovation ? auroraRaster(ovation) : null), [ovation])
+  const auroraCells = auroraRasterData?.cells ?? null
+  const auroraCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded || !ovation || !auroraRasterData) return
+    ovationRef.current = ovation
+    const raster = auroraRasterData
+    const source = map.getSource(AURORA_SOURCE_ID) as CanvasSource | undefined
+    if (!source || !auroraCanvasRef.current) {
+      const canvas = document.createElement('canvas')
+      canvas.width = raster.width
+      canvas.height = raster.height
+      canvas.getContext('2d')?.putImageData(new ImageData(raster.data, raster.width, raster.height), 0, 0)
+      auroraCanvasRef.current = canvas
+      // Under the alerts if they're already drawn; if they arrive later they're added on top anyway.
+      addLayerGroup(map, auroraLayers(canvas), map.getLayer(ALERTS_FILL_LAYER_ID) ? ALERTS_FILL_LAYER_ID : undefined)
+    } else {
+      auroraCanvasRef.current.getContext('2d')?.putImageData(new ImageData(raster.data, raster.width, raster.height), 0, 0)
+      // A non-animated canvas source only uploads its texture on load; play() then pause()
+      // uploads the redrawn canvas once.
+      source.play()
+      source.pause()
+      map.triggerRepaint()
+    }
+  }, [ovation, auroraRasterData, mapLoaded])
+
   // The aurora's emphasis (#54) lives apart from the effect above so that the layer arriving
   // (auroraCells) re-applies it without re-framing the globe.
   const auroraHighlighted = liveLayers.includes('aurora')
@@ -696,15 +670,6 @@ export function MapLibreGlobe() {
     if (!map || auroraCells === null || !map.getLayer(AURORA_LAYER_ID)) return
     map.setPaintProperty(AURORA_LAYER_ID, 'raster-opacity', auroraHighlighted ? AURORA_OPACITY_SELECTED : AURORA_OPACITY)
   }, [auroraHighlighted, auroraCells])
-
-  // The aurora forecast and Kp are refreshed every few minutes while the globe is looked at. Coming
-  // back to it after longer than that refreshes at once, rather than showing a stale readout until
-  // the next tick (#78).
-  useEffect(() => {
-    if (!mapLoaded || !active) return
-    if (Date.now() - spaceWeatherAtRef.current >= SWPC_REFRESH_MS) refreshSpaceWeatherRef.current()
-    return pollWhileVisible(() => refreshSpaceWeatherRef.current(), SWPC_REFRESH_MS)
-  }, [mapLoaded, active])
 
   // The alerts are refreshed on the same terms as space weather (#222), and a failed first load is
   // retried sooner, until it succeeds. A failed refresh keeps the last good alerts on screen.
