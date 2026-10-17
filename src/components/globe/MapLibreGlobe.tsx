@@ -14,6 +14,7 @@ import { graphFile, tasks } from '../../data/graphData'
 import { selectNode } from '../../data/selectionStore'
 import type { ServiceNode } from '../../data/graphSchema'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
+import type { SpcOutlook } from '../../data/spcSchema'
 import { pollWhileVisible } from '../../data/pollWhileVisible'
 import { getDay1CategoricalOutlook, SPC_REFRESH_MS } from '../../data/spcClient'
 import { getActiveStorms, NHC_REFRESH_MS } from '../../data/nhcClient'
@@ -155,9 +156,11 @@ import { clearSelection, subscribeSelection, getSelectionSnapshot, selectPoint }
 import { getViewSnapshot, resolveView, subscribeView } from '../../data/viewStore'
 import { useNarrowLayout } from '../useNarrowLayout'
 import { addLayerGroup, addPointerCursor, setLayersVisible } from './mapLayers'
-import { failedWith, loadedWith, LOADING, withEmpty, type AsyncState } from './asyncState'
+import { dataOf, failedWith, loadedWith, LOADING, withEmpty, type AsyncState } from './asyncState'
 import { usePolledResource } from './usePolledResource'
 
+const spcCategories = (state: AsyncState<SpcOutlook>): AsyncState<SpcCategory[]> =>
+  state.status !== 'ok' ? state : isOutlookEmpty(state.data) ? { status: 'empty' } : loadedWith(categoriesInOutlook(state.data))
 const isNoStorms = (tracks: StormTrack[]) => tracks.length === 0
 const fetchStormTracks = () => getActiveStorms().then(buildStormTracks)
 
@@ -307,7 +310,6 @@ export function MapLibreGlobe() {
   const [dartStations, setDartStations] = useState<number | 'error' | null>(null)
   const [ndbcStations, setNdbcStations] = useState<number | 'error' | null>(null)
   const [arcgisLegends, setArcgisLegends] = useState<Partial<Record<ArcgisOverlay['key'], ArcgisLegendState>>>({})
-  const [spc, setSpc] = useState<AsyncState<SpcCategory[]>>(LOADING)
   // The storm the track control drives, and its scrubbed time; null means the strongest storm and its latest advisory.
   const [stormBin, setStormBin] = useState<string | null>(null)
   const [stormTime, setStormTime] = useState<number | null>(null)
@@ -870,42 +872,18 @@ export function MapLibreGlobe() {
   // is looked at, at once on return if it is stale. A failed refresh keeps the polygons already
   // drawn. Hiding it clears them and its status, so the next show starts from loading (#354).
   const spcShown = liveLayers.includes('spc-outlook')
-  const loadSpcRef = useRef<() => void>(() => {})
-  const spcAtRef = useRef(0)
+  const polledSpc = usePolledResource(mapLoaded && spcShown, active, getDay1CategoricalOutlook, SPC_REFRESH_MS, {
+    describeError: describeSpcFetchOutcome,
+  })
+  const spc = useMemo(() => spcCategories(polledSpc), [polledSpc])
+  const spcOutlook = dataOf(polledSpc)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded) return
     setLayersVisible(map, SPC_LAYER_IDS, spcShown)
-    if (!spcShown) return
-    let cancelled = false
-    let loaded = false
-    loadSpcRef.current = () => {
-      spcAtRef.current = Date.now()
-      getDay1CategoricalOutlook()
-        .then((outlook) => {
-          if (cancelled) return
-          loaded = true
-          map.getSource<GeoJSONSource>(SPC_SOURCE_ID)?.setData(outlook)
-          setSpc(isOutlookEmpty(outlook) ? { status: 'empty' } : loadedWith(categoriesInOutlook(outlook)))
-        })
-        .catch((err: unknown) => {
-          if (!cancelled && !loaded) setSpc(failedWith(describeSpcFetchOutcome(err)))
-        })
-    }
-    loadSpcRef.current()
-    return () => {
-      cancelled = true
-      loadSpcRef.current = () => {}
-      // An unmounted globe has removed its map already.
-      if (mapRef.current === map) map.getSource<GeoJSONSource>(SPC_SOURCE_ID)?.setData({ type: 'FeatureCollection', features: [] })
-      setSpc(LOADING)
-    }
-  }, [spcShown, mapLoaded])
-  useEffect(() => {
-    if (!mapLoaded || !spcShown || !active) return
-    if (Date.now() - spcAtRef.current >= SPC_REFRESH_MS) loadSpcRef.current()
-    return pollWhileVisible(() => loadSpcRef.current(), SPC_REFRESH_MS)
-  }, [spcShown, mapLoaded, active])
+    // No outlook (hidden, loading or failed first) leaves the layer empty; a failed refresh keeps it.
+    map.getSource<GeoJSONSource>(SPC_SOURCE_ID)?.setData(spcOutlook ?? { type: 'FeatureCollection', features: [] })
+  }, [spcShown, spcOutlook, mapLoaded])
 
   // The NHC storm tracks (#334), like the SPC outlook: fetched only while the node is selected, or
   // while a point is selected so the impact prompt can check it (#344), and refreshed while the globe
