@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
 import { usePlayer } from './usePlayer'
+import { usePlayLoop } from './usePlayLoop'
 import { formatFrameOffset } from './radarTimes'
 
 const PLAY_INTERVAL_MS = 700
@@ -21,11 +21,7 @@ export function RadarTimeControl({ frames, index, onChange, paused = false }: Pr
   const last = frames.length - 1
   const running = playing && !paused
 
-  useEffect(() => {
-    if (!running) return
-    const timer = setInterval(() => onChange(index >= last ? 0 : index + 1), PLAY_INTERVAL_MS)
-    return () => clearInterval(timer)
-  }, [running, index, last, onChange])
+  usePlayLoop(running, index, last, PLAY_INTERVAL_MS, onChange)
 
   const step = (delta: number) => {
     setPlaying(false)

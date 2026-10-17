@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
 import { usePlayer } from './usePlayer'
+import { usePlayLoop } from './usePlayLoop'
 import { describeStormState, formatAdvisoryOffset, formatStormTime, shortStormName, stateAt, stepToFix, type StormTrack } from './stormTrack'
 
 /** A whole loop takes about this long, however many hourly frames the storm has. */
@@ -33,11 +33,7 @@ export function StormTrackControl({ tracks, track, onTrackChange, frames, index,
   const running = playing && !paused
   const frameMs = Math.min(MAX_FRAME_MS, Math.max(MIN_FRAME_MS, LOOP_MS / Math.max(1, frames.length)))
 
-  useEffect(() => {
-    if (!running) return
-    const timer = setInterval(() => onChange(index >= last ? 0 : index + 1), frameMs)
-    return () => clearInterval(timer)
-  }, [running, index, last, onChange, frameMs])
+  usePlayLoop(running, index, last, frameMs, onChange)
 
   const step = (direction: -1 | 1) => {
     setPlaying(false)
