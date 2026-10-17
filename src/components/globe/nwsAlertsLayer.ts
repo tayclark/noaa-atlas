@@ -141,11 +141,14 @@ export function alertEmphasis(liveLayers: readonly LiveLayerKey[], stormImagery:
   return { level: 'normal', fillOpacity: 0.35, lineWidth: 1.5 }
 }
 
+export const ALERTS_ATTRIBUTION =
+  'Alerts: <a href="https://www.weather.gov/">NOAA/NWS</a>'
+
 /** The alert polygons, coloured by severity, at the selection's current emphasis. Added on top of everything once loaded. */
 export function alertLayers(mappable: NwsAlertCollection, emphasis: AlertEmphasis): LayerGroup {
   return {
     sourceId: ALERTS_SOURCE_ID,
-    source: { type: 'geojson', data: mappable },
+    source: { type: 'geojson', data: mappable, attribution: ALERTS_ATTRIBUTION },
     layers: [
       {
         id: ALERTS_FILL_LAYER_ID,

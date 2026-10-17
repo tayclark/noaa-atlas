@@ -39,11 +39,14 @@ export function formatNdbcPopupHtml({ id, name }: NdbcProperties): string {
   ].join('<br/>')
 }
 
+export const NDBC_ATTRIBUTION =
+  'Buoys: <a href="https://www.ndbc.noaa.gov/">NOAA/NDBC</a>'
+
 /** The buoy dots, empty and hidden until the NDBC node is selected and the list has loaded. */
 export function ndbcStationLayers(): LayerGroup {
   return {
     sourceId: NDBC_SOURCE_ID,
-    source: { type: 'geojson', data: ndbcStationsToGeoJSON([]) },
+    source: { type: 'geojson', data: ndbcStationsToGeoJSON([]), attribution: NDBC_ATTRIBUTION },
     layers: [
       {
         id: NDBC_LAYER_ID,

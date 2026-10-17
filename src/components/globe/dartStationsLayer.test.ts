@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dartStationLayers, dartStationsToGeoJSON, formatDartPopupHtml } from './dartStationsLayer'
+import { dartStationLayers, dartStationsToGeoJSON, formatDartPopupHtml, DART_ATTRIBUTION } from './dartStationsLayer'
 
 describe('dartStationsToGeoJSON', () => {
   it('emits [lng, lat] points carrying the id and name', () => {
@@ -28,7 +28,7 @@ describe('dartStationLayers', () => {
   it('starts empty and hidden, until the list has loaded and the node is selected', () => {
     const group = dartStationLayers()
     expect(group.sourceId).toBe('dart-stations')
-    expect(group.source).toEqual({ type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+    expect(group.source).toEqual({ type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: DART_ATTRIBUTION })
     expect(group.layers).toHaveLength(1)
     expect(group.layers[0]).toMatchObject({ id: 'dart-stations-circle', type: 'circle', source: group.sourceId, layout: { visibility: 'none' } })
     expect(group.layers[0]!.paint).toMatchObject({ 'circle-color': '#c2410c' })

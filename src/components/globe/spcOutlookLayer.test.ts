@@ -9,8 +9,7 @@ import {
   isOutlookEmpty,
   SPC_FILL_OPACITY,
   SPC_LAYER_IDS,
-  spcOutlookLayers,
-} from './spcOutlookLayer'
+  spcOutlookLayers, SPC_ATTRIBUTION } from './spcOutlookLayer'
 
 describe('categoriesInOutlook', () => {
   it('lists only the present categories, lowest risk first', () => {
@@ -55,7 +54,7 @@ describe('describeSpcFetchOutcome', () => {
 describe('spcOutlookLayers', () => {
   it('fills and outlines the polygons in the feed\'s own colours, empty and hidden until selected', () => {
     const group = spcOutlookLayers()
-    expect(group.source).toEqual({ type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+    expect(group.source).toEqual({ type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: SPC_ATTRIBUTION })
     expect(group.layers.map((layer) => layer.id)).toEqual(SPC_LAYER_IDS)
     expect(group.layers.map((layer) => ('layout' in layer ? layer.layout?.visibility : undefined))).toEqual(['none', 'none'])
     expect(group.layers.map((layer) => layer.paint)).toEqual([

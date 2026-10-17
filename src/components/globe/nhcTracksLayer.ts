@@ -33,11 +33,14 @@ export const nhcKind = (kind: string): ExpressionSpecification => ['==', ['get',
 /** The chosen storm at full strength, the others faded. */
 export const nhcSelected = (selected: number, other: number): ExpressionSpecification => ['case', ['get', 'selected'], selected, other]
 
+export const NHC_ATTRIBUTION =
+  'Tracks: <a href="https://www.nhc.noaa.gov/">NOAA/NWS National Hurricane Center</a>'
+
 export function nhcTrackLayers(): LayerGroup {
   const layout = { visibility: 'none' as const }
   return {
     sourceId: NHC_SOURCE_ID,
-    source: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+    source: { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: NHC_ATTRIBUTION },
     layers: [
       {
         id: NHC_CONE_FILL_LAYER_ID,

@@ -12,8 +12,7 @@ import {
   formatStationLoadingHtml,
   formatStationPopupHtml,
   stationsToGeoJSON,
-  type Fetched,
-} from './coopsStationsLayer'
+  type Fetched, COOPS_ATTRIBUTION } from './coopsStationsLayer'
 
 const station = { name: 'Panama City', state: 'FL' }
 const ok = <T>(value: T): Fetched<T> => ({ status: 'fulfilled', value: { ok: true, value } as CoopsResult<T> })
@@ -95,7 +94,7 @@ describe('coopsStationLayers', () => {
   it('draws every station from regional zoom, growing with zoom', () => {
     const stations = [{ id: '8443970', name: 'Boston', state: 'MA', lng: -71.05, lat: 42.35 }]
     const group = coopsStationLayers(stations)
-    expect(group.source).toEqual({ type: 'geojson', data: stationsToGeoJSON(stations) })
+    expect(group.source).toEqual({ type: 'geojson', data: stationsToGeoJSON(stations), attribution: COOPS_ATTRIBUTION })
     expect(group.layers).toHaveLength(1)
     expect(group.layers[0]).toMatchObject({ id: COOPS_LAYER_ID, type: 'circle', source: group.sourceId, minzoom: COOPS_MIN_ZOOM })
     expect(group.layers[0]!.paint).toMatchObject({ 'circle-radius': coopsRadius(COOPS_RADIUS) })
