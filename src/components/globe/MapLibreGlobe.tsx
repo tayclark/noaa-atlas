@@ -156,11 +156,13 @@ import { clearSelection, subscribeSelection, getSelectionSnapshot, selectPoint }
 import { getViewSnapshot, resolveView, subscribeView } from '../../data/viewStore'
 import { useNarrowLayout } from '../useNarrowLayout'
 import { addLayerGroup, addPointerCursor, setLayersVisible } from './mapLayers'
-import { dataOf, failedWith, loadedWith, LOADING, withEmpty, type AsyncState } from './asyncState'
+import { dataOf, errorOf, failedWith, loadedWith, LOADING, withEmpty, type AsyncState } from './asyncState'
 import { usePolledResource } from './usePolledResource'
 
 const spcCategories = (state: AsyncState<SpcOutlook>): AsyncState<SpcCategory[]> =>
   state.status !== 'ok' ? state : isOutlookEmpty(state.data) ? { status: 'empty' } : loadedWith(categoriesInOutlook(state.data))
+const NO_ZONE_ALERTS: NwsAlertCollection['features'] = []
+const NO_ALERT_POLYGONS: ImpactAlert[] = []
 const isNoStorms = (tracks: StormTrack[]) => tracks.length === 0
 const fetchStormTracks = () => getActiveStorms().then(buildStormTracks)
 
@@ -294,9 +296,6 @@ export function MapLibreGlobe() {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
-  const [zoneOnlyAlerts, setZoneOnlyAlerts] = useState<NwsAlertCollection['features']>([])
-  const [alertsStatus, setAlertsStatus] = useState<'loading' | 'ok' | 'empty' | 'error'>('loading')
-  const [alertsErrorMessage, setAlertsErrorMessage] = useState<string | null>(null)
   const [zoneAlertsExpanded, setZoneAlertsExpanded] = useState(false)
   // Starts collapsed to its title bar (#151): a busy day lists hundreds of alerts, which covered
   // half the globe before the user had done anything.
@@ -314,7 +313,6 @@ export function MapLibreGlobe() {
   const [stormBin, setStormBin] = useState<string | null>(null)
   const [stormTime, setStormTime] = useState<number | null>(null)
   // The mapped alert polygons, for the hurricane impact check (#344).
-  const [alertPolygons, setAlertPolygons] = useState<ImpactAlert[]>([])
   // The impact prompt the reader closed, by point and storm, so it stays closed for that place.
   const [dismissedImpact, setDismissedImpact] = useState<string | null>(null)
   const [auroraError, setAuroraError] = useState<string | null>(null)
@@ -357,8 +355,6 @@ export function MapLibreGlobe() {
   // Space weather is refreshed while the globe is looked at, and at once on return if it is stale.
   const refreshSpaceWeatherRef = useRef<() => void>(() => {})
   const spaceWeatherAtRef = useRef(0)
-  const refreshAlertsRef = useRef<() => void>(() => {})
-  const alertsAtRef = useRef(0)
   // MapLibre enables its own button once it knows the browser can geolocate; ours waits for that.
   const [locateReady, setLocateReady] = useState(false)
   // Set when the basemap fails before `load`, which then never fires and leaves no layers (#260).
@@ -606,38 +602,6 @@ export function MapLibreGlobe() {
       }
       refreshSpaceWeatherRef.current()
 
-      let alertsLoaded = false
-      const loadAlerts = () =>
-        getActiveAlerts()
-        .then((alerts) => {
-          if (disposed) return
-          const { mappable, zoneOnly } = splitAlertsByGeometry(alerts)
-          setZoneOnlyAlerts(zoneOnly)
-          setAlertPolygons(mappable.features.map((f) => ({ event: f.properties.event, geometry: f.geometry })))
-          setAlertsStatus(mappable.features.length === 0 && zoneOnly.length === 0 ? 'empty' : 'ok')
-
-          const existing = map.getSource<GeoJSONSource>(ALERTS_SOURCE_ID)
-          if (existing) {
-            existing.setData(mappable)
-            return
-          }
-          alertsLoaded = true
-
-          addLayerGroup(map, alertLayers(mappable, alertEmphasisRef.current))
-          addPointerCursor(map, [ALERTS_FILL_LAYER_ID])
-        })
-        .catch((err: unknown) => {
-          // A failed refresh keeps the last good alerts on screen.
-          if (disposed || alertsLoaded) return
-          setAlertsStatus('error')
-          setAlertsErrorMessage(describeAlertsFetchOutcome(err))
-        })
-
-      refreshAlertsRef.current = () => {
-        alertsAtRef.current = Date.now()
-        void loadAlerts()
-      }
-      refreshAlertsRef.current()
     })
 
     return () => {
@@ -743,18 +707,37 @@ export function MapLibreGlobe() {
   }, [mapLoaded, active])
 
   // The alerts are refreshed on the same terms as space weather (#222), and a failed first load is
-  // retried sooner, until it succeeds.
+  // retried sooner, until it succeeds. A failed refresh keeps the last good alerts on screen.
+  const polledAlerts = usePolledResource(mapLoaded, active, getActiveAlerts, ALERTS_REFRESH_MS, {
+    describeError: describeAlertsFetchOutcome,
+    retryMs: ALERTS_RETRY_MS,
+  })
+  const alertSplit = useMemo(() => {
+    const alerts = dataOf(polledAlerts)
+    return alerts ? splitAlertsByGeometry(alerts) : null
+  }, [polledAlerts])
+  const zoneOnlyAlerts = alertSplit?.zoneOnly ?? NO_ZONE_ALERTS
+  const alertPolygons = useMemo<ImpactAlert[]>(
+    () => alertSplit?.mappable.features.map((f) => ({ event: f.properties.event, geometry: f.geometry })) ?? NO_ALERT_POLYGONS,
+    [alertSplit],
+  )
+  const alertsStatus = alertSplit
+    ? alertSplit.mappable.features.length === 0 && alertSplit.zoneOnly.length === 0
+      ? 'empty'
+      : 'ok'
+    : polledAlerts.status
+  const alertsErrorMessage = errorOf(polledAlerts)
   useEffect(() => {
-    if (!mapLoaded || !active) return
-    if (Date.now() - alertsAtRef.current >= ALERTS_REFRESH_MS) refreshAlertsRef.current()
-    return pollWhileVisible(() => refreshAlertsRef.current(), ALERTS_REFRESH_MS)
-  }, [mapLoaded, active])
-
-  const alertsFailed = alertsStatus === 'error'
-  useEffect(() => {
-    if (!mapLoaded || !active || !alertsFailed) return
-    return pollWhileVisible(() => refreshAlertsRef.current(), ALERTS_RETRY_MS)
-  }, [mapLoaded, active, alertsFailed])
+    const map = mapRef.current
+    if (!map || !mapLoaded || !alertSplit) return
+    const existing = map.getSource<GeoJSONSource>(ALERTS_SOURCE_ID)
+    if (existing) {
+      existing.setData(alertSplit.mappable)
+      return
+    }
+    addLayerGroup(map, alertLayers(alertSplit.mappable, alertEmphasisRef.current))
+    addPointerCursor(map, [ALERTS_FILL_LAYER_ID])
+  }, [alertSplit, mapLoaded])
 
   // The stations' emphasis (#51), applied once the layer exists (mapLoaded).
   const coopsHighlighted = liveLayers.includes('coops-stations')
