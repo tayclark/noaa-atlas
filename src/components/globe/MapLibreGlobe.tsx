@@ -155,7 +155,11 @@ import { clearSelection, subscribeSelection, getSelectionSnapshot, selectPoint }
 import { getViewSnapshot, resolveView, subscribeView } from '../../data/viewStore'
 import { useNarrowLayout } from '../useNarrowLayout'
 import { addLayerGroup, addPointerCursor, setLayersVisible } from './mapLayers'
-import { failedWith, loadedWith, LOADING, type AsyncState } from './asyncState'
+import { failedWith, loadedWith, LOADING, withEmpty, type AsyncState } from './asyncState'
+import { usePolledResource } from './usePolledResource'
+
+const isNoStorms = (tracks: StormTrack[]) => tracks.length === 0
+const fetchStormTracks = () => getActiveStorms().then(buildStormTracks)
 
 // Beyond this many zone-only alerts, the overlay collapses the rest behind a "N more" toggle
 // rather than growing unbounded during a high-volume event (#106).
@@ -304,7 +308,6 @@ export function MapLibreGlobe() {
   const [ndbcStations, setNdbcStations] = useState<number | 'error' | null>(null)
   const [arcgisLegends, setArcgisLegends] = useState<Partial<Record<ArcgisOverlay['key'], ArcgisLegendState>>>({})
   const [spc, setSpc] = useState<AsyncState<SpcCategory[]>>(LOADING)
-  const [storms, setStorms] = useState<AsyncState<StormTrack[]>>(LOADING)
   // The storm the track control drives, and its scrubbed time; null means the strongest storm and its latest advisory.
   const [stormBin, setStormBin] = useState<string | null>(null)
   const [stormTime, setStormTime] = useState<number | null>(null)
@@ -913,37 +916,10 @@ export function MapLibreGlobe() {
     const map = mapRef.current
     if (map && mapLoaded) setLayersVisible(map, NHC_LAYER_IDS, nhcShown)
   }, [nhcShown, mapLoaded])
-  const loadStormsRef = useRef<() => void>(() => {})
-  const stormsAtRef = useRef(0)
-  useEffect(() => {
-    if (!stormsWanted) return
-    let cancelled = false
-    let loaded = false
-    loadStormsRef.current = () => {
-      stormsAtRef.current = Date.now()
-      getActiveStorms()
-        .then((data) => {
-          if (cancelled) return
-          loaded = true
-          const tracks = buildStormTracks(data)
-          setStorms(tracks.length === 0 ? { status: 'empty' } : loadedWith(tracks))
-        })
-        .catch((err: unknown) => {
-          if (!cancelled && !loaded) setStorms(failedWith(describeNhcFetchOutcome(err)))
-        })
-    }
-    loadStormsRef.current()
-    return () => {
-      cancelled = true
-      loadStormsRef.current = () => {}
-      setStorms(LOADING)
-    }
-  }, [stormsWanted])
-  useEffect(() => {
-    if (!stormsWanted || !active) return
-    if (Date.now() - stormsAtRef.current >= NHC_REFRESH_MS) loadStormsRef.current()
-    return pollWhileVisible(() => loadStormsRef.current(), NHC_REFRESH_MS)
-  }, [stormsWanted, active])
+  const polledStorms = usePolledResource(stormsWanted, active, fetchStormTracks, NHC_REFRESH_MS, {
+    describeError: describeNhcFetchOutcome,
+  })
+  const storms = useMemo(() => withEmpty(polledStorms, isNoStorms), [polledStorms])
 
   const stormTracks = storms.status === 'ok' ? storms.data : NO_STORMS
   const storm = stormTracks.find((track) => track.bin === stormBin) ?? stormTracks[0] ?? null
