@@ -156,6 +156,7 @@ import { getViewSnapshot, resolveView, subscribeView } from '../../data/viewStor
 import { useNarrowLayout } from '../useNarrowLayout'
 import { addLayerGroup, addPointerCursor, setLayersVisible } from './mapLayers'
 import { dataOf, errorOf, loadedWith, withEmpty, type AsyncState } from './asyncState'
+import { useDebouncedTiles } from './useDebouncedTiles'
 import { useLazyStationLayer } from './useLazyStationLayer'
 import { usePolledResource } from './usePolledResource'
 
@@ -176,7 +177,6 @@ const NARROW_GLOBE_WIDTH = 480
 
 const RADAR_FRAMES_REFRESH_MS = 5 * 60_000
 // Dragging a time slider doesn't refetch tiles for every frame it passes over.
-const RADAR_FRAME_DEBOUNCE_MS = 150
 
 // GFS simulated radar along the forecast part of the storm slider (#340), where no satellite image exists yet.
 const REFC_SOURCE_ID = 'gfs-reflectivity'
@@ -316,7 +316,6 @@ export function MapLibreGlobe() {
   // The radar's chosen frame (#74) comes from the shared time (#228), so the radar and the point
   // forecast timeline scrub together; null follows the latest frame.
   const sharedTime = useSyncExternalStore(subscribeTime, getTimeSnapshot).time
-  const radarUrlRef = useRef(NOWCOAST_RADAR_TILE_URL)
   const windRef = useRef<WindOverlay | null>(null)
   // The alert polygons' current emphasis (#342), read when the alerts layer is first added.
   const alertEmphasisRef = useRef(alertEmphasis([], false))
@@ -743,17 +742,7 @@ export function MapLibreGlobe() {
 
   // Point the source at the chosen frame. Debounced so dragging the slider doesn't refetch tiles
   // for every frame it passes over.
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !mapLoaded || !radarShown) return
-    const url = radarTileUrl(radarTime)
-    if (url === radarUrlRef.current) return
-    const timer = setTimeout(() => {
-      ;(map.getSource(RADAR_SOURCE_ID) as RasterTileSource | undefined)?.setTiles([url])
-      radarUrlRef.current = url
-    }, RADAR_FRAME_DEBOUNCE_MS)
-    return () => clearTimeout(timer)
-  }, [radarTime, radarShown, mapLoaded])
+  useDebouncedTiles(mapRef, mapLoaded, RADAR_SOURCE_ID, NOWCOAST_RADAR_TILE_URL, radarShown ? radarTileUrl(radarTime) : null)
 
   const radarIndex = radarTime === null ? radarFrames.length - 1 : Math.max(0, radarFrames.indexOf(radarTime))
   const chooseRadarFrame = useCallback(
@@ -887,18 +876,7 @@ export function MapLibreGlobe() {
     if (!mapLoaded || !stormInForecast || reflectivityTime === null) return
     reflectivityRef.current?.setField(reflectivityPair && { a: reflectivityPair.a, b: reflectivityPair.b, t: reflectivityBlend(reflectivityTime) })
   }, [reflectivityPair, reflectivityTime, stormInForecast, mapLoaded])
-  const goesUrlRef = useRef(GOES_TILE_URL)
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !mapLoaded || !stormFull) return
-    const url = goesTileUrl(goesFrame)
-    if (url === goesUrlRef.current) return
-    const timer = setTimeout(() => {
-      ;(map.getSource(GOES_SOURCE_ID) as RasterTileSource | undefined)?.setTiles([url])
-      goesUrlRef.current = url
-    }, RADAR_FRAME_DEBOUNCE_MS)
-    return () => clearTimeout(timer)
-  }, [goesFrame, stormFull, mapLoaded])
+  useDebouncedTiles(mapRef, mapLoaded, GOES_SOURCE_ID, GOES_TILE_URL, stormFull ? goesTileUrl(goesFrame) : null)
 
   // In the full view, frames the chosen storm when its tracks first arrive and whenever another storm is chosen.
   const framedStormRef = useRef<string | null>(null)
