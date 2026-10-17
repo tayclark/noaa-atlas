@@ -156,6 +156,7 @@ import { getViewSnapshot, resolveView, subscribeView } from '../../data/viewStor
 import { useNarrowLayout } from '../useNarrowLayout'
 import { addLayerGroup, addPointerCursor, setLayersVisible } from './mapLayers'
 import { dataOf, errorOf, loadedWith, withEmpty, type AsyncState } from './asyncState'
+import { useLazyStationLayer } from './useLazyStationLayer'
 import { usePolledResource } from './usePolledResource'
 
 const spcCategories = (state: AsyncState<SpcOutlook>): AsyncState<SpcCategory[]> =>
@@ -305,8 +306,6 @@ export function MapLibreGlobe() {
   // selection effect the aurora layer now exists.
   const ovationRef = useRef<SwpcOvation | null>(null)
   // The buoy lists load the first time their layer is shown (#269): the count once drawn, or 'error'.
-  const [dartStations, setDartStations] = useState<number | 'error' | null>(null)
-  const [ndbcStations, setNdbcStations] = useState<number | 'error' | null>(null)
   const [arcgisLegends, setArcgisLegends] = useState<Partial<Record<ArcgisOverlay['key'], ArcgisLegendState>>>({})
   // The storm the track control drives, and its scrubbed time; null means the strongest storm and its latest advisory.
   const [stormBin, setStormBin] = useState<string | null>(null)
@@ -795,26 +794,7 @@ export function MapLibreGlobe() {
   // list loads the first time they're shown (#269); a failed load is forgotten once they're hidden,
   // so the next select tries again (#354).
   const dartShown = liveLayers.includes('dart-stations')
-  if (!dartShown && dartStations === 'error') setDartStations(null)
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !mapLoaded) return
-    setLayersVisible(map, [DART_LAYER_ID], dartShown)
-    if (!dartShown || dartStations !== null) return
-    let cancelled = false
-    loadDartStations()
-      .then((stations) => {
-        if (cancelled) return
-        map.getSource<GeoJSONSource>(DART_SOURCE_ID)?.setData(dartStationsToGeoJSON(stations))
-        setDartStations(stations.length)
-      })
-      .catch(() => {
-        if (!cancelled) setDartStations('error')
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [dartShown, dartStations, mapLoaded])
+  const dartStations = useLazyStationLayer(mapRef, mapLoaded, dartShown, DART_LAYER_ID, DART_SOURCE_ID, loadDartStations, dartStationsToGeoJSON)
 
   // The SPC outlook (#245) is fetched only while its node is selected, and refreshed while the globe
   // is looked at, at once on return if it is stale. A failed refresh keeps the polygons already
@@ -983,26 +963,7 @@ export function MapLibreGlobe() {
 
   // The NDBC buoys load the first time they're shown too (#269), and retry like the DART ones.
   const ndbcShown = liveLayers.includes('ndbc-stations')
-  if (!ndbcShown && ndbcStations === 'error') setNdbcStations(null)
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !mapLoaded) return
-    setLayersVisible(map, [NDBC_LAYER_ID], ndbcShown)
-    if (!ndbcShown || ndbcStations !== null) return
-    let cancelled = false
-    loadNdbcStations()
-      .then((stations) => {
-        if (cancelled) return
-        map.getSource<GeoJSONSource>(NDBC_SOURCE_ID)?.setData(ndbcStationsToGeoJSON(stations))
-        setNdbcStations(stations.length)
-      })
-      .catch(() => {
-        if (!cancelled) setNdbcStations('error')
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [ndbcShown, ndbcStations, mapLoaded])
+  const ndbcStations = useLazyStationLayer(mapRef, mapLoaded, ndbcShown, NDBC_LAYER_ID, NDBC_SOURCE_ID, loadNdbcStations, ndbcStationsToGeoJSON)
 
   return (
     <div className={`globe${view.card ? ' globe-has-card' : ''}`}>
