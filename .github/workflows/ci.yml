@@ -44,11 +44,11 @@ jobs:
       - run: npm run check:budget
 
   # One job, because the repo has a single self-hosted runner: shards would only queue behind each
-  # other. One worker: the software-rendered map and the d3 layout starve under two on this shared Mac (#273).
+  # other. Two workers: one is slower and no steadier on this shared Mac (#273).
   e2e:
     name: e2e
     runs-on: [self-hosted, macOS, ARM64]
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -58,7 +58,7 @@ jobs:
       - run: npm ci
       # A persistent runner keeps its browsers between jobs, so this is a no-op after the first run.
       - run: npx playwright install chromium
-      - run: npm run test:e2e:mocked -- --workers=1
+      - run: npm run test:e2e:mocked -- --workers=2
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
