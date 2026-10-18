@@ -22,7 +22,7 @@ Stack: React 19, TypeScript, Vite, MapLibre GL, d3-force / d3-zoom / d3-drag (SV
 
 Every job runs on the self-hosted runner for this repo (`~/actions-runners/tayclark-noaa-atlas`, a LaunchAgent; `~/actions-runners/status.sh`). It runs one job at a time, so jobs queue. If checks sit queued, check that runner first.
 
-CI (`.github/workflows/ci.yml`) runs on every PR and on pushes to `main`. The `ci` job runs typecheck → lint → `test:coverage` → build. `test:e2e:mocked` runs in Chromium as the single `e2e` job (two workers; it uploads the `playwright-report` artifact on failure). Both `ci` and `e2e` must pass. Deploy (`deploy.yml`) runs from `workflow_run` after a green CI on `main`. The `@live` specs run only in `live-e2e.yml` (manual `workflow_dispatch` only: `gh workflow run live-e2e.yml`), which no merge depends on.
+CI (`.github/workflows/ci.yml`) runs on every PR and on pushes to `main`. The `ci` job runs typecheck → lint → `test:coverage` → build. `test:e2e:mocked` runs in Chromium as the single `e2e` job (one worker; it uploads the `playwright-report` artifact on failure). Both `ci` and `e2e` must pass. Deploy (`deploy.yml`) runs from `workflow_run` after a green CI on `main`. The `@live` specs run only in `live-e2e.yml` (manual `workflow_dispatch` only: `gh workflow run live-e2e.yml`), which no merge depends on.
 
 ## Architecture
 
