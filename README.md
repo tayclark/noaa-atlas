@@ -257,7 +257,7 @@ The Playwright config starts the dev server on port 5173 (reusing one if it is a
 GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and push to `main`:
 
 - **ci**: typecheck, lint, unit tests with the coverage gate (summary posted to the run), production build, bundle size budget.
-- **e2e**: the mocked Playwright suite (`npm run test:e2e:mocked`, Chromium), split across three `e2e shard N/3` jobs. The `e2e` job waits for them and, on a failure, merges their blob reports into one `playwright-report` artifact.
+- **e2e**: the mocked Playwright suite (`npm run test:e2e:mocked`, Chromium), run as one `e2e` job with two workers. On a failure it uploads the `playwright-report` artifact.
 
 The `@live` specs depend on NOAA's servers being up, so they don't run on pull requests. The **Live e2e** workflow (`.github/workflows/live-e2e.yml`) runs `npm run test:e2e:live` on demand (`workflow_dispatch`). Its failures show in the Actions tab but don't block merges.
 
