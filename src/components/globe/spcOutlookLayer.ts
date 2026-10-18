@@ -31,6 +31,9 @@ export const SPC_CATEGORIES: readonly SpcCategory[] = [
 
 export const SPC_FILL_OPACITY = 0.45
 
+export const SPC_ATTRIBUTION =
+  'Outlook: <a href="https://www.spc.noaa.gov/">NOAA/NWS Storm Prediction Center</a>'
+
 /** The categories present in an outlook, lowest risk first, for a legend that matches the map. */
 export function categoriesInOutlook(outlook: SpcOutlook): SpcCategory[] {
   const present = new Set(outlook.features.map((f) => f.properties.LABEL))
@@ -83,7 +86,7 @@ export function describeSpcFetchOutcome(err: unknown): string {
 export function spcOutlookLayers(): LayerGroup {
   return {
     sourceId: SPC_SOURCE_ID,
-    source: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+    source: { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: SPC_ATTRIBUTION },
     layers: [
       {
         id: SPC_FILL_LAYER_ID,

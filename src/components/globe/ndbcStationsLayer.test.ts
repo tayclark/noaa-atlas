@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ndbcStationLayers, ndbcStationsToGeoJSON, formatNdbcPopupHtml } from './ndbcStationsLayer'
+import { ndbcStationLayers, ndbcStationsToGeoJSON, formatNdbcPopupHtml, NDBC_ATTRIBUTION } from './ndbcStationsLayer'
 
 describe('ndbcStationsToGeoJSON', () => {
   it('emits [lng, lat] points carrying the id and name', () => {
@@ -28,7 +28,7 @@ describe('ndbcStationLayers', () => {
   it('starts empty and hidden, until the list has loaded and the node is selected', () => {
     const group = ndbcStationLayers()
     expect(group.sourceId).toBe('ndbc-stations')
-    expect(group.source).toEqual({ type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+    expect(group.source).toEqual({ type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: NDBC_ATTRIBUTION })
     expect(group.layers).toHaveLength(1)
     expect(group.layers[0]).toMatchObject({ id: 'ndbc-stations-circle', type: 'circle', source: group.sourceId, layout: { visibility: 'none' } })
     expect(group.layers[0]!.paint).toMatchObject({ 'circle-color': '#0f766e' })

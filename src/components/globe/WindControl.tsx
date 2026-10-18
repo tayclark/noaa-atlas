@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { usePlayer } from './usePlayer'
+import { usePlayLoop } from './usePlayLoop'
 import { WAVE_LEGEND_STOPS_M, waveColor } from './waveField'
 import { WIND_LEGEND_STOPS_MS, windColor } from './windField'
 import { formatWindTime, windIndexForTime, windTimes } from './windTime'
@@ -69,11 +70,8 @@ export function WindControl({ layer, onLayerChange, cycle, time, onChange, pause
   const index = windIndexForTime(cycle, time ?? mountedAt)
   const running = playing && !paused
 
-  useEffect(() => {
-    if (!running) return
-    const timer = setInterval(() => onChange(times[index >= last ? 0 : index + 1]), PLAY_INTERVAL_MS)
-    return () => clearInterval(timer)
-  }, [running, index, last, onChange, times])
+  const playTo = useCallback((next: number) => onChange(times[next]), [onChange, times])
+  usePlayLoop(running, index, last, PLAY_INTERVAL_MS, playTo)
 
   const step = (delta: number) => {
     setPlaying(false)

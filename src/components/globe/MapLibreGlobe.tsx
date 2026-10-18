@@ -1,4 +1,4 @@
-import { GeolocateControl, LngLat, Map as MapLibreMap, Marker, Popup, type CanvasSource, type GeoJSONSource, type LngLatLike, type MapGeoJSONFeature, type MapMouseEvent, type PopupOptions, type RasterTileSource } from 'maplibre-gl'
+import { GeolocateControl, LngLat, Map as MapLibreMap, Marker, Popup, type CanvasSource, type GeoJSONSource, type LngLatLike, type MapGeoJSONFeature, type MapMouseEvent, type PopupOptions } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import './GlobePane.css'
@@ -14,7 +14,7 @@ import { graphFile, tasks } from '../../data/graphData'
 import { selectNode } from '../../data/selectionStore'
 import type { ServiceNode } from '../../data/graphSchema'
 import type { NwsAlertCollection } from '../../data/nwsSchema'
-import { pollWhileVisible } from '../../data/pollWhileVisible'
+import type { SpcOutlook } from '../../data/spcSchema'
 import { getDay1CategoricalOutlook, SPC_REFRESH_MS } from '../../data/spcClient'
 import { getActiveStorms, NHC_REFRESH_MS } from '../../data/nhcClient'
 import {
@@ -97,7 +97,7 @@ import {
   formatAuroraPopupHtml,
 } from './auroraLayer'
 import { prefersReducedMotion } from '../prefersReducedMotion'
-import { describeKp, type KpReadout } from './kpReadout'
+import { describeKp } from './kpReadout'
 import { NOWCOAST_RADAR_TILE_URL, RADAR_LAYER_ID, RADAR_SOURCE_ID, radarLayers, radarTileUrl } from './nowcoastRadarLayer'
 import { RadarTimeControl } from './RadarTimeControl'
 import { createWaveOverlay, type WaveOverlay } from './waveOverlay'
@@ -155,7 +155,18 @@ import { clearSelection, subscribeSelection, getSelectionSnapshot, selectPoint }
 import { getViewSnapshot, resolveView, subscribeView } from '../../data/viewStore'
 import { useNarrowLayout } from '../useNarrowLayout'
 import { addLayerGroup, addPointerCursor, setLayersVisible } from './mapLayers'
-import { failedWith, loadedWith, LOADING, type AsyncState } from './asyncState'
+import { dataOf, errorOf, loadedWith, withEmpty, type AsyncState } from './asyncState'
+import { useDebouncedTiles } from './useDebouncedTiles'
+import { useLazyStationLayer } from './useLazyStationLayer'
+import { usePolledResource } from './usePolledResource'
+
+const spcCategories = (state: AsyncState<SpcOutlook>): AsyncState<SpcCategory[]> =>
+  state.status !== 'ok' ? state : isOutlookEmpty(state.data) ? { status: 'empty' } : loadedWith(categoriesInOutlook(state.data))
+const NO_ZONE_ALERTS: NwsAlertCollection['features'] = []
+const NO_ALERT_POLYGONS: ImpactAlert[] = []
+const getPlanetaryKpReadout = () => getPlanetaryKp().then(describeKp)
+const isNoStorms = (tracks: StormTrack[]) => tracks.length === 0
+const fetchStormTracks = () => getActiveStorms().then(buildStormTracks)
 
 // Beyond this many zone-only alerts, the overlay collapses the rest behind a "N more" toggle
 // rather than growing unbounded during a high-volume event (#106).
@@ -166,7 +177,6 @@ const NARROW_GLOBE_WIDTH = 480
 
 const RADAR_FRAMES_REFRESH_MS = 5 * 60_000
 // Dragging a time slider doesn't refetch tiles for every frame it passes over.
-const RADAR_FRAME_DEBOUNCE_MS = 150
 
 // GFS simulated radar along the forecast part of the storm slider (#340), where no satellite image exists yet.
 const REFC_SOURCE_ID = 'gfs-reflectivity'
@@ -287,9 +297,6 @@ export function MapLibreGlobe() {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
-  const [zoneOnlyAlerts, setZoneOnlyAlerts] = useState<NwsAlertCollection['features']>([])
-  const [alertsStatus, setAlertsStatus] = useState<'loading' | 'ok' | 'empty' | 'error'>('loading')
-  const [alertsErrorMessage, setAlertsErrorMessage] = useState<string | null>(null)
   const [zoneAlertsExpanded, setZoneAlertsExpanded] = useState(false)
   // Starts collapsed to its title bar (#151): a busy day lists hundreds of alerts, which covered
   // half the globe before the user had done anything.
@@ -298,26 +305,17 @@ export function MapLibreGlobe() {
   // Space weather (#54). The grid is kept for click lookups; the cell count also tells the
   // selection effect the aurora layer now exists.
   const ovationRef = useRef<SwpcOvation | null>(null)
-  const [auroraCells, setAuroraCells] = useState<number | null>(null)
   // The buoy lists load the first time their layer is shown (#269): the count once drawn, or 'error'.
-  const [dartStations, setDartStations] = useState<number | 'error' | null>(null)
-  const [ndbcStations, setNdbcStations] = useState<number | 'error' | null>(null)
   const [arcgisLegends, setArcgisLegends] = useState<Partial<Record<ArcgisOverlay['key'], ArcgisLegendState>>>({})
-  const [spc, setSpc] = useState<AsyncState<SpcCategory[]>>(LOADING)
-  const [storms, setStorms] = useState<AsyncState<StormTrack[]>>(LOADING)
   // The storm the track control drives, and its scrubbed time; null means the strongest storm and its latest advisory.
   const [stormBin, setStormBin] = useState<string | null>(null)
   const [stormTime, setStormTime] = useState<number | null>(null)
   // The mapped alert polygons, for the hurricane impact check (#344).
-  const [alertPolygons, setAlertPolygons] = useState<ImpactAlert[]>([])
   // The impact prompt the reader closed, by point and storm, so it stays closed for that place.
   const [dismissedImpact, setDismissedImpact] = useState<string | null>(null)
-  const [auroraError, setAuroraError] = useState<string | null>(null)
-  const [kp, setKp] = useState<AsyncState<KpReadout>>(LOADING)
   // The radar's chosen frame (#74) comes from the shared time (#228), so the radar and the point
   // forecast timeline scrub together; null follows the latest frame.
   const sharedTime = useSyncExternalStore(subscribeTime, getTimeSnapshot).time
-  const radarUrlRef = useRef(NOWCOAST_RADAR_TILE_URL)
   const windRef = useRef<WindOverlay | null>(null)
   // The alert polygons' current emphasis (#342), read when the alerts layer is first added.
   const alertEmphasisRef = useRef(alertEmphasis([], false))
@@ -350,10 +348,6 @@ export function MapLibreGlobe() {
   // selection made while it was hidden, but is not snapped back over where the reader has panned.
   const framedViewRef = useRef<typeof view | null>(null)
   // Space weather is refreshed while the globe is looked at, and at once on return if it is stale.
-  const refreshSpaceWeatherRef = useRef<() => void>(() => {})
-  const spaceWeatherAtRef = useRef(0)
-  const refreshAlertsRef = useRef<() => void>(() => {})
-  const alertsAtRef = useRef(0)
   // MapLibre enables its own button once it knows the browser can geolocate; ours waits for that.
   const [locateReady, setLocateReady] = useState(false)
   // Set when the basemap fails before `load`, which then never fires and leaves no layers (#260).
@@ -411,7 +405,6 @@ export function MapLibreGlobe() {
     // why the globe is empty. Later errors, such as a missing tile, keep being ignored.
     let loaded = false
     // Set by the cleanup, so a response that lands after the map is removed draws nothing (#354).
-    let disposed = false
     map.on('error', (e) => {
       if (!loaded) setMapError(describeStyleError(e.error))
     })
@@ -546,97 +539,9 @@ export function MapLibreGlobe() {
         showPointLookup(map, e.lngLat.lng, e.lngLat.lat, ovationRef.current)
       })
 
-      // Both files are re-fetched every few minutes while the globe is looked at (see the effect
-      // below). A failed refresh keeps what is already on screen; only a failed first load shows
-      // an error.
-      let auroraCanvas: HTMLCanvasElement | null = null
-      let kpLoaded = false
-
-      const loadAurora = () =>
-        getOvationAurora().then(
-          (ovation) => {
-            if (disposed) return
-            ovationRef.current = ovation
-            const raster = auroraRaster(ovation)
-            if (!auroraCanvas) {
-              auroraCanvas = document.createElement('canvas')
-              auroraCanvas.width = raster.width
-              auroraCanvas.height = raster.height
-              auroraCanvas.getContext('2d')?.putImageData(new ImageData(raster.data, raster.width, raster.height), 0, 0)
-              // Under the alerts if they're already drawn; if they arrive later they're added on top anyway.
-              addLayerGroup(map, auroraLayers(auroraCanvas), map.getLayer(ALERTS_FILL_LAYER_ID) ? ALERTS_FILL_LAYER_ID : undefined)
-            } else {
-              auroraCanvas.getContext('2d')?.putImageData(new ImageData(raster.data, raster.width, raster.height), 0, 0)
-              // A non-animated canvas source only uploads its texture on load; play() then pause()
-              // uploads the redrawn canvas once.
-              const source = map.getSource(AURORA_SOURCE_ID) as CanvasSource | undefined
-              source?.play()
-              source?.pause()
-              map.triggerRepaint()
-            }
-            setAuroraError(null)
-            setAuroraCells(raster.cells)
-          },
-          (err: unknown) => {
-            if (!disposed && !auroraCanvas) setAuroraError(describeSwpcFetchOutcome(err))
-          },
-        )
-
-      const loadKp = () =>
-        getPlanetaryKp().then(
-          (rows) => {
-            if (disposed) return
-            kpLoaded = true
-            setKp(loadedWith(describeKp(rows)))
-          },
-          (err: unknown) => {
-            if (!disposed && !kpLoaded) setKp(failedWith(describeSwpcFetchOutcome(err)))
-          },
-        )
-
-      refreshSpaceWeatherRef.current = () => {
-        spaceWeatherAtRef.current = Date.now()
-        void loadAurora()
-        void loadKp()
-      }
-      refreshSpaceWeatherRef.current()
-
-      let alertsLoaded = false
-      const loadAlerts = () =>
-        getActiveAlerts()
-        .then((alerts) => {
-          if (disposed) return
-          const { mappable, zoneOnly } = splitAlertsByGeometry(alerts)
-          setZoneOnlyAlerts(zoneOnly)
-          setAlertPolygons(mappable.features.map((f) => ({ event: f.properties.event, geometry: f.geometry })))
-          setAlertsStatus(mappable.features.length === 0 && zoneOnly.length === 0 ? 'empty' : 'ok')
-
-          const existing = map.getSource<GeoJSONSource>(ALERTS_SOURCE_ID)
-          if (existing) {
-            existing.setData(mappable)
-            return
-          }
-          alertsLoaded = true
-
-          addLayerGroup(map, alertLayers(mappable, alertEmphasisRef.current))
-          addPointerCursor(map, [ALERTS_FILL_LAYER_ID])
-        })
-        .catch((err: unknown) => {
-          // A failed refresh keeps the last good alerts on screen.
-          if (disposed || alertsLoaded) return
-          setAlertsStatus('error')
-          setAlertsErrorMessage(describeAlertsFetchOutcome(err))
-        })
-
-      refreshAlertsRef.current = () => {
-        alertsAtRef.current = Date.now()
-        void loadAlerts()
-      }
-      refreshAlertsRef.current()
     })
 
     return () => {
-      disposed = true
       readyObserver.disconnect()
       unregisterDismisser()
       canvas.removeEventListener('keydown', onCanvasKeyDown)
@@ -719,6 +624,42 @@ export function MapLibreGlobe() {
     showPointLookup(map, point[0], point[1], ovationRef.current)
   }, [selection.selectedPoint, mapLoaded, active])
 
+  // The aurora forecast and Kp are re-fetched every few minutes while the globe is looked at, and at
+  // once on return when stale (#78). A failed refresh keeps what is on screen; only a failed first
+  // load shows an error.
+  const swpcOptions = { describeError: describeSwpcFetchOutcome }
+  const polledAurora = usePolledResource(mapLoaded, active, getOvationAurora, SWPC_REFRESH_MS, swpcOptions)
+  const polledKp = usePolledResource(mapLoaded, active, getPlanetaryKpReadout, SWPC_REFRESH_MS, swpcOptions)
+  const kp = polledKp
+  const auroraError = errorOf(polledAurora)
+  const ovation = dataOf(polledAurora)
+  const auroraRasterData = useMemo(() => (ovation ? auroraRaster(ovation) : null), [ovation])
+  const auroraCells = auroraRasterData?.cells ?? null
+  const auroraCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapLoaded || !ovation || !auroraRasterData) return
+    ovationRef.current = ovation
+    const raster = auroraRasterData
+    const source = map.getSource(AURORA_SOURCE_ID) as CanvasSource | undefined
+    if (!source || !auroraCanvasRef.current) {
+      const canvas = document.createElement('canvas')
+      canvas.width = raster.width
+      canvas.height = raster.height
+      canvas.getContext('2d')?.putImageData(new ImageData(raster.data, raster.width, raster.height), 0, 0)
+      auroraCanvasRef.current = canvas
+      // Under the alerts if they're already drawn; if they arrive later they're added on top anyway.
+      addLayerGroup(map, auroraLayers(canvas), map.getLayer(ALERTS_FILL_LAYER_ID) ? ALERTS_FILL_LAYER_ID : undefined)
+    } else {
+      auroraCanvasRef.current.getContext('2d')?.putImageData(new ImageData(raster.data, raster.width, raster.height), 0, 0)
+      // A non-animated canvas source only uploads its texture on load; play() then pause()
+      // uploads the redrawn canvas once.
+      source.play()
+      source.pause()
+      map.triggerRepaint()
+    }
+  }, [ovation, auroraRasterData, mapLoaded])
+
   // The aurora's emphasis (#54) lives apart from the effect above so that the layer arriving
   // (auroraCells) re-applies it without re-framing the globe.
   const auroraHighlighted = liveLayers.includes('aurora')
@@ -728,28 +669,38 @@ export function MapLibreGlobe() {
     map.setPaintProperty(AURORA_LAYER_ID, 'raster-opacity', auroraHighlighted ? AURORA_OPACITY_SELECTED : AURORA_OPACITY)
   }, [auroraHighlighted, auroraCells])
 
-  // The aurora forecast and Kp are refreshed every few minutes while the globe is looked at. Coming
-  // back to it after longer than that refreshes at once, rather than showing a stale readout until
-  // the next tick (#78).
-  useEffect(() => {
-    if (!mapLoaded || !active) return
-    if (Date.now() - spaceWeatherAtRef.current >= SWPC_REFRESH_MS) refreshSpaceWeatherRef.current()
-    return pollWhileVisible(() => refreshSpaceWeatherRef.current(), SWPC_REFRESH_MS)
-  }, [mapLoaded, active])
-
   // The alerts are refreshed on the same terms as space weather (#222), and a failed first load is
-  // retried sooner, until it succeeds.
+  // retried sooner, until it succeeds. A failed refresh keeps the last good alerts on screen.
+  const polledAlerts = usePolledResource(mapLoaded, active, getActiveAlerts, ALERTS_REFRESH_MS, {
+    describeError: describeAlertsFetchOutcome,
+    retryMs: ALERTS_RETRY_MS,
+  })
+  const alertSplit = useMemo(() => {
+    const alerts = dataOf(polledAlerts)
+    return alerts ? splitAlertsByGeometry(alerts) : null
+  }, [polledAlerts])
+  const zoneOnlyAlerts = alertSplit?.zoneOnly ?? NO_ZONE_ALERTS
+  const alertPolygons = useMemo<ImpactAlert[]>(
+    () => alertSplit?.mappable.features.map((f) => ({ event: f.properties.event, geometry: f.geometry })) ?? NO_ALERT_POLYGONS,
+    [alertSplit],
+  )
+  const alertsStatus = alertSplit
+    ? alertSplit.mappable.features.length === 0 && alertSplit.zoneOnly.length === 0
+      ? 'empty'
+      : 'ok'
+    : polledAlerts.status
+  const alertsErrorMessage = errorOf(polledAlerts)
   useEffect(() => {
-    if (!mapLoaded || !active) return
-    if (Date.now() - alertsAtRef.current >= ALERTS_REFRESH_MS) refreshAlertsRef.current()
-    return pollWhileVisible(() => refreshAlertsRef.current(), ALERTS_REFRESH_MS)
-  }, [mapLoaded, active])
-
-  const alertsFailed = alertsStatus === 'error'
-  useEffect(() => {
-    if (!mapLoaded || !active || !alertsFailed) return
-    return pollWhileVisible(() => refreshAlertsRef.current(), ALERTS_RETRY_MS)
-  }, [mapLoaded, active, alertsFailed])
+    const map = mapRef.current
+    if (!map || !mapLoaded || !alertSplit) return
+    const existing = map.getSource<GeoJSONSource>(ALERTS_SOURCE_ID)
+    if (existing) {
+      existing.setData(alertSplit.mappable)
+      return
+    }
+    addLayerGroup(map, alertLayers(alertSplit.mappable, alertEmphasisRef.current))
+    addPointerCursor(map, [ALERTS_FILL_LAYER_ID])
+  }, [alertSplit, mapLoaded])
 
   // The stations' emphasis (#51), applied once the layer exists (mapLoaded).
   const coopsHighlighted = liveLayers.includes('coops-stations')
@@ -791,17 +742,7 @@ export function MapLibreGlobe() {
 
   // Point the source at the chosen frame. Debounced so dragging the slider doesn't refetch tiles
   // for every frame it passes over.
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !mapLoaded || !radarShown) return
-    const url = radarTileUrl(radarTime)
-    if (url === radarUrlRef.current) return
-    const timer = setTimeout(() => {
-      ;(map.getSource(RADAR_SOURCE_ID) as RasterTileSource | undefined)?.setTiles([url])
-      radarUrlRef.current = url
-    }, RADAR_FRAME_DEBOUNCE_MS)
-    return () => clearTimeout(timer)
-  }, [radarTime, radarShown, mapLoaded])
+  useDebouncedTiles(mapRef, mapLoaded, RADAR_SOURCE_ID, NOWCOAST_RADAR_TILE_URL, radarShown ? radarTileUrl(radarTime) : null)
 
   const radarIndex = radarTime === null ? radarFrames.length - 1 : Math.max(0, radarFrames.indexOf(radarTime))
   const chooseRadarFrame = useCallback(
@@ -842,67 +783,24 @@ export function MapLibreGlobe() {
   // list loads the first time they're shown (#269); a failed load is forgotten once they're hidden,
   // so the next select tries again (#354).
   const dartShown = liveLayers.includes('dart-stations')
-  if (!dartShown && dartStations === 'error') setDartStations(null)
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !mapLoaded) return
-    setLayersVisible(map, [DART_LAYER_ID], dartShown)
-    if (!dartShown || dartStations !== null) return
-    let cancelled = false
-    loadDartStations()
-      .then((stations) => {
-        if (cancelled) return
-        map.getSource<GeoJSONSource>(DART_SOURCE_ID)?.setData(dartStationsToGeoJSON(stations))
-        setDartStations(stations.length)
-      })
-      .catch(() => {
-        if (!cancelled) setDartStations('error')
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [dartShown, dartStations, mapLoaded])
+  const dartStations = useLazyStationLayer(mapRef, mapLoaded, dartShown, DART_LAYER_ID, DART_SOURCE_ID, loadDartStations, dartStationsToGeoJSON)
 
   // The SPC outlook (#245) is fetched only while its node is selected, and refreshed while the globe
   // is looked at, at once on return if it is stale. A failed refresh keeps the polygons already
   // drawn. Hiding it clears them and its status, so the next show starts from loading (#354).
   const spcShown = liveLayers.includes('spc-outlook')
-  const loadSpcRef = useRef<() => void>(() => {})
-  const spcAtRef = useRef(0)
+  const polledSpc = usePolledResource(mapLoaded && spcShown, active, getDay1CategoricalOutlook, SPC_REFRESH_MS, {
+    describeError: describeSpcFetchOutcome,
+  })
+  const spc = useMemo(() => spcCategories(polledSpc), [polledSpc])
+  const spcOutlook = dataOf(polledSpc)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapLoaded) return
     setLayersVisible(map, SPC_LAYER_IDS, spcShown)
-    if (!spcShown) return
-    let cancelled = false
-    let loaded = false
-    loadSpcRef.current = () => {
-      spcAtRef.current = Date.now()
-      getDay1CategoricalOutlook()
-        .then((outlook) => {
-          if (cancelled) return
-          loaded = true
-          map.getSource<GeoJSONSource>(SPC_SOURCE_ID)?.setData(outlook)
-          setSpc(isOutlookEmpty(outlook) ? { status: 'empty' } : loadedWith(categoriesInOutlook(outlook)))
-        })
-        .catch((err: unknown) => {
-          if (!cancelled && !loaded) setSpc(failedWith(describeSpcFetchOutcome(err)))
-        })
-    }
-    loadSpcRef.current()
-    return () => {
-      cancelled = true
-      loadSpcRef.current = () => {}
-      // An unmounted globe has removed its map already.
-      if (mapRef.current === map) map.getSource<GeoJSONSource>(SPC_SOURCE_ID)?.setData({ type: 'FeatureCollection', features: [] })
-      setSpc(LOADING)
-    }
-  }, [spcShown, mapLoaded])
-  useEffect(() => {
-    if (!mapLoaded || !spcShown || !active) return
-    if (Date.now() - spcAtRef.current >= SPC_REFRESH_MS) loadSpcRef.current()
-    return pollWhileVisible(() => loadSpcRef.current(), SPC_REFRESH_MS)
-  }, [spcShown, mapLoaded, active])
+    // No outlook (hidden, loading or failed first) leaves the layer empty; a failed refresh keeps it.
+    map.getSource<GeoJSONSource>(SPC_SOURCE_ID)?.setData(spcOutlook ?? { type: 'FeatureCollection', features: [] })
+  }, [spcShown, spcOutlook, mapLoaded])
 
   // The NHC storm tracks (#334), like the SPC outlook: fetched only while the node is selected, or
   // while a point is selected so the impact prompt can check it (#344), and refreshed while the globe
@@ -913,37 +811,10 @@ export function MapLibreGlobe() {
     const map = mapRef.current
     if (map && mapLoaded) setLayersVisible(map, NHC_LAYER_IDS, nhcShown)
   }, [nhcShown, mapLoaded])
-  const loadStormsRef = useRef<() => void>(() => {})
-  const stormsAtRef = useRef(0)
-  useEffect(() => {
-    if (!stormsWanted) return
-    let cancelled = false
-    let loaded = false
-    loadStormsRef.current = () => {
-      stormsAtRef.current = Date.now()
-      getActiveStorms()
-        .then((data) => {
-          if (cancelled) return
-          loaded = true
-          const tracks = buildStormTracks(data)
-          setStorms(tracks.length === 0 ? { status: 'empty' } : loadedWith(tracks))
-        })
-        .catch((err: unknown) => {
-          if (!cancelled && !loaded) setStorms(failedWith(describeNhcFetchOutcome(err)))
-        })
-    }
-    loadStormsRef.current()
-    return () => {
-      cancelled = true
-      loadStormsRef.current = () => {}
-      setStorms(LOADING)
-    }
-  }, [stormsWanted])
-  useEffect(() => {
-    if (!stormsWanted || !active) return
-    if (Date.now() - stormsAtRef.current >= NHC_REFRESH_MS) loadStormsRef.current()
-    return pollWhileVisible(() => loadStormsRef.current(), NHC_REFRESH_MS)
-  }, [stormsWanted, active])
+  const polledStorms = usePolledResource(stormsWanted, active, fetchStormTracks, NHC_REFRESH_MS, {
+    describeError: describeNhcFetchOutcome,
+  })
+  const storms = useMemo(() => withEmpty(polledStorms, isNoStorms), [polledStorms])
 
   const stormTracks = storms.status === 'ok' ? storms.data : NO_STORMS
   const storm = stormTracks.find((track) => track.bin === stormBin) ?? stormTracks[0] ?? null
@@ -1005,18 +876,7 @@ export function MapLibreGlobe() {
     if (!mapLoaded || !stormInForecast || reflectivityTime === null) return
     reflectivityRef.current?.setField(reflectivityPair && { a: reflectivityPair.a, b: reflectivityPair.b, t: reflectivityBlend(reflectivityTime) })
   }, [reflectivityPair, reflectivityTime, stormInForecast, mapLoaded])
-  const goesUrlRef = useRef(GOES_TILE_URL)
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !mapLoaded || !stormFull) return
-    const url = goesTileUrl(goesFrame)
-    if (url === goesUrlRef.current) return
-    const timer = setTimeout(() => {
-      ;(map.getSource(GOES_SOURCE_ID) as RasterTileSource | undefined)?.setTiles([url])
-      goesUrlRef.current = url
-    }, RADAR_FRAME_DEBOUNCE_MS)
-    return () => clearTimeout(timer)
-  }, [goesFrame, stormFull, mapLoaded])
+  useDebouncedTiles(mapRef, mapLoaded, GOES_SOURCE_ID, GOES_TILE_URL, stormFull ? goesTileUrl(goesFrame) : null)
 
   // In the full view, frames the chosen storm when its tracks first arrive and whenever another storm is chosen.
   const framedStormRef = useRef<string | null>(null)
@@ -1081,26 +941,7 @@ export function MapLibreGlobe() {
 
   // The NDBC buoys load the first time they're shown too (#269), and retry like the DART ones.
   const ndbcShown = liveLayers.includes('ndbc-stations')
-  if (!ndbcShown && ndbcStations === 'error') setNdbcStations(null)
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !mapLoaded) return
-    setLayersVisible(map, [NDBC_LAYER_ID], ndbcShown)
-    if (!ndbcShown || ndbcStations !== null) return
-    let cancelled = false
-    loadNdbcStations()
-      .then((stations) => {
-        if (cancelled) return
-        map.getSource<GeoJSONSource>(NDBC_SOURCE_ID)?.setData(ndbcStationsToGeoJSON(stations))
-        setNdbcStations(stations.length)
-      })
-      .catch(() => {
-        if (!cancelled) setNdbcStations('error')
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [ndbcShown, ndbcStations, mapLoaded])
+  const ndbcStations = useLazyStationLayer(mapRef, mapLoaded, ndbcShown, NDBC_LAYER_ID, NDBC_SOURCE_ID, loadNdbcStations, ndbcStationsToGeoJSON)
 
   return (
     <div className={`globe${view.card ? ' globe-has-card' : ''}`}>

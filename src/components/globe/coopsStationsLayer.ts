@@ -111,11 +111,14 @@ export function formatStationPopupHtml(
 // data terms).
 const PRELIMINARY_NOTE = '<br/><span style="opacity: 0.7">Preliminary data, not quality-controlled.</span>'
 
+export const COOPS_ATTRIBUTION =
+  'Stations: <a href="https://tidesandcurrents.noaa.gov/">NOAA/CO-OPS</a>'
+
 /** The static station dots, drawn from regional zoom (COOPS_MIN_ZOOM); no fetch is needed. */
 export function coopsStationLayers(stations: readonly CoopsStation[]): LayerGroup {
   return {
     sourceId: COOPS_SOURCE_ID,
-    source: { type: 'geojson', data: stationsToGeoJSON(stations) },
+    source: { type: 'geojson', data: stationsToGeoJSON(stations), attribution: COOPS_ATTRIBUTION },
     layers: [
       {
         id: COOPS_LAYER_ID,

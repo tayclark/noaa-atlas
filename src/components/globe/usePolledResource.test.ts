@@ -119,4 +119,22 @@ describe('usePolledResource', () => {
     act(() => vi.advanceTimersByTime(RETRY))
     expect(fetcher).toHaveBeenCalledTimes(1)
   })
+
+  it('aborts the request when disabled, and the older request when a refresh starts', async () => {
+    const signals: AbortSignal[] = []
+    const fetcher = vi.fn((signal: AbortSignal) => {
+      signals.push(signal)
+      return new Promise<string>(() => {})
+    })
+    const { rerender } = renderHook(
+      ({ enabled }) => usePolledResource(enabled, true, fetcher, INTERVAL, { describeError }),
+      { initialProps: { enabled: true } },
+    )
+    act(() => vi.advanceTimersByTime(INTERVAL))
+    expect(signals).toHaveLength(2)
+    expect(signals[0].aborted).toBe(true)
+    expect(signals[1].aborted).toBe(false)
+    rerender({ enabled: false })
+    expect(signals[1].aborted).toBe(true)
+  })
 })

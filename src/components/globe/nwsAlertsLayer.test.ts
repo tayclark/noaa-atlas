@@ -16,8 +16,7 @@ import {
   formatAlertPopupHtml,
   splitAlertsByGeometry,
   visibleZoneOnlyAlerts,
-  zoneOnlyAlertsTitle,
-} from './nwsAlertsLayer'
+  zoneOnlyAlertsTitle, ALERTS_ATTRIBUTION } from './nwsAlertsLayer'
 
 describe('alertSeverityColorExpression', () => {
   it('maps every known severity to a color, with an Unknown-colored fallback', () => {
@@ -183,7 +182,7 @@ describe('alertLayers', () => {
     const mappable = { type: 'FeatureCollection' as const, features: [] }
     const emphasis = alertEmphasis(['nws-alerts'], false)
     const group = alertLayers(mappable, emphasis)
-    expect(group.source).toEqual({ type: 'geojson', data: mappable })
+    expect(group.source).toEqual({ type: 'geojson', data: mappable, attribution: ALERTS_ATTRIBUTION })
     expect(group.layers.map((layer) => layer.id)).toEqual([ALERTS_FILL_LAYER_ID, ALERTS_LINE_LAYER_ID])
     expect(group.layers.map((layer) => layer.paint)).toEqual([
       { 'fill-color': alertSeverityColorExpression(), 'fill-opacity': emphasis.fillOpacity },
