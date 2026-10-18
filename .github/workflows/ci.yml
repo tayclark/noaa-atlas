@@ -15,7 +15,7 @@ concurrency:
 jobs:
   ci:
     name: ci
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -43,11 +43,11 @@ jobs:
       - run: npm run build
       - run: npm run check:budget
 
-  # The mocked suite is split across three runners (#273): two workers is the most one 4-vCPU
-  # runner takes before the software-rendered map starves, so more shards add CPUs instead.
+  # The mocked suite is split into three shards (#273). The repo has one self-hosted runner, so
+  # they run one after another rather than in parallel.
   e2e-shard:
     name: e2e shard ${{ matrix.shard }}/3
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -60,17 +60,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - id: playwright-version
-        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
-      - id: playwright-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
-      - if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-      - if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
+      # A persistent runner keeps its browsers between jobs, so this is a no-op after the first run.
+      - run: npx playwright install chromium
       # The CLI reporters replace the config's, so live-e2e.yml keeps its HTML report.
       - run: npm run test:e2e:mocked -- --shard=${{ matrix.shard }}/3 --reporter=list,github,blob
       - uses: actions/upload-artifact@v7
@@ -86,7 +77,7 @@ jobs:
     name: e2e
     needs: e2e-shard
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
