@@ -3,7 +3,8 @@
 // (`active`), at once on return when the last fetch is older than that (#78). A failed refresh keeps
 // the last good data; only a failure before the first success of this enable is an error, which
 // `retryMs` (when given) retries sooner. Disabling it forgets everything, so the next enable starts
-// from loading, and a response that lands after that is dropped.
+// from loading, and a response that lands after that is dropped. Each fetch gets an AbortSignal that
+// is aborted when the feed is disabled or a newer fetch starts, so a stale request doesn't linger.
 
 import { useEffect, useRef, useState } from 'react'
 import { pollWhileVisible } from '../../data/pollWhileVisible'
@@ -19,7 +20,7 @@ export interface PolledResourceOptions {
 export function usePolledResource<T>(
   enabled: boolean,
   active: boolean,
-  fetcher: () => Promise<T>,
+  fetcher: (signal: AbortSignal) => Promise<T>,
   intervalMs: number,
   { describeError, retryMs }: PolledResourceOptions,
 ): AsyncState<T> {
@@ -31,22 +32,27 @@ export function usePolledResource<T>(
     if (!enabled) return
     let cancelled = false
     let loaded = false
+    let inFlight: AbortController | null = null
     loadRef.current = () => {
       loadedAtRef.current = Date.now()
-      fetcher().then(
+      inFlight?.abort()
+      const controller = new AbortController()
+      inFlight = controller
+      fetcher(controller.signal).then(
         (data) => {
-          if (cancelled) return
+          if (cancelled || controller.signal.aborted) return
           loaded = true
           setState(loadedWith(data))
         },
         (err: unknown) => {
-          if (!cancelled && !loaded) setState(failedWith(describeError(err)))
+          if (!cancelled && !controller.signal.aborted && !loaded) setState(failedWith(describeError(err)))
         },
       )
     }
     loadRef.current()
     return () => {
       cancelled = true
+      inFlight?.abort()
       loadRef.current = () => {}
       setState(LOADING)
     }

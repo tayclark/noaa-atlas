@@ -39,11 +39,14 @@ export function formatDartPopupHtml({ id, name }: DartProperties): string {
   ].join('<br/>')
 }
 
+export const DART_ATTRIBUTION =
+  'Buoys: <a href="https://www.ndbc.noaa.gov/dart.shtml">NOAA/NDBC DART</a>'
+
 /** The buoy dots, empty and hidden until the DART node is selected and the list has loaded. */
 export function dartStationLayers(): LayerGroup {
   return {
     sourceId: DART_SOURCE_ID,
-    source: { type: 'geojson', data: dartStationsToGeoJSON([]) },
+    source: { type: 'geojson', data: dartStationsToGeoJSON([]), attribution: DART_ATTRIBUTION },
     layers: [
       {
         id: DART_LAYER_ID,

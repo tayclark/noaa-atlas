@@ -40,7 +40,7 @@ export interface WindOverlay {
   setVisible: (visible: boolean) => void
   /** Stops the animation without hiding the layers, for a globe that is out of sight. */
   setPaused: (paused: boolean) => void
-  /** Stops the animation and any queued redraw, before the map is removed. */
+  /** Stops the animation and any queued redraw, before the map is removed; later calls do nothing (#354). */
   dispose: () => void
 }
 
@@ -87,6 +87,7 @@ export function createWindOverlay(map: MapLibreMap, reducedMotion: boolean, befo
   let sample: WindSampler | null = null
   let visible = false
   let paused = false
+  let disposed = false
   let frame = 0
   /** The next part of a reduced-motion redraw, which runs over several tasks. */
   let pendingStatic: ReturnType<typeof setTimeout> | undefined
@@ -113,13 +114,13 @@ export function createWindOverlay(map: MapLibreMap, reducedMotion: boolean, befo
 
   function loop(): void {
     frame = 0
-    if (!visible || paused || reducedMotion) return
+    if (disposed || !visible || paused || reducedMotion) return
     step(true)
     frame = requestAnimationFrame(loop)
   }
 
   function startLoop(): void {
-    if (frame || !visible || paused || reducedMotion) return
+    if (disposed || frame || !visible || paused || reducedMotion) return
     ;(map.getSource(WIND_PARTICLES_SOURCE_ID) as CanvasSource | undefined)?.play()
     frame = requestAnimationFrame(loop)
   }
@@ -136,6 +137,7 @@ export function createWindOverlay(map: MapLibreMap, reducedMotion: boolean, befo
   }
 
   function drawStatic(): void {
+    if (disposed) return
     cancelStatic()
     pctx?.clearRect(0, 0, PARTICLE_SIZE, PARTICLE_SIZE)
     drawStaticFrom(0)
@@ -155,6 +157,7 @@ export function createWindOverlay(map: MapLibreMap, reducedMotion: boolean, befo
 
   return {
     setField(next) {
+      if (disposed) return
       sample = next ? makeWindSampler(next) : null
       cancelStatic()
       const ctx = shading.getContext('2d')
@@ -169,6 +172,7 @@ export function createWindOverlay(map: MapLibreMap, reducedMotion: boolean, befo
       if (reducedMotion && visible && next) pendingStatic = setTimeout(drawStatic, 0)
     },
     setVisible(next) {
+      if (disposed) return
       visible = next
       const value = next ? 'visible' : 'none'
       map.setLayoutProperty(WIND_SHADING_LAYER_ID, 'visibility', value)
@@ -184,11 +188,13 @@ export function createWindOverlay(map: MapLibreMap, reducedMotion: boolean, befo
       }
     },
     setPaused(next) {
+      if (disposed) return
       paused = next
       if (next) stopLoop()
       else startLoop()
     },
     dispose() {
+      disposed = true
       cancelStatic()
       if (frame) cancelAnimationFrame(frame)
       frame = 0
