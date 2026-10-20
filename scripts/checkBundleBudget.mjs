@@ -15,6 +15,9 @@
 // Total JS 605 to 612 kB: maplibre-gl 6.11.2 to 6.12.0 (Dependabot #326), 603.9 to 606.5 kB.
 // Total JS 612 to 620 kB: the hurricane tracks (#334) and the GOES imagery under them (#338) live in
 // the globe chunk, 606.5 to 612.0 kB.
+// Total JS 620 to 760 kB: maplibre-gl 6.12.0 to 6.14.0 (Dependabot #361). Upstream dropped the shared
+// chunk in 6.13.0 (maplibre-gl-js #8672), so the main module and the worker each bundle the common
+// code again and nothing on our side can dedupe it, 616.2 to 741.9 kB. Initial JS is unchanged.
 
 import { readdirSync, readFileSync } from 'node:fs'
 import { extname, join, relative } from 'node:path'
@@ -28,7 +31,7 @@ const CSS = ['.css']
 export const BUDGETS = [
   { name: 'Initial JavaScript', scope: 'initial', ext: JS, maxGzipBytes: 203 * KB },
   { name: 'Initial CSS', scope: 'initial', ext: CSS, maxGzipBytes: 6.4 * KB },
-  { name: 'Total JavaScript', scope: 'total', ext: JS, maxGzipBytes: 620 * KB },
+  { name: 'Total JavaScript', scope: 'total', ext: JS, maxGzipBytes: 760 * KB },
   { name: 'Total CSS', scope: 'total', ext: CSS, maxGzipBytes: 19 * KB },
 ]
 
